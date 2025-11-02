@@ -1,0 +1,59 @@
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 24px;
+    padding: 30px 60px;
+    background-color: #f8f9fa;
+    font-family: Arial, sans-serif;
+}
+
+.product-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    padding: 16px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.product-card img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+.product-card h3 {
+    color: #0058a3;
+    /* IKEA mavisi */
+    font-size: 1rem;
+    margin: 6px 0;
+}
+
+.product-card .price {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.product-card button {
+    background-color: #ffcc00;
+    /* IKEA sarısı */
+    color: #0058a3;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.product-card button:hover {
+    background-color: #ffd633;
+}

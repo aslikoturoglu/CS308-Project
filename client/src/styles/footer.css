@@ -1,0 +1,25 @@
+.footer {
+    background-color: #0058a3;
+    /* IKEA mavisi */
+    color: white;
+    text-align: center;
+    padding: 16px 0;
+    font-family: Arial, sans-serif;
+    margin-top: 40px;
+}
+
+.footer-title {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.footer-subtitle {
+    font-size: 0.9rem;
+    margin-top: 6px;
+}
+
+.footer-links {
+    font-size: 0.85rem;
+    margin-top: 10px;
+    opacity: 0.8;
+}

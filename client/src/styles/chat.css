@@ -1,0 +1,124 @@
+.chat-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #0058a3;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 55px;
+    height: 55px;
+    font-size: 1.8rem;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    transition: background-color 0.2s, transform 0.2s;
+    z-index: 1000;
+}
+
+.chat-button:hover {
+    background-color: #003d73;
+    transform: scale(1.05);
+}
+
+/* 🧱 Sabit boyutlu kutu */
+.chat-box {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    width: 320px;
+    height: 380px;
+    /* 👈 sabit yükseklik */
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 1000;
+}
+
+/* Başlık */
+.chat-header {
+    background-color: #0058a3;
+    color: white;
+    padding: 10px;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.chat-header .close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+/* 🧭 Mesaj alanı sabit ve scrollable */
+.chat-messages {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+    /* 👈 scrollbar aktif */
+    font-family: Arial, sans-serif;
+    scroll-behavior: smooth;
+}
+
+.chat-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+    background-color: #bbb;
+    border-radius: 3px;
+}
+
+.placeholder {
+    color: #999;
+    text-align: center;
+    margin-top: 20px;
+}
+
+/* Mesajlar */
+.message {
+    background-color: #f1f1f1;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin: 6px 0;
+    font-size: 0.9rem;
+    max-width: 85%;
+    word-wrap: break-word;
+}
+
+.message.user {
+    background-color: #e0f0ff;
+    align-self: flex-end;
+}
+
+/* Alt input kısmı */
+.chat-input {
+    display: flex;
+    border-top: 1px solid #ddd;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    outline: none;
+}
+
+.chat-input button {
+    background-color: #0058a3;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.chat-input button:hover {
+    background-color: #003d73;
+}
