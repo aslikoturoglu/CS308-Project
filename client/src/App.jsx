@@ -2,22 +2,24 @@ import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
 import ProductGrid from "./components/product/ProductGrid";
 import ChatButton from "./components/chat/ChatButton";
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import Login from "./pages/Login";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-
 
 function App() {
   return (
-    <>
-    <Header></Header>
-    <ProductGrid></ProductGrid>
-    <ChatButton></ChatButton>
-        <Routes>
-          <Route path="/" element={<Login />} />
-          <Route path="/collection" element={<Collection />} />
-        </Routes>
-    <Footer></Footer>
-    </>
+    <Router>
+      <Header />
+      <nav style={{ marginBottom: "1rem" }}>
+        <Link to="/" style={{ marginRight: "1rem" }}>Home</Link>
+        <Link to="/login">Login</Link>
+      </nav>
+      <Routes>
+        <Route path="/" element={<ProductGrid />} />
+        <Route path="/login" element={<Login />} />
+      </Routes>
+      <ChatButton />
+      <Footer />
+    </Router>
   );
 }
 
