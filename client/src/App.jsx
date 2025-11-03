@@ -2,6 +2,9 @@ import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
 import ProductGrid from "./components/product/ProductGrid";
 import ChatButton from "./components/chat/ChatButton";
+import Login from "./pages/Login";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+
 
 function App() {
   return (
@@ -9,8 +12,10 @@ function App() {
     <Header></Header>
     <ProductGrid></ProductGrid>
     <ChatButton></ChatButton>
-    <a href="./pages/login.jsx"><p>ADSJHASHDIJASHBDIJASBI</p></a>
-
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route path="/collection" element={<Collection />} />
+        </Routes>
     <Footer></Footer>
     </>
   );
