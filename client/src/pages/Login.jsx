@@ -1,8 +1,7 @@
 // src/pages/Login.jsx
 import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShopContext } from "../context/ShopContext";
-import "../App.css";
+
 
 const Login = () => {
   const [email, setEmail] = useState("");
