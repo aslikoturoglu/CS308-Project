@@ -1,0 +1,183 @@
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #fafafa;
+}
+
+/* Page title */
+.ikea-title {
+  font-size: 28px;
+  text-align: center;
+  font-weight: 600;
+  margin: 40px 0 10px;
+}
+
+.ikea-title span {
+  color: #0058a3;
+}
+
+/* Search + sort bar */
+.ikea-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 30px;
+}
+
+.ikea-search {
+  width: 260px;
+  padding: 10px 15px;
+  border: 1px solid #ccc;
+  border-radius: 25px;
+  font-size: 14px;
+  outline: none;
+}
+
+.ikea-sort {
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 25px;
+  background: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* Product grid */
+.ikea-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 30px;
+  padding: 0 40px 60px;
+  align-items: start;
+}
+
+/* Product card */
+.ikea-card {
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  text-align: center;
+  transition: all 0.3s ease;
+  padding-bottom: 15px;
+}
+
+.ikea-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+}
+
+/* Uniform image size */
+.ikea-card img {
+  width: 100%;
+  height: 250px;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 12px 12px 0 0;
+  background-color: #fff;
+}
+
+.ikea-card h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 12px 0 6px;
+}
+
+.ikea-card .desc {
+  font-size: 13px;
+  color: #555;
+  margin: 0 12px;
+  min-height: 40px;
+}
+
+.ikea-card .price {
+  font-weight: 700;
+  color: #111;
+  margin: 10px 0 8px;
+  font-size: 15px;
+}
+
+/* ---------- Login Page ---------- */
+.login-page {
+  display: flex;
+  justify-content: center;   /* yatay ortala */
+  align-items: center;       /* dikey ortala */
+  height: 100vh;
+  background-color: #ffffff;
+}
+
+.login-box {
+  text-align: center;
+  width: 340px;
+  padding: 40px 30px;
+  border: 1px solid #e6e6e6;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+  background-color: #fff;
+}
+
+.login-title {
+  font-size: 28px;
+  font-weight: 500;
+  margin-bottom: 30px;
+  color: #1a1a1a;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.login-input {
+  padding: 12px 14px;
+  font-size: 15px;
+  border: 1px solid #222;
+  border-radius: 2px;
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+.login-input:focus {
+  border-color: #0058a3;
+}
+
+.login-links {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #333;
+  margin-top: -8px;
+}
+
+.login-link {
+  cursor: pointer;
+}
+
+.login-link:hover {
+  text-decoration: underline;
+}
+
+.login-button {
+  background-color: #0058a3;   /* IKEA blue */
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 25px;         /* rounded corners */
+  cursor: pointer;
+  font-size: 15px;
+  margin-top: 8px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  width: 100%;
+}
+
+.login-button:hover {
+  background-color: #00427a;   /* slightly darker blue */
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 88, 163, 0.3);
+}
+
+
