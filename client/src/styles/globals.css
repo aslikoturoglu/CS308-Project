@@ -1,128 +1,40 @@
+/* Login Page */
+
 body {
   font-family: "Segoe UI", Arial, sans-serif;
   margin: 0;
   padding: 0;
-  background-color: #fafafa;
+  background-color: #f8f9fa;
+  color: #1a1a1a;
 }
 
-/* Page title */
-.ikea-title {
-  font-size: 28px;
-  text-align: center;
-  font-weight: 600;
-  margin: 40px 0 10px;
-}
-
-.ikea-title span {
-  color: #0058a3;
-}
-
-/* Search + sort bar */
-.ikea-controls {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 30px;
-}
-
-.ikea-search {
-  width: 260px;
-  padding: 10px 15px;
-  border: 1px solid #ccc;
-  border-radius: 25px;
-  font-size: 14px;
-  outline: none;
-}
-
-.ikea-sort {
-  padding: 10px 12px;
-  border: 1px solid #ccc;
-  border-radius: 25px;
-  background: white;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-/* Product grid */
-.ikea-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 30px;
-  padding: 0 40px 60px;
-  align-items: start;
-}
-
-/* Product card */
-.ikea-card {
-  background: white;
-  border: 1px solid #eee;
-  border-radius: 12px;
-  text-align: center;
-  transition: all 0.3s ease;
-  padding-bottom: 15px;
-}
-
-.ikea-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
-}
-
-/* Uniform image size */
-.ikea-card img {
-  width: 100%;
-  height: 250px;
-  object-fit: cover;
-  object-position: center;
-  border-radius: 12px 12px 0 0;
-  background-color: #fff;
-}
-
-.ikea-card h3 {
-  font-size: 16px;
-  font-weight: 600;
-  margin: 12px 0 6px;
-}
-
-.ikea-card .desc {
-  font-size: 13px;
-  color: #555;
-  margin: 0 12px;
-  min-height: 40px;
-}
-
-.ikea-card .price {
-  font-weight: 700;
-  color: #111;
-  margin: 10px 0 8px;
-  font-size: 15px;
-}
-
-/* ---------- Login Page ---------- */
 .login-page {
   display: flex;
-  justify-content: center;   /* yatay ortala */
-  align-items: center;       /* dikey ortala */
-  height: 100vh;
-  background-color: #ffffff;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start; 
+  background-color: #f8f9fa;
+  min-height: calc(100vh - 120px); 
+  padding-top: 40px; 
+  padding-bottom: 20px; 
+  box-sizing: border-box;
 }
 
 .login-box {
+  width: 360px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  padding: 40px 32px;
+  border-top: 6px solid #0058a3; /* IKEA mavisi üst çizgi */
   text-align: center;
-  width: 340px;
-  padding: 40px 30px;
-  border: 1px solid #e6e6e6;
-  border-radius: 6px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
-  background-color: #fff;
 }
 
 .login-title {
-  font-size: 28px;
-  font-weight: 500;
-  margin-bottom: 30px;
-  color: #1a1a1a;
-  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 26px;
+  font-weight: 600;
+  margin-bottom: 28px;
+  color: #0058a3;
 }
 
 .login-form {
@@ -132,52 +44,77 @@ body {
 }
 
 .login-input {
-  padding: 12px 14px;
+  padding: 14px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
   font-size: 15px;
-  border: 1px solid #222;
-  border-radius: 2px;
   outline: none;
-  transition: border-color 0.3s ease;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  width: 100%;
 }
 
 .login-input:focus {
   border-color: #0058a3;
+  box-shadow: 0 0 4px rgba(0, 88, 163, 0.3);
 }
 
 .login-links {
   display: flex;
   justify-content: space-between;
   font-size: 13px;
-  color: #333;
-  margin-top: -8px;
+  color: #0058a3;
+  margin-top: -4px;
 }
 
 .login-link {
   cursor: pointer;
+  transition: color 0.25s ease;
 }
 
 .login-link:hover {
+  color: #003d73;
   text-decoration: underline;
 }
 
 .login-button {
-  background-color: #0058a3;   /* IKEA blue */
-  color: white;
+  background-color: #2557a7;   /* koyu IKEA mavisi */
+  color: #ffffff;
   border: none;
-  padding: 12px;
-  border-radius: 25px;         /* rounded corners */
-  cursor: pointer;
-  font-size: 15px;
-  margin-top: 8px;
-  transition: all 0.3s ease;
-  font-weight: 500;
   width: 100%;
+  padding: 16px 0;
+  border-radius: 50px;         /* tam oval görünüm */
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  transition: all 0.3s ease;
+  margin-top: 12px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
 }
 
 .login-button:hover {
-  background-color: #00427a;   /* slightly darker blue */
+  background-color: #1f4b91;   /* hover’da koyulaşma */
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(0, 88, 163, 0.3);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.18);
 }
 
+.login-button:active {
+  background-color: #194074;
+  transform: translateY(0);
+}
 
+/* Responsive düzen (mobil görünüm için) */
+@media (max-width: 480px) {
+  .login-box {
+    width: 90%;
+    padding: 32px 24px;
+  }
+
+  .login-title {
+    font-size: 22px;
+  }
+
+  .login-button {
+    font-size: 15px;
+  }
+}
