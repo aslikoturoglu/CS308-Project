@@ -14,7 +14,7 @@ function App() {
       <Routes>
         {/* LOGIN PAGE (Header + Footer only) */}
         <Route
-          path="/"
+          path="/login"
           element={
             <>
               <Login />
@@ -24,7 +24,7 @@ function App() {
 
         {/* MAIN SITE*/}
         <Route
-          path="/home"
+          path="/"
           element={
             <>
               <Header />
