@@ -17,9 +17,7 @@ function App() {
           path="/"
           element={
             <>
-              <Header />
               <Login />
-              <Footer />
             </>
           }
         />

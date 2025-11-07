@@ -103,6 +103,19 @@ body {
   transform: translateY(0);
 }
 
+.logo-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 50px;
+}
+
+.login-logo {
+  width: 280px;
+  height: auto;
+  margin-bottom: 0px;
+}
+
+
 /* Responsive düzen (mobil görünüm için) */
 @media (max-width: 480px) {
   .login-box {

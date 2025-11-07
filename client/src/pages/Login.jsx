@@ -19,6 +19,9 @@ const Login = () => {
 
   return (
     <div className="login-page">
+        <div className="logo-container">
+            <img src="/logo.png" alt="IKEA STORE LOGO" className="login-logo" />
+        </div>
       <div className="login-box">
         <h2 className="login-title">Login</h2>
         <form onSubmit={handleSubmit} className="login-form">
