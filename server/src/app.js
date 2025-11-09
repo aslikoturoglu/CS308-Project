@@ -20,7 +20,7 @@ const db = mysql.createConnection({
   port: 24973
 });
 
-// Bağlantı kontrolü
+
 db.connect(err => {
   if (err) {
     console.error("MySQL bağlantı hatası:", err);
@@ -32,9 +32,22 @@ db.connect(err => {
 app.listen(process.env.PORT || 5000, () =>
   console.log(`Server ${process.env.PORT || 5000} portunda`));
 
-// Sepetteki ürünleri listele
+app.get("/api/products", (req, res) => {
+  const query = "SELECT * FROM Products"; 
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Ürünler alınamadı:", err);
+      res.status(500).json({ error: "Veritabanı hatası" });
+    } else {
+      res.json(results);
+    }
+  });
+});
+
+
+
 app.get("/api/cart", (req, res) => {
-  const query = "SELECT * FROM cart_items"; // tablonun adı 'cart' ise
+  const query = "SELECT * FROM cart_items";
   db.query(query, (err, results) => {
     if (err) {
       console.error("Cart verileri alınamadı:", err);
@@ -45,7 +58,7 @@ app.get("/api/cart", (req, res) => {
   });
 });
 
-// Sepete ürün ekle
+
 app.post("/api/cart", (req, res) => {
   const { product_id, quantity } = req.body;
   const query = "INSERT INTO cart_items (product_id, quantity) VALUES (?, ?)";
@@ -54,12 +67,12 @@ app.post("/api/cart", (req, res) => {
       console.error("Ürün sepete eklenemedi:", err);
       res.status(500).json({ error: "Ekleme başarısız" });
     } else {
-      res.json({ message: "Ürün sepete eklendi ✅", id: result.insertId });
+      res.json({ message: "Ürün sepete eklendi ", id: result.insertId });
     }
   });
 });
 
-// Sepetten ürün sil
+
 app.delete("/api/cart/:id", (req, res) => {
   const { id } = req.params;
   const query = "DELETE FROM cart_items WHERE id = ?";
@@ -68,7 +81,7 @@ app.delete("/api/cart/:id", (req, res) => {
       console.error("Ürün sepetten silinemedi:", err);
       res.status(500).json({ error: "Silme başarısız" });
     } else {
-      res.json({ message: "Ürün sepetten silindi 🗑️" });
+      res.json({ message: "Ürün sepetten silindi" });
     }
   });
 });
