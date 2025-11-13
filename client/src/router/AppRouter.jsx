@@ -6,6 +6,8 @@ import Wishlist from "../pages/Wishlist";
 import Profile from "../pages/Profile";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
+import OrderHistory from "../pages/OrderHistory";
+import NotFound from "../pages/NotFound";
 
 function AppRouter() {
   return (
@@ -17,6 +19,8 @@ function AppRouter() {
       <Route path="/profile" element={<Profile />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/orders" element={<OrderHistory />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
