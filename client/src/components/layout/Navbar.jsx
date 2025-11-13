@@ -65,11 +65,6 @@ function Navbar() {
           )}
         </NavLink>
 
-        <NavLink to="/login" style={linkStyle}>
-          {({ isActive }) => (
-            <span style={isActive ? activeStyle : undefined}>Login</span>
-          )}
-        </NavLink>
       </div>
     </nav>
   );

@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 function Header() {
   return (
     <header
@@ -15,39 +17,70 @@ function Header() {
       <div
         style={{
           marginTop: "10px",
-          background: "white",
-          width: "60%",
+          width: "70%",
           marginInline: "auto",
-          borderRadius: "6px",
-          padding: "6px",
-          border: "1px solid #ddd",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
         }}
       >
-        <input
-          type="text"
-          placeholder="Search for furniture, lamps, or decor..."
+        <div
           style={{
-            width: "80%",
-            border: "none",
-            outline: "none",
-            fontSize: "0.95rem",
+            background: "white",
+            border: "1px solid #ddd",
+            borderRadius: "6px",
+            padding: "6px 10px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            flex: 1,
           }}
-        />
-        <button
+        >
+          <input
+            type="text"
+            placeholder="Search for furniture, lamps, or decor..."
+            style={{
+              flex: 1,
+              border: "none",
+              outline: "none",
+              fontSize: "0.95rem",
+            }}
+          />
+          <button
+            style={{
+              backgroundColor: "#0058a3",
+              color: "white",
+              border: "none",
+              padding: "6px 12px",
+              cursor: "pointer",
+              borderRadius: "4px",
+            }}
+          >
+            Search
+          </button>
+        </div>
+
+        <Link
+          to="/login"
           style={{
             backgroundColor: "#0058a3",
             color: "white",
             border: "none",
-            padding: "6px 12px",
+            padding: "8px 16px",
             cursor: "pointer",
             borderRadius: "4px",
+            fontWeight: 600,
+            minWidth: "90px",
+            fontSize: "0.95rem",
+            textDecoration: "none",
+            display: "inline-flex",
+            justifyContent: "center",
+            alignItems: "center",
           }}
         >
-          Search
-        </button>
-        
+          Login
+        </Link>
       </div>
-      
     </header>
   );
 }
