@@ -7,6 +7,7 @@ import Profile from "../pages/Profile";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import OrderHistory from "../pages/OrderHistory";
+import ProductDetail from "../pages/ProductDetail";
 import Checkout from "../pages/Checkout";
 import NotFound from "../pages/NotFound";
 
@@ -15,6 +16,7 @@ function AppRouter() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/products" element={<ProductList />} />
+      <Route path="/products/:id" element={<ProductDetail />} />
       <Route path="/cart" element={<Cart />} />
       <Route path="/wishlist" element={<Wishlist />} />
       <Route path="/profile" element={<Profile />} />

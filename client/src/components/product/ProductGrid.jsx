@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import "../../styles/product.css";
 
 function ProductGrid() {
@@ -45,10 +46,15 @@ function ProductGrid() {
 
       {products.map((p) => (
         <div className="product-card" key={p.id}>
-          <img src={p.image} alt={p.name} />
-          <h3>{p.name}</h3>
-          <p className="price">₺{p.price}</p>
-          <button>Add to Cart</button>
+          <Link
+            to={`/products/${p.id}`}
+            style={{ textDecoration: "none", color: "inherit", display: "block" }}
+          >
+            <img src={p.image} alt={p.name} />
+            <h3>{p.name}</h3>
+            <p className="price">₺{p.price.toLocaleString("tr-TR")}</p>
+            <div className="product-cta">Detayları Gör</div>
+          </Link>
         </div>
       ))}
     </div>
