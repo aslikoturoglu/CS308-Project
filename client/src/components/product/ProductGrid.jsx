@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useWishlist } from "../../context/WishlistContext";
 import "../../styles/product.css";
 
 function ProductGrid() {
   const [products, setProducts] = useState([]);
   const [error, setError] = useState("");
+  const { toggleItem, inWishlist } = useWishlist();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -55,6 +57,18 @@ function ProductGrid() {
             <p className="price">₺{p.price.toLocaleString("tr-TR")}</p>
             <div className="product-cta">Detayları Gör</div>
           </Link>
+          <button
+            type="button"
+            className={`wishlist-btn ${inWishlist(p.id) ? "active" : ""}`}
+            aria-label="Favorilere ekle"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              toggleItem(p);
+            }}
+          >
+            {inWishlist(p.id) ? "♥" : "♡"}
+          </button>
         </div>
       ))}
     </div>
