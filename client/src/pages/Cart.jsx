@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import CartItem from "../components/cart/CartItem";
 import CartSummary from "../components/cart/CartSummary";
 
@@ -21,6 +21,7 @@ const initialCart = [
 ];
 
 function Cart() {
+  const navigate = useNavigate();
   const [items, setItems] = useState(initialCart);
 
   const subtotal = useMemo(
@@ -59,7 +60,17 @@ function Cart() {
       alert("Sepetiniz boş. Ürün ekleyin ve tekrar deneyin.");
       return;
     }
-    alert("Ödeme adımına yönlendiriliyorsunuz (mock).");
+    const merchandiseTotal = Math.max(subtotal - discount, 0);
+
+    navigate("/checkout", {
+      state: {
+        items,
+        subtotal,
+        shipping,
+        discount,
+        merchandiseTotal,
+      },
+    });
   };
 
   if (items.length === 0) {

@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 
 const mockUser = {
-  name: "Ayşe Öztürk",
-  email: "ayse.ozturk@example.com",
+  name: "Filiz Öztürk",
+  email: "filiz.ozturk@example.com",
   memberSince: "2021",
   address: "Bağdat Caddesi No:25, Kadıköy / İstanbul",
 };
