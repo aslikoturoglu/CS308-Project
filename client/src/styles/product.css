@@ -45,7 +45,7 @@
 
 .product-card button {
     background-color: #ffcc00;
-    /* IKEA sarısı */
+    /* IKEA yellow */
     color: #0058a3;
     border: none;
     border-radius: 6px;
@@ -71,6 +71,29 @@
 
 .product-cta:hover {
     background-color: #ffd633;
+}
+
+.product-actions {
+    margin-top: 10px;
+    display: flex;
+    justify-content: center;
+}
+
+.product-add {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    color: #0f172a;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.product-add:hover {
+    background: #f8fafc;
+    transform: translateY(-1px);
 }
 
 .wishlist-btn {

@@ -15,12 +15,12 @@ function RegisterForm({ onSuccess }) {
     setInfo("");
 
     if (password !== confirmPassword) {
-      setError("Şifreler eşleşmiyor. Lütfen tekrar kontrol et.");
+      setError("Passwords do not match. Please check again.");
       return;
     }
 
     setError("");
-    setInfo("Hesabın başarıyla oluşturuldu! Seni giriş sayfasına yönlendiriyoruz...");
+    setInfo("Account created! Redirecting you to the login page...");
 
     setTimeout(() => {
       if (typeof onSuccess === "function") {
@@ -50,7 +50,7 @@ function RegisterForm({ onSuccess }) {
           fontWeight: 700,
         }}
       >
-        📝 Hesap Oluştur
+        📝 Create Account
       </h2>
 
       {error && (
@@ -63,13 +63,13 @@ function RegisterForm({ onSuccess }) {
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1a1a1a" }}>
-          Ad Soyad
+          Full Name
           <input
             type="text"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             required
-            placeholder="Ayşe Öztürk"
+            placeholder="Jane Doe"
             style={{
               width: "100%",
               padding: 10,
@@ -82,7 +82,7 @@ function RegisterForm({ onSuccess }) {
         </label>
 
         <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1a1a1a" }}>
-          E-posta
+          Email
           <input
             type="email"
             value={email}
@@ -101,7 +101,7 @@ function RegisterForm({ onSuccess }) {
         </label>
 
         <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1a1a1a" }}>
-          Şifre
+          Password
           <input
             type="password"
             value={password}
@@ -121,7 +121,7 @@ function RegisterForm({ onSuccess }) {
         </label>
 
         <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1a1a1a" }}>
-          Şifre (Tekrar)
+          Confirm Password
           <input
             type="password"
             value={confirmPassword}
@@ -156,12 +156,12 @@ function RegisterForm({ onSuccess }) {
             transition: "filter 0.2s ease",
           }}
         >
-          Kayıt Ol
+          Sign Up
         </button>
       </form>
 
       <p style={{ fontSize: "0.85rem", marginTop: 16, color: "#4b5563" }}>
-        Zaten hesabın var mı?{" "}
+        Already have an account?{" "}
         <button
           type="button"
           onClick={() => navigate("/login")}
@@ -174,7 +174,7 @@ function RegisterForm({ onSuccess }) {
             padding: 0,
           }}
         >
-          Giriş Yap
+          Sign In
         </button>
       </p>
     </div>

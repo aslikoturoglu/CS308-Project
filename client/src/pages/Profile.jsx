@@ -2,33 +2,33 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 
 const mockUser = {
-  name: "Filiz Öztürk",
+  name: "Filiz Ozturk",
   email: "filiz.ozturk@example.com",
   memberSince: "2021",
-  address: "Bağdat Caddesi No:25, Kadıköy / İstanbul",
+  address: "Bagdat Street No:25, Kadikoy / Istanbul",
 };
 
 const mockOrders = [
   {
     id: "#ORD-9821",
-    date: "12 Şubat 2025",
+    date: "12 February 2025",
     total: 2899,
-    status: "Kargoya verildi",
+    status: "Shipped",
     items: ["Velvet Armchair", "Round Side Table"],
   },
   {
     id: "#ORD-9534",
-    date: "27 Ocak 2025",
+    date: "27 January 2025",
     total: 1699,
-    status: "Teslim edildi",
+    status: "Delivered",
     items: ["Leather Office Chair"],
   },
 ];
 
 const mockPreferences = [
-  { label: "E-posta bildirimleri", enabled: true },
-  { label: "SMS kampanyaları", enabled: false },
-  { label: "Yeni ürün bülteni", enabled: true },
+  { label: "Email notifications", enabled: true },
+  { label: "SMS campaigns", enabled: false },
+  { label: "New product newsletter", enabled: true },
 ];
 
 function Profile() {
@@ -54,10 +54,10 @@ function Profile() {
         }}
       >
         <div>
-          <p style={{ margin: 0, color: "#4b5563", letterSpacing: 1 }}>HOŞ GELDİN</p>
+          <p style={{ margin: 0, color: "#4b5563", letterSpacing: 1 }}>WELCOME</p>
           <h1 style={{ margin: "4px 0 0", color: "#0058a3" }}>{mockUser.name}</h1>
           <span style={{ color: "#6b7280" }}>
-            {mockUser.email} • IKEA üyesi {mockUser.memberSince}'den beri
+            {mockUser.email} • IKEA member since {mockUser.memberSince}
           </span>
         </div>
 
@@ -72,7 +72,7 @@ function Profile() {
             fontWeight: 600,
           }}
         >
-          Siparişlerime Git
+          View my orders
         </Link>
       </header>
 
@@ -85,9 +85,9 @@ function Profile() {
         }}
       >
         {[
-          { label: "Aktif üyelik", value: mockUser.memberSince },
-          { label: "Tamamlanan sipariş", value: completedOrders },
-          { label: "Favori adres", value: mockUser.address.split(",")[0] },
+          { label: "Active membership", value: mockUser.memberSince },
+          { label: "Completed orders", value: completedOrders },
+          { label: "Favorite address", value: mockUser.address.split(",")[0] },
         ].map((card) => (
           <div
             key={card.label}
@@ -119,7 +119,7 @@ function Profile() {
             boxShadow: "0 18px 35px rgba(0,0,0,0.05)",
           }}
         >
-          <h2 style={{ marginTop: 0, color: "#0058a3" }}>Son Siparişler</h2>
+          <h2 style={{ marginTop: 0, color: "#0058a3" }}>Recent orders</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {mockOrders.map((order) => (
               <article
@@ -159,7 +159,7 @@ function Profile() {
             boxShadow: "0 18px 35px rgba(0,0,0,0.05)",
           }}
         >
-          <h2 style={{ marginTop: 0, color: "#0058a3" }}>Tercihler</h2>
+          <h2 style={{ marginTop: 0, color: "#0058a3" }}>Preferences</h2>
           <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 12 }}>
             {mockPreferences.map((pref) => (
               <li
@@ -174,7 +174,7 @@ function Profile() {
               >
                 <span>{pref.label}</span>
                 <span style={{ color: pref.enabled ? "#059669" : "#9ca3af", fontWeight: 600 }}>
-                  {pref.enabled ? "Açık" : "Kapalı"}
+                  {pref.enabled ? "Enabled" : "Disabled"}
                 </span>
               </li>
             ))}

@@ -9,28 +9,28 @@ function CartSummary({ subtotal, shipping, discount, total, onCheckout }) {
         minWidth: 280,
       }}
     >
-      <h3 style={{ marginTop: 0, color: "#0058a3" }}>Sipariş Özeti</h3>
+      <h3 style={{ marginTop: 0, color: "#0058a3" }}>Order Summary</h3>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <span>Ara Toplam</span>
+          <span>Subtotal</span>
           <strong>₺{subtotal.toLocaleString("tr-TR")}</strong>
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <span>Kargo</span>
-          <strong>{shipping === 0 ? "Ücretsiz" : `₺${shipping.toLocaleString("tr-TR")}`}</strong>
+          <span>Shipping</span>
+          <strong>{shipping === 0 ? "Free" : `₺${shipping.toLocaleString("tr-TR")}`}</strong>
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", color: "#059669" }}>
-          <span>İndirim</span>
+          <span>Discount</span>
           <strong>-₺{discount.toLocaleString("tr-TR")}</strong>
         </div>
 
         <hr style={{ border: "none", borderTop: "1px solid #e5e7eb" }} />
 
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1.1rem" }}>
-          <span>Toplam</span>
+          <span>Total</span>
           <strong>₺{total.toLocaleString("tr-TR")}</strong>
         </div>
       </div>
@@ -50,7 +50,7 @@ function CartSummary({ subtotal, shipping, discount, total, onCheckout }) {
           cursor: "pointer",
         }}
       >
-        Ödemeye Geç
+        Proceed to Checkout
       </button>
     </aside>
   );

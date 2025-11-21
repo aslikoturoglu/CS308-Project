@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 
 const shippingOptions = [
-  { id: "standard", label: "Standart Teslimat (2-4 gün)", fee: 49.9 },
-  { id: "express", label: "Hızlı Teslimat (1 gün)", fee: 129.9 },
+  { id: "standard", label: "Standard Delivery (2-4 days)", fee: 49.9 },
+  { id: "express", label: "Express Delivery (1 day)", fee: 129.9 },
 ];
 
 function CheckoutForm({ cartTotal = 0, onSubmit }) {
@@ -42,22 +42,22 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
     setInfo("");
 
     if (!formData.fullName.trim() || !formData.email.trim() || !formData.address.trim()) {
-      setError("Lütfen zorunlu alanları doldur.");
+      setError("Please fill out the required fields.");
       return;
     }
 
     if (formData.cardNumber.replace(/\s/g, "").length < 16) {
-      setError("Kart numarası 16 haneli olmalı.");
+      setError("Card number must be 16 digits.");
       return;
     }
 
     if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(formData.expiry)) {
-      setError("Son kullanma tarihi MM/YY formatında olmalı.");
+      setError("Expiry date must match MM/YY.");
       return;
     }
 
     if (formData.cvc.length < 3) {
-      setError("CVC 3 ya da 4 haneli olmalı.");
+      setError("CVC must be 3 or 4 digits.");
       return;
     }
 
@@ -68,7 +68,7 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
       grandTotal,
     };
 
-    setInfo("Siparişin oluşturuldu! Ödeme onay ekranına yönlendiriliyorsun.");
+    setInfo("Order created! Redirecting to payment confirmation.");
     if (typeof onSubmit === "function") {
       onSubmit(payload);
     }
@@ -96,10 +96,10 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
       >
         <div>
           <p style={{ margin: 0, color: "#0f172a", fontWeight: 700, fontSize: "1.35rem" }}>
-            🛒 Güvenli Ödeme
+            🛒 Secure Checkout
           </p>
           <p style={{ margin: 0, color: "#475569", fontSize: "0.95rem" }}>
-            Bilgilerini kontrol et, kargon yola çıksın.
+            Review your details and we will ship your order.
           </p>
         </div>
         <div
@@ -112,7 +112,7 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
             textAlign: "right",
           }}
         >
-          <div style={{ fontSize: "0.8rem", color: "#cbd5e1" }}>Ödenecek Tutar</div>
+          <div style={{ fontSize: "0.8rem", color: "#cbd5e1" }}>Amount Due</div>
           <div style={{ fontSize: "1.2rem", fontWeight: 700 }}>
             ₺{grandTotal.toFixed(2)}
           </div>
@@ -165,32 +165,32 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
             border: "1px solid #e5e7eb",
           }}
         >
-          <h3 style={{ marginTop: 0, marginBottom: 12, color: "#0f172a" }}>Teslimat Bilgileri</h3>
+          <h3 style={{ marginTop: 0, marginBottom: 12, color: "#0f172a" }}>Shipping Details</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
-              Ad Soyad*
+              Full Name*
               <input
                 type="text"
                 value={formData.fullName}
                 onChange={handleChange("fullName")}
-                placeholder="Örn: Deniz Arslan"
+                placeholder="e.g. Alex Morgan"
                 required
                 style={inputStyle}
               />
             </label>
             <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
-              E-posta*
+              Email*
               <input
                 type="email"
                 value={formData.email}
                 onChange={handleChange("email")}
-                placeholder="ornek@mail.com"
+                placeholder="you@example.com"
                 required
                 style={inputStyle}
               />
             </label>
             <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
-              Telefon
+              Phone
               <input
                 type="tel"
                 value={formData.phone}
@@ -200,11 +200,11 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
               />
             </label>
             <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
-              Adres*
+              Address*
               <textarea
                 value={formData.address}
                 onChange={handleChange("address")}
-                placeholder="Açık adresini yaz"
+                placeholder="Street, number, district"
                 required
                 rows={3}
                 style={{ ...inputStyle, resize: "vertical" }}
@@ -212,17 +212,17 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
             </label>
             <div style={{ display: "flex", gap: 10 }}>
               <label style={{ flex: 1, fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
-                Şehir
+                City
                 <input
                   type="text"
                   value={formData.city}
                   onChange={handleChange("city")}
-                  placeholder="İl"
+                  placeholder="City"
                   style={inputStyle}
                 />
               </label>
               <label style={{ width: 130, fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
-                Posta Kodu
+                Postal Code
                 <input
                   type="text"
                   value={formData.postalCode}
@@ -233,12 +233,12 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
               </label>
             </div>
             <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
-              Notlar
+              Notes
               <input
                 type="text"
                 value={formData.notes}
                 onChange={handleChange("notes")}
-                placeholder="Kargoya notun varsa ekle"
+                placeholder="Add a note for the courier"
                 style={inputStyle}
               />
             </label>
@@ -256,7 +256,7 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
             gap: 12,
           }}
         >
-          <h3 style={{ marginTop: 0, marginBottom: 4, color: "#0f172a" }}>Ödeme ve Kargo</h3>
+          <h3 style={{ marginTop: 0, marginBottom: 4, color: "#0f172a" }}>Payment & Shipping</h3>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {shippingOptions.map((option) => (
               <label
@@ -287,17 +287,17 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
-              Kart Üzerindeki İsim
+              Name on Card
               <input
                 type="text"
                 value={formData.cardName}
                 onChange={handleChange("cardName")}
-                placeholder="Örn: DERYA YILMAZ"
+                placeholder="e.g. ALEX MORGAN"
                 style={inputStyle}
               />
             </label>
             <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
-              Kart Numarası
+              Card Number
               <input
                 type="text"
                 inputMode="numeric"
@@ -309,7 +309,7 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
             </label>
             <div style={{ display: "flex", gap: 10 }}>
               <label style={{ flex: 1, fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
-                Son Kullanma (AA/YY)
+                Expiry (MM/YY)
                 <input
                   type="text"
                   value={formData.expiry}
@@ -346,9 +346,9 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
           >
             <div>
               <div style={{ fontSize: "0.85rem", color: "#cbd5e1" }}>
-                Ürünler: ₺{Number(cartTotal).toFixed(2)} • Kargo: ₺{shippingFee.toFixed(2)}
+                Items: ₺{Number(cartTotal).toFixed(2)} • Shipping: ₺{shippingFee.toFixed(2)}
               </div>
-              <div style={{ fontWeight: 700, fontSize: "1.1rem" }}>Toplam: ₺{grandTotal.toFixed(2)}</div>
+              <div style={{ fontWeight: 700, fontSize: "1.1rem" }}>Total: ₺{grandTotal.toFixed(2)}</div>
             </div>
             <button
               type="submit"
@@ -363,7 +363,7 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
                 minWidth: 150,
               }}
             >
-              Siparişi Tamamla
+              Place Order
             </button>
           </div>
         </div>

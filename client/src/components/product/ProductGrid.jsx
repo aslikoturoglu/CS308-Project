@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useWishlist } from "../../context/WishlistContext";
+import { useCart } from "../../context/CartContext";
 import "../../styles/product.css";
 
 function ProductGrid() {
   const [products, setProducts] = useState([]);
   const [error, setError] = useState("");
   const { toggleItem, inWishlist } = useWishlist();
+  const { addItem } = useCart();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -22,7 +24,7 @@ function ProductGrid() {
         );
 
         if (!response.ok) {
-          throw new Error(`Ürün listesi yüklenemedi (${response.status})`);
+          throw new Error(`Products could not be loaded (${response.status})`);
         }
 
         const data = await response.json();
@@ -31,7 +33,7 @@ function ProductGrid() {
       } catch (err) {
         if (err.name === "AbortError") return;
         console.error("Products could not be loaded:", err);
-        setError("Ürünleri yüklerken bir sorun oluştu. Lütfen tekrar deneyin.");
+        setError("Something went wrong while loading products. Please try again.");
       }
     }
 
@@ -44,7 +46,7 @@ function ProductGrid() {
     <div className="product-grid">
       {error && <p>{error}</p>}
 
-      {!error && products.length === 0 && <p>Ürünler yükleniyor...</p>}
+      {!error && products.length === 0 && <p>Loading products...</p>}
 
       {products.map((p) => (
         <div className="product-card" key={p.id}>
@@ -55,12 +57,25 @@ function ProductGrid() {
             <img src={p.image} alt={p.name} />
             <h3>{p.name}</h3>
             <p className="price">₺{p.price.toLocaleString("tr-TR")}</p>
-            <div className="product-cta">Detayları Gör</div>
+            <div className="product-cta">View Details</div>
           </Link>
+          <div className="product-actions">
+            <button
+              type="button"
+              className="product-add"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                addItem(p, 1);
+              }}
+            >
+              Add to Cart
+            </button>
+          </div>
           <button
             type="button"
             className={`wishlist-btn ${inWishlist(p.id) ? "active" : ""}`}
-            aria-label="Favorilere ekle"
+            aria-label="Toggle wishlist"
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();

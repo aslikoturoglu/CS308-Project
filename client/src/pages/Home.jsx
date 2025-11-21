@@ -2,26 +2,26 @@ import { Link } from "react-router-dom";
 
 const highlights = [
   {
-    title: "Yeni Sezon Koleksiyonu",
-    desc: "İskandinav minimalizmi ile sıcak dokuları buluşturan 2025 koleksiyonunu keşfet.",
-    badge: "Yeni",
+    title: "New Season Collection",
+    desc: "Discover the 2025 line blending Scandinavian minimalism with warm textures.",
+    badge: "New",
   },
   {
-    title: "Çalışma Alanı Fikirleri",
-    desc: "Evden çalışmayı daha konforlu hale getiren masa, sandalye ve ışık çözümleri.",
-    badge: "İlham",
+    title: "Workspace Ideas",
+    desc: "Desks, chairs, and lighting to make working from home more comfortable.",
+    badge: "Inspiration",
   },
   {
-    title: "Depolama Çözümleri",
-    desc: "Daha düzenli bir ev için akıllı raf, dolap ve organizer önerileri.",
-    badge: "Favori",
+    title: "Storage Solutions",
+    desc: "Smart shelves, closets, and organizers for a more orderly home.",
+    badge: "Favorite",
   },
 ];
 
 const categories = [
-  { name: "Oturma Odası", image: "https://images.unsplash.com/photo-1484100356142-db6ab6244067" },
-  { name: "Yatak Odası", image: "https://images.unsplash.com/photo-1505691938895-1758d7feb511" },
-  { name: "Çalışma Alanı", image: "https://images.unsplash.com/photo-1493666438817-866a91353ca9" },
+  { name: "Living Room", image: "https://images.unsplash.com/photo-1484100356142-db6ab6244067" },
+  { name: "Bedroom", image: "https://images.unsplash.com/photo-1505691938895-1758d7feb511" },
+  { name: "Workspace", image: "https://images.unsplash.com/photo-1493666438817-866a91353ca9" },
 ];
 
 function Home() {
@@ -43,14 +43,14 @@ function Home() {
         }}
       >
         <p style={{ letterSpacing: 2, fontSize: "0.95rem", margin: 0 }}>
-          HOŞ GELDİN
+          WELCOME
         </p>
         <h1 style={{ fontSize: "3rem", maxWidth: 720, margin: 0 }}>
-          Evin için ilham veren IKEA deneyimi burada başlıyor
+          The IKEA experience that inspires your home starts here
         </h1>
         <p style={{ maxWidth: 540, lineHeight: 1.6, fontSize: "1.1rem" }}>
-          Konforlu koltuklardan akıllı depolama çözümlerine kadar aradığın her şey
-          tek tık uzağında. Yeni sezona özel kampanyaları kaçırma.
+          From comfy sofas to smart storage, everything you are looking for is a click away.
+          Don’t miss the new season offers.
         </p>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
           <Link
@@ -64,7 +64,7 @@ function Home() {
               textDecoration: "none",
             }}
           >
-            Ürünleri Keşfet
+            Browse Products
           </Link>
           <a
             href="#ilham"
@@ -77,14 +77,14 @@ function Home() {
               textDecoration: "none",
             }}
           >
-            İlham Al
+            Get Inspired
           </a>
         </div>
       </section>
 
       <section id="ilham" style={{ padding: "60px 24px", backgroundColor: "#f8f9fa" }}>
         <h2 style={{ textAlign: "center", color: "#0058a3", marginBottom: 32 }}>
-          Evine iyi gelecek fikirler
+          Ideas to elevate your home
         </h2>
         <div
           style={{

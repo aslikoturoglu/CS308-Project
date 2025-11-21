@@ -19,7 +19,7 @@ function LoginForm({ onSuccess }) {
         navigate("/");
       }
     } else {
-      setError("Geçersiz e-posta veya şifre. test@ikea.com / 1234 deneyebilirsin.");
+      setError("Invalid email or password. Try test@ikea.com / 1234.");
     }
   };
 
@@ -42,7 +42,7 @@ function LoginForm({ onSuccess }) {
           fontWeight: 700,
         }}
       >
-        🔐 Giriş Yap
+        🔐 Sign In
       </h2>
 
       {error && (
@@ -59,7 +59,7 @@ function LoginForm({ onSuccess }) {
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <label style={{ textAlign: "left", color: "#1a1a1a", fontSize: "0.85rem", fontWeight: 600 }}>
-          E-posta
+          Email
           <input
             type="email"
             value={email}
@@ -78,7 +78,7 @@ function LoginForm({ onSuccess }) {
         </label>
 
         <label style={{ textAlign: "left", color: "#1a1a1a", fontSize: "0.85rem", fontWeight: 600 }}>
-          Şifre
+          Password
           <input
             type="password"
             value={password}
@@ -112,12 +112,12 @@ function LoginForm({ onSuccess }) {
             transition: "filter 0.2s ease",
           }}
         >
-          Giriş Yap
+          Sign In
         </button>
       </form>
 
       <p style={{ fontSize: "0.85rem", marginTop: 16, color: "#4b5563" }}>
-        Hesabın yok mu?{" "}
+        Don’t have an account?{" "}
         <button
           type="button"
           onClick={() => navigate("/register")}
@@ -130,7 +130,7 @@ function LoginForm({ onSuccess }) {
             padding: 0,
           }}
         >
-          Hemen kaydol.
+          Create one now.
         </button>
       </p>
     </div>

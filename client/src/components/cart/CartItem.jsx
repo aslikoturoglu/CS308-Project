@@ -46,7 +46,7 @@ function CartItem({ item, onIncrease, onDecrease, onRemove }) {
                 cursor: "pointer",
                 color: "#0058a3",
               }}
-              aria-label={`${name} adet azalt`}
+              aria-label={`Decrease quantity for ${name}`}
             >
               –
             </button>
@@ -63,7 +63,7 @@ function CartItem({ item, onIncrease, onDecrease, onRemove }) {
                 cursor: "pointer",
                 color: "#0058a3",
               }}
-              aria-label={`${name} adet artır`}
+              aria-label={`Increase quantity for ${name}`}
             >
               +
             </button>
@@ -80,7 +80,7 @@ function CartItem({ item, onIncrease, onDecrease, onRemove }) {
               fontWeight: 600,
             }}
           >
-            Kaldır
+            Remove
           </button>
         </div>
       </div>

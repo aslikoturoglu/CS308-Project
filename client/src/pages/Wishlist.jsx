@@ -19,8 +19,8 @@ function Wishlist() {
           padding: 24,
         }}
       >
-        <h2 style={{ margin: 0 }}>❤️ Favorilerin boş</h2>
-        <p style={{ margin: 0, color: "#475569" }}>Beğendiğin ürünleri kalp ikonuna tıklayarak ekleyebilirsin.</p>
+        <h2 style={{ margin: 0 }}>❤️ Your wishlist is empty</h2>
+        <p style={{ margin: 0, color: "#475569" }}>Tap the heart icon on products to save your favorites.</p>
         <Link
           to="/products"
           style={{
@@ -32,7 +32,7 @@ function Wishlist() {
             fontWeight: 700,
           }}
         >
-          Ürünleri keşfet
+          Browse products
         </Link>
       </section>
     );
@@ -42,7 +42,7 @@ function Wishlist() {
     <section style={{ padding: "40px 24px", background: "#f5f7fb", minHeight: "70vh" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <div>
-          <p style={{ margin: 0, color: "#475569" }}>Favorilere eklediklerin</p>
+          <p style={{ margin: 0, color: "#475569" }}>Items you saved</p>
           <h1 style={{ margin: 4, color: "#0f172a" }}>Wishlist</h1>
         </div>
         <Link
@@ -57,7 +57,7 @@ function Wishlist() {
             background: "white",
           }}
         >
-          ← Ürünlere dön
+          ← Back to products
         </Link>
       </div>
 
@@ -107,7 +107,7 @@ function Wishlist() {
                   textAlign: "center",
                 }}
               >
-                Sepete Git
+                Go to cart
               </Link>
               <button
                 type="button"
@@ -122,7 +122,7 @@ function Wishlist() {
                   cursor: "pointer",
                 }}
               >
-                Sil
+                Remove
               </button>
             </div>
           </div>

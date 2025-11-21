@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import CheckoutForm from "../components/forms/CheckoutForm";
+import { useCart } from "../context/CartContext";
 
 const fallbackItems = [
   { id: 1, name: "Modern Chair", price: 799, quantity: 1 },
@@ -10,15 +11,27 @@ const fallbackItems = [
 function Checkout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { items: cartItems, clearCart, subtotal: cartSubtotal } = useCart();
 
-  const items = location.state?.items?.length ? location.state.items : fallbackItems;
+  const items = useMemo(() => {
+    if (location.state?.items?.length) return location.state.items;
+    if (cartItems.length) return cartItems;
+    return fallbackItems;
+  }, [cartItems, location.state]);
   const subtotal = useMemo(
-    () => items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    () =>
+      items.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity ?? 1), 0),
     [items]
   );
 
   const discount =
-    typeof location.state?.discount === "number" ? location.state.discount : subtotal > 4000 ? 250 : 0;
+    typeof location.state?.discount === "number"
+      ? location.state.discount
+      : cartItems.length
+      ? Math.max(cartSubtotal > 4000 ? 250 : 0, 0)
+      : subtotal > 4000
+      ? 250
+      : 0;
 
   const merchandiseTotal =
     typeof location.state?.merchandiseTotal === "number"
@@ -26,8 +39,9 @@ function Checkout() {
       : Math.max(subtotal - discount, 0);
 
   const handleSubmit = (payload) => {
-    alert("Siparişin oluşturuldu! (mock)");
+    alert("Your order has been placed! (mock)");
     console.log("Checkout payload", payload);
+    clearCart();
     navigate("/orders");
   };
 
@@ -44,8 +58,8 @@ function Checkout() {
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
         <div>
-          <h1 style={{ margin: 0, color: "#0f172a" }}>Ödeme</h1>
-          <p style={{ margin: 0, color: "#475569" }}>Teslimat ve ödeme bilgilerini tamamla.</p>
+          <h1 style={{ margin: 0, color: "#0f172a" }}>Checkout</h1>
+          <p style={{ margin: 0, color: "#475569" }}>Complete your shipping and payment details.</p>
         </div>
         <Link
           to="/cart"
@@ -59,7 +73,7 @@ function Checkout() {
             background: "white",
           }}
         >
-          ← Sepete dön
+          ← Back to cart
         </Link>
       </div>
 
@@ -82,7 +96,7 @@ function Checkout() {
             boxShadow: "0 12px 30px rgba(0,0,0,0.06)",
           }}
         >
-          <h3 style={{ marginTop: 0, color: "#0f172a" }}>Sipariş Özeti</h3>
+          <h3 style={{ marginTop: 0, color: "#0f172a" }}>Order Summary</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {items.map((item) => (
               <div
@@ -99,7 +113,7 @@ function Checkout() {
               >
                 <div>
                   <div style={{ fontWeight: 700, color: "#0f172a" }}>{item.name}</div>
-                  <div style={{ color: "#475569", fontSize: "0.9rem" }}>Adet: {item.quantity}</div>
+                  <div style={{ color: "#475569", fontSize: "0.9rem" }}>Qty: {item.quantity}</div>
                 </div>
                 <div style={{ fontWeight: 700, color: "#0f172a" }}>
                   ₺{(item.price * item.quantity).toLocaleString("tr-TR")}
@@ -109,11 +123,11 @@ function Checkout() {
           </div>
 
           <div style={{ marginTop: 16, borderTop: "1px solid #e5e7eb", paddingTop: 12, display: "grid", gap: 8 }}>
-            <Row label="Ara toplam" value={`₺${subtotal.toLocaleString("tr-TR")}`} />
-            <Row label="İndirim" value={`-₺${discount.toLocaleString("tr-TR")}`} accent />
-            <Row label="Ürün toplamı" value={`₺${merchandiseTotal.toLocaleString("tr-TR")}`} bold />
+            <Row label="Subtotal" value={`₺${subtotal.toLocaleString("tr-TR")}`} />
+            <Row label="Discount" value={`-₺${discount.toLocaleString("tr-TR")}`} accent />
+            <Row label="Items total" value={`₺${merchandiseTotal.toLocaleString("tr-TR")}`} bold />
             <p style={{ margin: "8px 0 0", color: "#475569", fontSize: "0.9rem" }}>
-              Kargo ücretini bir sonraki adımda seçiyorsun.
+              You will choose shipping in the next step.
             </p>
           </div>
         </aside>

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useCart } from "../context/CartContext";
 
 function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { addItem } = useCart();
   const [product, setProduct] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -19,14 +21,14 @@ function ProductDetail() {
         });
 
         if (!response.ok) {
-          throw new Error(`Ürün detayları alınamadı (${response.status})`);
+          throw new Error(`Product details could not be loaded (${response.status})`);
         }
 
         const data = await response.json();
         const found = data.find((item) => String(item.id) === String(id));
 
         if (!found) {
-          setError("Ürün bulunamadı ya da kaldırıldı.");
+          setError("Product not found or has been removed.");
         } else {
           setProduct(found);
           setError("");
@@ -34,7 +36,7 @@ function ProductDetail() {
       } catch (err) {
         if (err.name === "AbortError") return;
         console.error("Product could not be loaded", err);
-        setError("Ürün bilgilerini çekerken bir sorun oluştu. Lütfen tekrar dene.");
+        setError("We hit a snag loading this product. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -47,17 +49,19 @@ function ProductDetail() {
 
   const fauxDescription = useMemo(() => {
     if (!product) return "";
-    return `${product.name} yaşam alanına modern ve sade dokunuş katmak için tasarlandı. Dayanıklı malzemeler, kolay montaj ve uzun ömürlü kullanım sunar. Şık hatları ve zamansız stiliyle her odada kendine yer bulur.`;
+    return `${product.name} is designed to add a modern, clean touch to your space. Durable materials make assembly easy and provide long-lasting use. With sleek lines and timeless style, it fits effortlessly into any room.`;
   }, [product]);
 
   const handleAddToCart = () => {
-    alert("Ürün sepete eklendi (mock).");
+    if (!product) return;
+    addItem(product, 1);
+    alert("Added to cart.");
   };
 
   if (loading) {
     return (
       <section style={pageStyle}>
-        <p style={{ color: "#475569" }}>Ürün yükleniyor...</p>
+        <p style={{ color: "#475569" }}>Loading product...</p>
       </section>
     );
   }
@@ -88,7 +92,7 @@ function ProductDetail() {
                 fontWeight: 700,
               }}
             >
-              Ürünlere dön
+              Back to products
             </Link>
             <button
               type="button"
@@ -103,7 +107,7 @@ function ProductDetail() {
                 cursor: "pointer",
               }}
             >
-              Geri
+              Go back
             </button>
           </div>
         </div>
@@ -119,7 +123,7 @@ function ProductDetail() {
     <section style={pageStyle}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <div>
-          <p style={{ margin: 0, color: "#475569" }}>Ürün kodu: #{product.id}</p>
+          <p style={{ margin: 0, color: "#475569" }}>Product code: #{product.id}</p>
           <h1 style={{ margin: 4, color: "#0f172a" }}>{product.name}</h1>
         </div>
         <Link
@@ -134,7 +138,7 @@ function ProductDetail() {
             background: "white",
           }}
         >
-          ← Ürünlere dön
+          ← Back to products
         </Link>
       </div>
 
@@ -181,9 +185,9 @@ function ProductDetail() {
           <p style={{ margin: 0, color: "#334155", lineHeight: 1.5 }}>{fauxDescription}</p>
 
           <ul style={{ paddingLeft: 18, margin: 0, color: "#475569", lineHeight: 1.5, display: "grid", gap: 6 }}>
-            <li>2 yıl garanti ve 30 gün kolay iade</li>
-            <li>Bugün sipariş ver, 2-4 iş günü içinde kargoda</li>
-            <li>Montaj kılavuzu ve tüm parçalar kutuda</li>
+            <li>2-year warranty and 30-day easy returns</li>
+            <li>Order today, ships in 2-4 business days</li>
+            <li>Assembly guide and all parts in the box</li>
           </ul>
 
           <div style={{ display: "flex", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
@@ -201,7 +205,7 @@ function ProductDetail() {
                 minWidth: 160,
               }}
             >
-              Sepete Ekle
+              Add to Cart
             </button>
             <Link
               to="/checkout"
@@ -216,7 +220,7 @@ function ProductDetail() {
                 textAlign: "center",
               }}
             >
-              Hemen Satın Al
+              Buy Now
             </Link>
           </div>
         </div>

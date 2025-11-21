@@ -20,14 +20,14 @@
     transform: scale(1.05);
 }
 
-/* 🧱 Sabit boyutlu kutu */
+/* 🧱 Fixed-size widget */
 .chat-box {
     position: fixed;
     bottom: 90px;
     right: 20px;
     width: 320px;
     height: 380px;
-    /* 👈 sabit yükseklik */
+    /* fixed height */
     background: #fff;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
@@ -37,7 +37,7 @@
     z-index: 1000;
 }
 
-/* Başlık */
+/* Header */
 .chat-header {
     background-color: #0058a3;
     color: white;
@@ -56,12 +56,12 @@
     cursor: pointer;
 }
 
-/* 🧭 Mesaj alanı sabit ve scrollable */
+/* 🧭 Scrollable message area */
 .chat-messages {
     flex: 1;
     padding: 10px;
     overflow-y: auto;
-    /* 👈 scrollbar aktif */
+    /* custom scrollbar */
     font-family: Arial, sans-serif;
     scroll-behavior: smooth;
 }
@@ -81,7 +81,7 @@
     margin-top: 20px;
 }
 
-/* Mesajlar */
+/* Messages */
 .message {
     background-color: #f1f1f1;
     border-radius: 8px;
@@ -97,7 +97,7 @@
     align-self: flex-end;
 }
 
-/* Alt input kısmı */
+/* Bottom input area */
 .chat-input {
     display: flex;
     border-top: 1px solid #ddd;

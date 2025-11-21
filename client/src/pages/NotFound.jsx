@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom";
 
 const quickLinks = [
-  { title: "Siparişlerim", to: "/orders", desc: "Geçmiş alışverişlerini ve kargo durumunu kontrol et." },
-  { title: "Ürün Arşivi", to: "/products", desc: "Stokta olan tüm ürünleri filtreleyerek keşfet." },
-  { title: "Profilim", to: "/profile", desc: "Adreslerini ve tercihlerini güncelle." },
+  { title: "My Orders", to: "/orders", desc: "Check past purchases and shipment status." },
+  { title: "Product Archive", to: "/products", desc: "Explore items in stock with filters." },
+  { title: "My Profile", to: "/profile", desc: "Update addresses and preferences." },
 ];
 
-const trendingSearches = ["Çalışma masası", "LED aydınlatma", "Bebek odası", "Akıllı depolama", "Nordik koltuk"];
+const trendingSearches = ["Desk setup", "LED lighting", "Baby room", "Smart storage", "Nordic sofa"];
 
 function NotFound() {
   return (
@@ -31,10 +31,10 @@ function NotFound() {
         <div>
           <p style={{ margin: 0, letterSpacing: 4, color: "#94a3b8" }}>404</p>
           <h1 style={{ margin: "8px 0 16px", fontSize: "2.75rem", color: "#0f172a" }}>
-            Aradığın sayfayı bulamadık
+            We couldn’t find the page you want
           </h1>
           <p style={{ marginBottom: 24, lineHeight: 1.6, color: "#475569" }}>
-            Bağlantı değişmiş veya sayfa artık mevcut değil olabilir. Aşağıdaki yönlendirmelerle kolayca devam edebilirsin.
+            The link may have changed or the page no longer exists. Use the quick links below to continue.
           </p>
 
           <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
@@ -49,7 +49,7 @@ function NotFound() {
                 fontWeight: 600,
               }}
             >
-              Ana sayfaya dön
+              Go to homepage
             </Link>
             <Link
               to="/products"
@@ -62,7 +62,7 @@ function NotFound() {
                 fontWeight: 600,
               }}
             >
-              Ürünleri keşfet
+              Browse products
             </Link>
           </div>
 
@@ -104,7 +104,7 @@ function NotFound() {
             boxShadow: "0 25px 60px rgba(15,23,42,0.25)",
           }}
         >
-          <p style={{ marginTop: 0, marginBottom: 12, letterSpacing: 2, color: "#facc15" }}>POPÜLER ARAMALAR</p>
+          <p style={{ marginTop: 0, marginBottom: 12, letterSpacing: 2, color: "#facc15" }}>TRENDING SEARCHES</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
             {trendingSearches.map((term) => (
               <span
@@ -129,9 +129,9 @@ function NotFound() {
               lineHeight: 1.5,
             }}
           >
-            <p style={{ margin: 0, fontWeight: 600 }}>Yardım mı lazım?</p>
+            <p style={{ margin: 0, fontWeight: 600 }}>Need help?</p>
             <p style={{ margin: "6px 0 0", color: "rgba(255,255,255,0.8)" }}>
-              Canlı destek ekibimiz, doğru sayfayı bulmana yardımcı olabilir. Hafta içi 09.00 - 22.00 arası çevrimiçiyiz.
+              Our live support team can help you reach the right page. Online on weekdays, 09:00 - 22:00.
             </p>
           </div>
         </div>

@@ -1,57 +1,57 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-const timelineSteps = ["Hazırlanıyor", "Paketlendi", "Kargoda", "Teslim Edildi"];
+const timelineSteps = ["Processing", "Packed", "Shipped", "Delivered"];
 
 const orders = [
   {
     id: "#ORD-9821",
-    date: "12 Şubat 2025",
-    status: "Kargoda",
+    date: "12 February 2025",
+    status: "Shipped",
     total: 2899,
     shippingCompany: "Aras Kargo",
-    estimate: "15 Şubat 2025",
-    address: "Bağdat Caddesi No:25, Kadıköy / İstanbul",
-    note: "Kurulum hizmeti seçildi. Teslimat öncesi aranmak istiyor.",
+    estimate: "15 February 2025",
+    address: "Bagdat Street No:25, Kadikoy / Istanbul",
+    note: "Assembly service selected. Please call before delivery.",
     progressIndex: 2,
     items: [
-      { id: "item-1", name: "Velvet Armchair", variant: "Gece mavisi", qty: 1, price: 1899 },
-      { id: "item-2", name: "Round Side Table", variant: "Ceviz", qty: 1, price: 999 },
+      { id: "item-1", name: "Velvet Armchair", variant: "Midnight blue", qty: 1, price: 1899 },
+      { id: "item-2", name: "Round Side Table", variant: "Walnut", qty: 1, price: 999 },
     ],
   },
   {
     id: "#ORD-9534",
-    date: "27 Ocak 2025",
-    status: "Teslim Edildi",
+    date: "27 January 2025",
+    status: "Delivered",
     total: 1699,
     shippingCompany: "MNG Kargo",
-    estimate: "31 Ocak 2025",
-    deliveredAt: "28 Ocak 2025",
-    address: "Bağdat Caddesi No:25, Kadıköy / İstanbul",
-    note: "Ürün teslim edildi. Değerlendirme bırakabilirsin.",
+    estimate: "31 January 2025",
+    deliveredAt: "28 January 2025",
+    address: "Bagdat Street No:25, Kadikoy / Istanbul",
+    note: "Delivered. Leave a review if you like.",
     progressIndex: 3,
-    items: [{ id: "item-3", name: "Leather Office Chair", variant: "Siyah", qty: 1, price: 1699 }],
+    items: [{ id: "item-3", name: "Leather Office Chair", variant: "Black", qty: 1, price: 1699 }],
   },
   {
     id: "#ORD-9418",
-    date: "15 Ocak 2025",
-    status: "Hazırlanıyor",
+    date: "15 January 2025",
+    status: "Processing",
     total: 1098,
     shippingCompany: "IKEA Express",
-    estimate: "20 Ocak 2025",
-    address: "Bağdat Caddesi No:25, Kadıköy / İstanbul",
-    note: "Ücretsiz mağazadan teslimat seçildi.",
+    estimate: "20 January 2025",
+    address: "Bagdat Street No:25, Kadikoy / Istanbul",
+    note: "Free store pickup selected.",
     progressIndex: 1,
-    items: [{ id: "item-4", name: "Bamboo Storage Box (Set/3)", variant: "Doğal", qty: 2, price: 549 }],
+    items: [{ id: "item-4", name: "Bamboo Storage Box (Set/3)", variant: "Natural", qty: 2, price: 549 }],
   },
 ];
 
-const filterOptions = ["Tümü", "Hazırlanıyor", "Kargoda", "Teslim Edildi"];
+const filterOptions = ["All", "Processing", "Shipped", "Delivered"];
 
 const statusPills = {
-  Hazırlanıyor: { bg: "rgba(234,179,8,0.2)", color: "#b45309" },
-  Kargoda: { bg: "rgba(59,130,246,0.15)", color: "#1d4ed8" },
-  "Teslim Edildi": { bg: "rgba(34,197,94,0.15)", color: "#15803d" },
+  Processing: { bg: "rgba(234,179,8,0.2)", color: "#b45309" },
+  Shipped: { bg: "rgba(59,130,246,0.15)", color: "#1d4ed8" },
+  Delivered: { bg: "rgba(34,197,94,0.15)", color: "#15803d" },
 };
 
 const formatPrice = (value) =>
@@ -62,18 +62,18 @@ const formatPrice = (value) =>
   });
 
 function OrderHistory() {
-  const [filter, setFilter] = useState("Tümü");
+  const [filter, setFilter] = useState("All");
 
   const filteredOrders = useMemo(() => {
-    if (filter === "Tümü") return orders;
+    if (filter === "All") return orders;
     return orders.filter((order) => order.status === filter);
   }, [filter]);
 
   const stats = useMemo(
     () => ({
       totalSpent: orders.reduce((sum, order) => sum + order.total, 0),
-      delivered: orders.filter((order) => order.status === "Teslim Edildi").length,
-      active: orders.filter((order) => order.status !== "Teslim Edildi").length,
+      delivered: orders.filter((order) => order.status === "Delivered").length,
+      active: orders.filter((order) => order.status !== "Delivered").length,
     }),
     []
   );
@@ -97,10 +97,10 @@ function OrderHistory() {
           }}
         >
           <div>
-            <p style={{ margin: 0, letterSpacing: 1, color: "#94a3b8" }}>SİPARİŞ GEÇMİŞİ</p>
-            <h1 style={{ margin: "6px 0 8px", color: "#0f172a" }}>Teslimatlar ve geçmiş alışverişler</h1>
+            <p style={{ margin: 0, letterSpacing: 1, color: "#94a3b8" }}>ORDER HISTORY</p>
+            <h1 style={{ margin: "6px 0 8px", color: "#0f172a" }}>Deliveries and past purchases</h1>
             <p style={{ margin: 0, color: "#475569" }}>
-              Son 6 aya ait siparişlerini tek ekrandan takip et, faturaları indir ve tekrar satın al.
+              Track the last 6 months of orders in one view, download invoices, and repurchase quickly.
             </p>
           </div>
 
@@ -112,9 +112,9 @@ function OrderHistory() {
             }}
           >
             {[
-              { label: "Toplam harcama", value: formatPrice(stats.totalSpent) },
-              { label: "Teslim edilen", value: stats.delivered },
-              { label: "Aktif kargo", value: stats.active },
+              { label: "Total spent", value: formatPrice(stats.totalSpent) },
+              { label: "Delivered", value: stats.delivered },
+              { label: "Active shipments", value: stats.active },
             ].map((card) => (
               <div
                 key={card.label}
@@ -172,12 +172,13 @@ function OrderHistory() {
                 border: "1px dashed #cbd5f5",
               }}
             >
-              <h3 style={{ margin: 0, color: "#0f172a" }}>Bu filtrede sipariş yok</h3>
+              <h3 style={{ margin: 0, color: "#0f172a" }}>No orders in this filter</h3>
               <p style={{ color: "#475569" }}>
-                Farklı bir durum seçebilir veya{" "}
+                Try another status or{" "}
                 <Link to="/products" style={{ color: "#0058a3", fontWeight: 600 }}>
-                  yeni ürünler keşfedebilirsin.
+                  browse products
                 </Link>
+                .
               </p>
             </div>
           )}
@@ -246,14 +247,14 @@ function OrderHistory() {
                     >
                       <span style={{ fontWeight: 600 }}>{item.name}</span>
                       <span style={{ color: "#475569" }}>{item.variant}</span>
-                      <span style={{ fontSize: "0.9rem", color: "#94a3b8" }}>Adet: {item.qty}</span>
+                      <span style={{ fontSize: "0.9rem", color: "#94a3b8" }}>Qty: {item.qty}</span>
                       <strong>{formatPrice(item.price * item.qty)}</strong>
                     </div>
                   ))}
                 </div>
 
                 <div>
-                  <p style={{ margin: "0 0 8px", color: "#475569", fontWeight: 600 }}>Teslimat ilerlemesi</p>
+                  <p style={{ margin: "0 0 8px", color: "#475569", fontWeight: 600 }}>Delivery progress</p>
                   <div
                     style={{
                       display: "grid",
@@ -294,13 +295,13 @@ function OrderHistory() {
                       padding: 16,
                     }}
                   >
-                    <p style={{ margin: "0 0 6px", color: "#475569", fontWeight: 600 }}>Teslimat bilgisi</p>
+                    <p style={{ margin: "0 0 6px", color: "#475569", fontWeight: 600 }}>Delivery info</p>
                     <p style={{ margin: "4px 0", color: "#475569" }}>
-                      Kargo: <strong>{order.shippingCompany}</strong>
+                      Carrier: <strong>{order.shippingCompany}</strong>
                     </p>
-                    <p style={{ margin: "4px 0", color: "#475569" }}>Planlanan teslim: {order.estimate}</p>
+                    <p style={{ margin: "4px 0", color: "#475569" }}>Estimated delivery: {order.estimate}</p>
                     {order.deliveredAt && (
-                      <p style={{ margin: "4px 0", color: "#16a34a" }}>Teslim edildi: {order.deliveredAt}</p>
+                      <p style={{ margin: "4px 0", color: "#16a34a" }}>Delivered: {order.deliveredAt}</p>
                     )}
                     <p style={{ margin: "4px 0", color: "#475569" }}>{order.address}</p>
                   </div>
@@ -312,11 +313,11 @@ function OrderHistory() {
                       padding: 16,
                     }}
                   >
-                    <p style={{ margin: "0 0 6px", color: "#475569", fontWeight: 600 }}>Ödeme özeti</p>
+                    <p style={{ margin: "0 0 6px", color: "#475569", fontWeight: 600 }}>Payment summary</p>
                     <p style={{ margin: "4px 0", color: "#475569" }}>
-                      Ürün tutarı: {formatPrice(order.total)}
+                      Items total: {formatPrice(order.total)}
                     </p>
-                    <p style={{ margin: "4px 0", color: "#475569" }}>Kargo: Ücretsiz</p>
+                    <p style={{ margin: "4px 0", color: "#475569" }}>Shipping: Free</p>
                     <p style={{ margin: "6px 0 0", fontWeight: 700 }}>{formatPrice(order.total)}</p>
                   </div>
                 </div>
@@ -342,7 +343,7 @@ function OrderHistory() {
                       cursor: "pointer",
                     }}
                   >
-                    Fatura indir (PDF)
+                    Download invoice (PDF)
                   </button>
                   <Link
                     to="/products"
@@ -355,7 +356,7 @@ function OrderHistory() {
                       fontWeight: 600,
                     }}
                   >
-                    Tekrar satın al
+                    Buy again
                   </Link>
                   <button
                     type="button"
@@ -369,7 +370,7 @@ function OrderHistory() {
                       cursor: "pointer",
                     }}
                   >
-                    Destek talebi aç
+                    Create support ticket
                   </button>
                 </div>
               </article>

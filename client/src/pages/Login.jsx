@@ -25,11 +25,10 @@ function Login() {
         }}
       >
         <h1 style={{ color: "#0058a3", fontSize: "2rem", margin: 0 }}>
-          Tekrar hoş geldin 👋
+          Welcome back 👋
         </h1>
         <p style={{ color: "#4b5563", maxWidth: 360 }}>
-          Favori IKEA ürünlerini görmek, sepetini yönetmek ve özel teklifleri
-          yakalamak için hesabına giriş yap.
+          Sign in to browse your favorite IKEA products, manage your cart, and catch special offers.
         </p>
       </div>
 
