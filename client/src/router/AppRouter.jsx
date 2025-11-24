@@ -10,6 +10,7 @@ import OrderHistory from "../pages/OrderHistory";
 import ProductDetail from "../pages/ProductDetail";
 import Checkout from "../pages/Checkout";
 import NotFound from "../pages/NotFound";
+import AdminDashboard from "../pages/AdminDashboard";
 
 function AppRouter() {
   return (
@@ -24,6 +25,7 @@ function AppRouter() {
       <Route path="/register" element={<Register />} />
       <Route path="/checkout" element={<Checkout />} />
       <Route path="/orders" element={<OrderHistory />} />
+      <Route path="/admin" element={<AdminDashboard />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
