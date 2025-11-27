@@ -32,7 +32,6 @@
 
 .product-card h3 {
     color: #0058a3;
-    /* IKEA mavisi */
     font-size: 1rem;
     margin: 6px 0;
 }
@@ -45,7 +44,6 @@
 
 .product-card button {
     background-color: #ffcc00;
-    /* IKEA yellow */
     color: #0058a3;
     border: none;
     border-radius: 6px;

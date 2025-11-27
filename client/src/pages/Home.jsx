@@ -46,7 +46,7 @@ function Home() {
           WELCOME
         </p>
         <h1 style={{ fontSize: "3rem", maxWidth: 720, margin: 0 }}>
-          The IKEA experience that inspires your home starts here
+          The SUHome experience that inspires your home starts here
         </h1>
         <p style={{ maxWidth: 540, lineHeight: 1.6, fontSize: "1.1rem" }}>
           From comfy sofas to smart storage, everything you are looking for is a click away.

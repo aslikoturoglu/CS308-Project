@@ -26,7 +26,7 @@ function Register() {
         }}
       >
         <h1 style={{ color: "#0058a3", fontSize: "2rem", margin: 0 }}>
-          Join the IKEA Family
+          Join the SUHome Family
         </h1>
         <p style={{ color: "#4b5563", lineHeight: 1.6 }}>
           Save favorites, track orders, and stay in the loop for member-only offers.

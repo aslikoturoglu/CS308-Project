@@ -1,7 +1,6 @@
 .header {
     width: 100%;
     background-color: #ffcc00;
-    /* IKEA yellow */
     padding: 12px 0;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
     position: sticky;
@@ -23,7 +22,6 @@
     align-items: center;
     gap: 10px;
     color: #0058a3;
-    /* IKEA blue */
     text-decoration: none;
     font-weight: 700;
     font-size: 1.3rem;

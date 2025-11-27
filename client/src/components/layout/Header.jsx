@@ -13,7 +13,7 @@ function Header() {
         boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
       }}
     >
-      <div style={{ fontSize: "1.8rem" }}>IKEA Store</div>
+      <div style={{ fontSize: "1.8rem" }}>SUHome</div>
       <div
         style={{
           marginTop: "10px",

@@ -57,7 +57,7 @@ function Profile() {
           <p style={{ margin: 0, color: "#4b5563", letterSpacing: 1 }}>WELCOME</p>
           <h1 style={{ margin: "4px 0 0", color: "#0058a3" }}>{mockUser.name}</h1>
           <span style={{ color: "#6b7280" }}>
-            {mockUser.email} • IKEA member since {mockUser.memberSince}
+            {mockUser.email} • SUHome member since {mockUser.memberSince}
           </span>
         </div>
 

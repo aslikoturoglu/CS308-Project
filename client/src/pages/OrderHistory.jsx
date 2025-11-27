@@ -37,7 +37,7 @@ const orders = [
     date: "15 January 2025",
     status: "Processing",
     total: 1098,
-    shippingCompany: "IKEA Express",
+    shippingCompany: "SUExpress",
     estimate: "20 January 2025",
     address: "Bagdat Street No:25, Kadikoy / Istanbul",
     note: "Free store pickup selected.",

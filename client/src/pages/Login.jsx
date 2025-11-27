@@ -28,7 +28,7 @@ function Login() {
           Welcome back 👋
         </h1>
         <p style={{ color: "#4b5563", maxWidth: 360 }}>
-          Sign in to browse your favorite IKEA products, manage your cart, and catch special offers.
+          Sign in to browse your favorite SUHome products, manage your cart, and catch special offers.
         </p>
       </div>
 

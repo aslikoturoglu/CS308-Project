@@ -10,7 +10,7 @@ function LoginForm({ onSuccess }) {
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    if (email.trim() === "test@ikea.com" && password === "1234") {
+    if (email.trim() === "test@suhome.com" && password === "1234") {
       setError("");
 
       if (typeof onSuccess === "function") {
@@ -19,7 +19,7 @@ function LoginForm({ onSuccess }) {
         navigate("/");
       }
     } else {
-      setError("Invalid email or password. Try test@ikea.com / 1234.");
+      setError("Invalid email or password. Try test@suhome.com / 1234.");
     }
   };
 
@@ -65,7 +65,7 @@ function LoginForm({ onSuccess }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            placeholder="test@ikea.com"
+            placeholder="test@suhome.com"
             style={{
               width: "100%",
               padding: 10,

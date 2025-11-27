@@ -37,7 +37,7 @@ function AdminSidebar({ activeSection = "dashboard", onSelect }) {
         </div>
         <div>
           <div style={{ fontWeight: 700, fontSize: "1.05rem" }}>Admin Center</div>
-          <div style={{ opacity: 0.8, fontSize: "0.9rem" }}>IKEA Store</div>
+          <div style={{ opacity: 0.8, fontSize: "0.9rem" }}>SUHome</div>
         </div>
       </div>
 
