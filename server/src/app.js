@@ -11,30 +11,24 @@ app.use(express.json());
 
 app.get("/", (req, res) => res.send("Backend çalışıyor!"));
 
-
 const db = mysql.createConnection({
-  host: "yamabiko.proxy.rlwy.net",      
-  user: "root",           
-  password: "MNHLhHBujcLpYWBZfHarMtPvzQUiOOTw",    
-  database: "railway",
-  port: 24973
+  host: "127.0.0.1",
+  user: "root",
+  password: "sabanci1234",
+  database: "ikea_store",
+  port: 3306
 });
 
-
-db.connect(err => {
+db.connect((err) => {
   if (err) {
-    console.error("MySQL bağlantı hatası:", err);
+    console.error("❌ MySQL bağlantı hatası:", err);
   } else {
-    console.log("MySQL'e bağlanıldı!");
+    console.log("✅ MySQL'e bağlanıldı!");
   }
 });
 
-app.listen(process.env.PORT || 5000, () =>
-  console.log(`Server ${process.env.PORT || 5000} portunda`));
-
 app.get("/api/products", (req, res) => {
-  const query = "SELECT * FROM Products"; 
-  db.query(query, (err, results) => {
+  db.query("SELECT * FROM Products", (err, results) => {
     if (err) {
       console.error("Ürünler alınamadı:", err);
       res.status(500).json({ error: "Veritabanı hatası" });
@@ -44,13 +38,10 @@ app.get("/api/products", (req, res) => {
   });
 });
 
-
-
 app.get("/api/cart", (req, res) => {
-  const query = "SELECT * FROM cart_items";
-  db.query(query, (err, results) => {
+  db.query("SELECT * FROM cart_items", (err, results) => {
     if (err) {
-      console.error("Cart verileri alınamadı:", err);
+      console.error("Cart alınamadı:", err);
       res.status(500).json({ error: "Veri alınamadı" });
     } else {
       res.json(results);
@@ -58,32 +49,35 @@ app.get("/api/cart", (req, res) => {
   });
 });
 
-
 app.post("/api/cart", (req, res) => {
   const { product_id, quantity } = req.body;
-  const query = "INSERT INTO cart_items (product_id, quantity) VALUES (?, ?)";
-  db.query(query, [product_id, quantity], (err, result) => {
-    if (err) {
-      console.error("Ürün sepete eklenemedi:", err);
-      res.status(500).json({ error: "Ekleme başarısız" });
-    } else {
-      res.json({ message: "Ürün sepete eklendi ", id: result.insertId });
+  db.query(
+    "INSERT INTO cart_items (product_id, quantity) VALUES (?, ?)",
+    [product_id, quantity],
+    (err, result) => {
+      if (err) {
+        console.error("Ürün eklenemedi:", err);
+        res.status(500).json({ error: "Ekleme başarısız" });
+      } else {
+        res.json({ message: "Ürün eklendi", id: result.insertId });
+      }
     }
-  });
+  );
 });
-
 
 app.delete("/api/cart/:id", (req, res) => {
-  const { id } = req.params;
-  const query = "DELETE FROM cart_items WHERE id = ?";
-  db.query(query, [id], (err, result) => {
-    if (err) {
-      console.error("Ürün sepetten silinemedi:", err);
-      res.status(500).json({ error: "Silme başarısız" });
-    } else {
-      res.json({ message: "Ürün sepetten silindi" });
+  db.query(
+    "DELETE FROM cart_items WHERE id = ?",
+    [req.params.id],
+    (err) => {
+      if (err) {
+        console.error("Silinemedi:", err);
+        res.status(500).json({ error: "Silme başarısız" });
+      } else {
+        res.json({ message: "Silindi" });
+      }
     }
-  });
+  );
 });
 
-
+app.listen(5000, () => console.log("Server 5000 portunda"));
