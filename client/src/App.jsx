@@ -13,13 +13,17 @@ import "./styles/globals.css";
 function App() {
   return (
     <Router>
-      <Header />
-      <Navbar />
+      <div className="app-shell">
+        <Header />
+        <Navbar />
 
-      <AppRouter />
+        <div className="app-content">
+          <AppRouter />
+        </div>
 
-      <ChatButton />
-      <Footer />
+        <ChatButton />
+        <Footer />
+      </div>
     </Router>
   );
 }

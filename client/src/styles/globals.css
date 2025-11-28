@@ -8,6 +8,16 @@ body {
   color: #1a1a1a;
 }
 
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-content {
+  flex: 1;
+}
+
 .login-page {
   display: flex;
   flex-direction: column;
