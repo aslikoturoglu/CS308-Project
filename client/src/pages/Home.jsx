@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { fetchProductsWithMeta } from "../services/productService";
 
 const highlights = [
   {
@@ -25,6 +27,16 @@ const categories = [
 ];
 
 function Home() {
+  const [featured, setFeatured] = useState([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchProductsWithMeta(controller.signal)
+      .then((items) => setFeatured(items.slice(0, 4)))
+      .catch((err) => console.error("Featured products failed", err));
+    return () => controller.abort();
+  }, []);
+
   return (
     <main style={{ fontFamily: "Arial, sans-serif" }}>
       <section
@@ -79,6 +91,73 @@ function Home() {
           >
             Get Inspired
           </a>
+        </div>
+      </section>
+
+      <section style={{ padding: "50px 24px", backgroundColor: "#ffffff" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
+          <div style={{ maxWidth: 520 }}>
+            <p style={{ margin: 0, letterSpacing: 1, color: "#94a3b8" }}>FEATURED</p>
+            <h2 style={{ margin: "6px 0 12px", color: "#0f172a" }}>Handpicked for this week</h2>
+            <p style={{ margin: "0 0 12px", color: "#475569" }}>
+              Limited stock picks with high ratings. Add to cart while they last.
+            </p>
+          </div>
+          <Link
+            to="/products"
+            style={{
+              alignSelf: "center",
+              color: "#0058a3",
+              fontWeight: 800,
+              textDecoration: "none",
+              border: "1px solid #cbd5e1",
+              padding: "10px 14px",
+              borderRadius: 10,
+            }}
+          >
+            View all products →
+          </Link>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 16,
+            maxWidth: 1100,
+            margin: "20px auto 0",
+          }}
+        >
+          {featured.map((item) => (
+            <Link
+              key={item.id}
+              to={`/products/${item.id}`}
+              style={{
+                textDecoration: "none",
+                color: "inherit",
+                background: "#f8fafc",
+                borderRadius: 14,
+                border: "1px solid #e2e8f0",
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+                boxShadow: "0 12px 28px rgba(15,23,42,0.06)",
+              }}
+            >
+              <img src={item.image} alt={item.name} style={{ width: "100%", height: 170, objectFit: "cover" }} />
+              <div style={{ padding: 14, display: "grid", gap: 6 }}>
+                <h4 style={{ margin: 0, color: "#0f172a" }}>{item.name}</h4>
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <span style={{ color: "#f59e0b", fontWeight: 700 }}>⭐ {item.averageRating}</span>
+                  <span style={{ color: "#64748b", fontSize: "0.9rem" }}>({item.ratingCount})</span>
+                </div>
+                <p style={{ margin: 0, fontWeight: 800, color: "#0f172a" }}>₺{item.price.toLocaleString("tr-TR")}</p>
+                <p style={{ margin: 0, color: item.availableStock > 0 ? "#059669" : "#b91c1c", fontWeight: 700 }}>
+                  {item.availableStock > 0 ? `${item.availableStock} in stock` : "Out of stock"}
+                </p>
+              </div>
+            </Link>
+          ))}
         </div>
       </section>
 
