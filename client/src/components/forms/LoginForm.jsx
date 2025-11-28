@@ -52,18 +52,23 @@ function LoginForm({ onSuccess }) {
 
     if (found || isDemo) {
       setError("");
-      const userPayload = found || { email, name: "Demo User", address: "N/A", role: demoRoles[email.trim().toLowerCase()] ?? "customer" };
+      const role = found?.role || demoRoles[email.trim().toLowerCase()] || "customer";
+      const userPayload = found || { email, name: "Demo User", address: "N/A", role };
       login({
         email: userPayload.email,
         name: userPayload.fullName || userPayload.name || "User",
         address: userPayload.address,
-        role: userPayload.role || "customer",
+        role,
       });
 
       if (typeof onSuccess === "function") {
         onSuccess();
       } else {
-        navigate("/");
+        if (role === "admin" || role === "product_manager" || role === "sales_manager" || role === "support") {
+          navigate("/admin");
+        } else {
+          navigate("/");
+        }
       }
     } else {
       const msg = "Invalid credentials. Try test@suhome.com / 1234 or register a new account.";
@@ -87,12 +92,19 @@ function LoginForm({ onSuccess }) {
       <h2
         style={{
           color: "#0058a3",
-          marginBottom: 24,
+          marginBottom: 12,
           fontWeight: 700,
         }}
       >
         🔐 Sign In
       </h2>
+      <p style={{ marginTop: 0, marginBottom: 12, fontSize: "0.85rem", color: "#475569", lineHeight: 1.4 }}>
+        Demo creds: <br />
+        Customer: test@suhome.com / 1234<br />
+        Product Manager: demo1@suhome.com / demo1pass<br />
+        Sales Manager: demo2@suhome.com / demo2pass<br />
+        Support: support@suhome.com / support
+      </p>
 
       {error && (
         <div
