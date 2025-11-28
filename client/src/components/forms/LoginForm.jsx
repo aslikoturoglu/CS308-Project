@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { useToast } from "../../context/ToastContext";
 
 function LoginForm({ onSuccess }) {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const { addToast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -14,15 +12,8 @@ function LoginForm({ onSuccess }) {
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(email.trim())) {
-      setError("Enter a valid email address.");
-      addToast("Invalid email format", "error");
-      return;
-    }
-    if (!password.trim()) {
+    if (!email.trim() || !password.trim()) {
       setError("Email and password are required.");
-      addToast("Email and password are required", "error");
       return;
     }
 
@@ -38,42 +29,27 @@ function LoginForm({ onSuccess }) {
       (u) => u.email?.toLowerCase() === email.trim().toLowerCase() && u.password === password
     );
 
-    const demoRoles = {
-      "test@suhome.com": "customer",
-      "demo1@suhome.com": "product_manager",
-      "demo2@suhome.com": "sales_manager",
-      "support@suhome.com": "support",
-    };
     const isDemo =
       (email.trim().toLowerCase() === "test@suhome.com" && password === "1234") ||
       (email.trim().toLowerCase() === "demo1@suhome.com" && password === "demo1pass") ||
-      (email.trim().toLowerCase() === "demo2@suhome.com" && password === "demo2pass") ||
-      (email.trim().toLowerCase() === "support@suhome.com" && password === "support");
+      (email.trim().toLowerCase() === "demo2@suhome.com" && password === "demo2pass");
 
     if (found || isDemo) {
       setError("");
-      const role = found?.role || demoRoles[email.trim().toLowerCase()] || "customer";
-      const userPayload = found || { email, name: "Demo User", address: "N/A", role };
+      const userPayload = found || { email, name: "Demo User", address: "N/A" };
       login({
         email: userPayload.email,
         name: userPayload.fullName || userPayload.name || "User",
         address: userPayload.address,
-        role,
       });
 
       if (typeof onSuccess === "function") {
         onSuccess();
       } else {
-        if (role === "admin" || role === "product_manager" || role === "sales_manager" || role === "support") {
-          navigate("/admin");
-        } else {
-          navigate("/");
-        }
+        navigate("/");
       }
     } else {
-      const msg = "Invalid credentials. Try test@suhome.com / 1234 or register a new account.";
-      setError(msg);
-      addToast(msg, "error");
+      setError("Invalid credentials. Try test@suhome.com / 1234 or register a new account.");
     }
   };
 
@@ -92,19 +68,12 @@ function LoginForm({ onSuccess }) {
       <h2
         style={{
           color: "#0058a3",
-          marginBottom: 12,
+          marginBottom: 24,
           fontWeight: 700,
         }}
       >
         🔐 Sign In
       </h2>
-      <p style={{ marginTop: 0, marginBottom: 12, fontSize: "0.85rem", color: "#475569", lineHeight: 1.4 }}>
-        Demo creds: <br />
-        Customer: test@suhome.com / 1234<br />
-        Product Manager: demo1@suhome.com / demo1pass<br />
-        Sales Manager: demo2@suhome.com / demo2pass<br />
-        Support: support@suhome.com / support
-      </p>
 
       {error && (
         <div

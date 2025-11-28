@@ -2,7 +2,6 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 const AuthContext = createContext(undefined);
 const STORAGE_KEY = "auth-user";
-const TOKEN_DURATION_MS = 60 * 60 * 1000; // 1 hour
 
 const readUser = () => {
   if (typeof window === "undefined") return null;
@@ -35,40 +34,14 @@ export function AuthProvider({ children }) {
     writeUser(user);
   }, [user]);
 
-  useEffect(() => {
-    if (!user?.expiresAt) return;
-    const now = Date.now();
-    if (now > user.expiresAt) {
-      setUser(null);
-      return;
-    }
-    const timer = setTimeout(() => setUser(null), user.expiresAt - now);
-    return () => clearTimeout(timer);
-  }, [user]);
-
   const login = (payload) => {
-    const nextUser = {
-      id: payload.id ?? payload.email,
-      email: payload.email,
-      name: payload.name ?? "User",
-      address: payload.address ?? "",
-      role: payload.role ?? "customer",
-      expiresAt: Date.now() + TOKEN_DURATION_MS,
-    };
+    const nextUser = { id: payload.id ?? payload.email, email: payload.email, name: payload.name ?? "User" };
     setUser(nextUser);
   };
 
   const logout = () => setUser(null);
 
-  const value = useMemo(
-    () => ({
-      user,
-      isAuthenticated: Boolean(user),
-      login,
-      logout,
-    }),
-    [user]
-  );
+  const value = useMemo(() => ({ user, login, logout }), [user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

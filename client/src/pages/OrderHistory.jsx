@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { addReview, getReviewMap } from "../services/productService";
 import { advanceOrderStatus, getOrders } from "../services/orderService";
-import { useAuth } from "../context/AuthContext";
 
 const timelineSteps = ["Processing", "In-transit", "Delivered"];
 const filterOptions = ["All", ...timelineSteps];
@@ -21,7 +20,6 @@ const formatPrice = (value) =>
   });
 
 function OrderHistory() {
-  const { user } = useAuth();
   const [filter, setFilter] = useState("All");
   const [orders, setOrders] = useState([]);
   const [reviews, setReviews] = useState({});
@@ -51,8 +49,7 @@ function OrderHistory() {
   };
 
   const handleReviewSubmit = (productId, rating, comment) => {
-    const displayName = user?.name?.split(" ")[0] || "User";
-    const list = addReview(productId, rating, comment, displayName);
+    const list = addReview(productId, rating, comment);
     setReviews((prev) => ({ ...prev, [productId]: list }));
     alert("Thanks for sharing your feedback!");
   };
@@ -274,7 +271,6 @@ function OrderHistory() {
                               productId={productId}
                               latestReview={latestReview}
                               onSubmit={handleReviewSubmit}
-                              isDelivered
                             />
                           )}
                         </div>
@@ -338,7 +334,7 @@ function OrderHistory() {
   );
 }
 
-function ReviewForm({ productId, latestReview, onSubmit, isDelivered }) {
+function ReviewForm({ productId, latestReview, onSubmit }) {
   const [rating, setRating] = useState(latestReview?.rating ?? 5);
   const [comment, setComment] = useState("");
 
@@ -407,9 +403,6 @@ function ReviewForm({ productId, latestReview, onSubmit, isDelivered }) {
       >
         {latestReview ? "Update review" : "Submit"}
       </button>
-      <p style={{ gridColumn: "1 / -1", margin: "6px 0 0", color: "#94a3b8", fontSize: "0.85rem" }}>
-        {isDelivered ? "Reviews may appear after approval." : "Only delivered items can be reviewed."}
-      </p>
     </form>
   );
 }
