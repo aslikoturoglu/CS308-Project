@@ -1,12 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-
-const mockUser = {
-  name: "Filiz Ozturk",
-  email: "filiz.ozturk@example.com",
-  memberSince: "2021",
-  address: "Bagdat Street No:25, Kadikoy / Istanbul",
-};
+import { useAuth } from "../context/AuthContext";
 
 const mockOrders = [
   {
@@ -32,7 +26,65 @@ const mockPreferences = [
 ];
 
 function Profile() {
+  const { user } = useAuth();
+  const storageKey = user ? `profile:${user.email}` : null;
+  const [profile, setProfile] = useState(() =>
+    storageKey
+      ? loadProfile(storageKey, {
+          name: user?.name ?? "Guest",
+          email: user?.email ?? "guest@suhome.com",
+          address: user?.address ?? "Not set",
+          memberSince: "2025",
+        })
+      : null
+  );
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(profile || {});
   const completedOrders = useMemo(() => mockOrders.length, []);
+
+  if (!user) {
+    return (
+      <main
+        style={{
+          padding: "40px 24px",
+          backgroundColor: "#f5f7fb",
+          minHeight: "75vh",
+          fontFamily: "Arial, sans-serif",
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <h1 style={{ margin: 0, color: "#0f172a" }}>Profile</h1>
+        <p style={{ color: "#475569" }}>Please sign in to view your profile.</p>
+        <Link
+          to="/login"
+          style={{
+            backgroundColor: "#0058a3",
+            color: "white",
+            padding: "12px 20px",
+            borderRadius: 999,
+            textDecoration: "none",
+            fontWeight: 600,
+          }}
+        >
+          Go to login
+        </Link>
+      </main>
+    );
+  }
+
+  const handleSave = () => {
+    const next = {
+      ...profile,
+      ...draft,
+    };
+    setProfile(next);
+    if (storageKey) saveProfile(storageKey, next);
+    setEditing(false);
+  };
 
   return (
     <main
@@ -55,25 +107,46 @@ function Profile() {
       >
         <div>
           <p style={{ margin: 0, color: "#4b5563", letterSpacing: 1 }}>WELCOME</p>
-          <h1 style={{ margin: "4px 0 0", color: "#0058a3" }}>{mockUser.name}</h1>
+          <h1 style={{ margin: "4px 0 0", color: "#0058a3" }}>{profile?.name}</h1>
           <span style={{ color: "#6b7280" }}>
-            {mockUser.email} • SUHome member since {mockUser.memberSince}
+            {profile?.email} • SUHome member since {profile?.memberSince ?? "2025"}
           </span>
+          <p style={{ margin: "8px 0 0", color: "#475569" }}>{profile?.address}</p>
         </div>
 
-        <Link
-          to="/orders"
-          style={{
-            backgroundColor: "#0058a3",
-            color: "white",
-            padding: "12px 20px",
-            borderRadius: 999,
-            textDecoration: "none",
-            fontWeight: 600,
-          }}
-        >
-          View my orders
-        </Link>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={() => {
+              setDraft(profile || {});
+              setEditing(true);
+            }}
+            style={{
+              backgroundColor: "#ffffff",
+              color: "#0058a3",
+              padding: "10px 16px",
+              borderRadius: 999,
+              border: "1px solid #cbd5e1",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Edit profile
+          </button>
+          <Link
+            to="/orders"
+            style={{
+              backgroundColor: "#0058a3",
+              color: "white",
+              padding: "12px 20px",
+              borderRadius: 999,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            View my orders
+          </Link>
+        </div>
       </header>
 
       <section
@@ -85,9 +158,9 @@ function Profile() {
         }}
       >
         {[
-          { label: "Active membership", value: mockUser.memberSince },
+          { label: "Active membership", value: profile?.memberSince ?? "2025" },
           { label: "Completed orders", value: completedOrders },
-          { label: "Favorite address", value: mockUser.address.split(",")[0] },
+          { label: "Favorite address", value: (profile?.address || "").split(",")[0] || "Not set" },
         ].map((card) => (
           <div
             key={card.label}
@@ -181,8 +254,139 @@ function Profile() {
           </ul>
         </aside>
       </div>
+
+      <Modal open={editing} onClose={() => setEditing(false)}>
+        <h3 style={{ marginTop: 0, color: "#0f172a" }}>Edit profile</h3>
+        <div style={{ display: "grid", gap: 10 }}>
+          <label style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1f2937" }}>
+            Name
+            <input
+              type="text"
+              value={draft.name || ""}
+              onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))}
+              style={{
+                width: "100%",
+                padding: 10,
+                marginTop: 6,
+                borderRadius: 10,
+                border: "1px solid #e2e8f0",
+              }}
+            />
+          </label>
+          <label style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1f2937" }}>
+            Address
+            <textarea
+              value={draft.address || ""}
+              onChange={(e) => setDraft((prev) => ({ ...prev, address: e.target.value }))}
+              style={{
+                width: "100%",
+                padding: 10,
+                marginTop: 6,
+                borderRadius: 10,
+                border: "1px solid #e2e8f0",
+                minHeight: 80,
+              }}
+            />
+          </label>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 6 }}>
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              style={{
+                border: "1px solid #cbd5e1",
+                background: "white",
+                borderRadius: 10,
+                padding: "10px 14px",
+                cursor: "pointer",
+                fontWeight: 700,
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              style={{
+                border: "none",
+                background: "#0058a3",
+                color: "white",
+                borderRadius: 10,
+                padding: "10px 14px",
+                cursor: "pointer",
+                fontWeight: 800,
+              }}
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      </Modal>
     </main>
   );
 }
 
 export default Profile;
+
+function loadProfile(key, fallback) {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveProfile(key, value) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.error("Profile save failed", error);
+  }
+}
+
+function Modal({ open, onClose, children }) {
+  if (!open) return null;
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.35)",
+        display: "grid",
+        placeItems: "center",
+        zIndex: 2000,
+        padding: 16,
+      }}
+    >
+      <div
+        style={{
+          background: "white",
+          borderRadius: 16,
+          padding: 20,
+          width: "100%",
+          maxWidth: 480,
+          boxShadow: "0 18px 45px rgba(0,0,0,0.18)",
+        }}
+      >
+        {children}
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              background: "none",
+              border: "1px solid #cbd5e1",
+              borderRadius: 10,
+              padding: "8px 12px",
+              cursor: "pointer",
+            }}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

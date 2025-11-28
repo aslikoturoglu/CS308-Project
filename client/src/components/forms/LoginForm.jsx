@@ -12,9 +12,36 @@ function LoginForm({ onSuccess }) {
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    if (email.trim() === "test@suhome.com" && password === "1234") {
+    if (!email.trim() || !password.trim()) {
+      setError("Email and password are required.");
+      return;
+    }
+
+    const stored = (() => {
+      try {
+        return JSON.parse(window.localStorage.getItem("registered-users") || "[]");
+      } catch {
+        return [];
+      }
+    })();
+
+    const found = stored.find(
+      (u) => u.email?.toLowerCase() === email.trim().toLowerCase() && u.password === password
+    );
+
+    const isDemo =
+      (email.trim().toLowerCase() === "test@suhome.com" && password === "1234") ||
+      (email.trim().toLowerCase() === "demo1@suhome.com" && password === "demo1pass") ||
+      (email.trim().toLowerCase() === "demo2@suhome.com" && password === "demo2pass");
+
+    if (found || isDemo) {
       setError("");
-      login({ email, name: "Demo User" });
+      const userPayload = found || { email, name: "Demo User", address: "N/A" };
+      login({
+        email: userPayload.email,
+        name: userPayload.fullName || userPayload.name || "User",
+        address: userPayload.address,
+      });
 
       if (typeof onSuccess === "function") {
         onSuccess();
@@ -22,7 +49,7 @@ function LoginForm({ onSuccess }) {
         navigate("/");
       }
     } else {
-      setError("Invalid email or password. Try test@suhome.com / 1234.");
+      setError("Invalid credentials. Try test@suhome.com / 1234 or register a new account.");
     }
   };
 
@@ -49,15 +76,18 @@ function LoginForm({ onSuccess }) {
       </h2>
 
       {error && (
-        <p
+        <div
           style={{
-            color: "#c62828",
-            marginBottom: 16,
-            fontSize: "0.9rem",
+            background: "#fef2f2",
+            color: "#b91c1c",
+            border: "1px solid #fecdd3",
+            padding: "10px 12px",
+            borderRadius: 10,
+            marginBottom: 12,
           }}
         >
           {error}
-        </p>
+        </div>
       )}
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>

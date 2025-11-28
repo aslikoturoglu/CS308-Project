@@ -310,6 +310,20 @@ function OrderHistory() {
                       Advance status (demo)
                     </button>
                   )}
+                  <Link
+                    to={`/invoice/${encodeURIComponent(order.id)}`}
+                    style={{
+                      border: "1px solid #0058a3",
+                      color: "#0058a3",
+                      background: "white",
+                      padding: "8px 12px",
+                      borderRadius: 10,
+                      textDecoration: "none",
+                      fontWeight: 700,
+                    }}
+                  >
+                    View invoice
+                  </Link>
                 </div>
               </article>
             );

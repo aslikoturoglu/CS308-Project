@@ -7,6 +7,7 @@ function RegisterForm({ onSuccess }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [address, setAddress] = useState("");
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
 
@@ -17,6 +18,42 @@ function RegisterForm({ onSuccess }) {
     if (password !== confirmPassword) {
       setError("Passwords do not match. Please check again.");
       return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+
+    if (!address.trim()) {
+      setError("Address is required.");
+      return;
+    }
+
+    const users = (() => {
+      try {
+        return JSON.parse(window.localStorage.getItem("registered-users") || "[]");
+      } catch {
+        return [];
+      }
+    })();
+
+    if (users.some((u) => u.email?.toLowerCase() === email.trim().toLowerCase())) {
+      setError("This email is already registered.");
+      return;
+    }
+
+    const newUser = {
+      fullName,
+      email: email.trim(),
+      password,
+      address: address.trim(),
+    };
+
+    try {
+      window.localStorage.setItem("registered-users", JSON.stringify([...users, newUser]));
+    } catch (storageError) {
+      console.error("Failed to save user", storageError);
     }
 
     setError("");
@@ -126,7 +163,7 @@ function RegisterForm({ onSuccess }) {
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            minLength={4}
+            minLength={6}
             required
             placeholder="••••••"
             style={{
@@ -136,6 +173,26 @@ function RegisterForm({ onSuccess }) {
               borderRadius: 8,
               border: "1px solid #d4d7dd",
               fontSize: "0.95rem",
+            }}
+          />
+        </label>
+
+        <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1a1a1a" }}>
+          Address
+          <textarea
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            required
+            placeholder="Street, number, district, city"
+            style={{
+              width: "100%",
+              padding: 10,
+              marginTop: 6,
+              borderRadius: 8,
+              border: "1px solid #d4d7dd",
+              fontSize: "0.95rem",
+              minHeight: 70,
+              resize: "vertical",
             }}
           />
         </label>
