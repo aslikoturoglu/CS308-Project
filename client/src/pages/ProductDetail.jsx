@@ -324,6 +324,9 @@ function ProductDetail() {
                   ))}
                 </div>
                 <p style={{ margin: "6px 0 0", color: "#0f172a", fontWeight: 600 }}>{review.comment}</p>
+                <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: "0.9rem" }}>
+                  {review.displayName || "User"}
+                </p>
               </div>
               <p style={{ margin: 0, color: "#94a3b8" }}>
                 {new Date(review.createdAt).toLocaleDateString("en-US")}
