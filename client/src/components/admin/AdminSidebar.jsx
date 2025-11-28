@@ -58,7 +58,7 @@ function AdminSidebar({ activeSection = "dashboard", onSelect }) {
               style={{
                 width: "100%",
                 backgroundColor: isActive ? "rgba(255,204,0,0.14)" : "transparent",
-                color: isActive ? "#ffcc00" : "white",
+                color: isActive ? "#f46a91" : "white",
                 border: isActive ? "1px solid rgba(255,204,0,0.35)" : "1px solid rgba(255,255,255,0.1)",
                 padding: "12px 14px",
                 borderRadius: 12,
@@ -79,7 +79,7 @@ function AdminSidebar({ activeSection = "dashboard", onSelect }) {
           marginTop: 28,
           padding: 14,
           borderRadius: 12,
-          background: "linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))",
+          background: "linear-gradient(145deg, rgba(177, 48, 48, 0.08), rgba(255,255,255,0.02))",
           border: "1px solid rgba(255,255,255,0.08)",
         }}
       >

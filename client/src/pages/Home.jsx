@@ -37,7 +37,7 @@ function Home() {
           textAlign: "center",
           padding: "80px 16px",
           background:
-            "linear-gradient(120deg, rgba(0,88,163,0.9), rgba(255,204,0,0.95))",
+            "linear-gradient(120deg, rgba(0, 174, 255, 0.9), rgba(0, 14, 79, 0.95))",
           color: "white",
           gap: 24,
         }}
@@ -109,8 +109,8 @@ function Home() {
               <span
                 style={{
                   display: "inline-block",
-                  backgroundColor: "#ffcc00",
-                  color: "#0058a3",
+                  backgroundColor: "#0058a3",
+                  color: "white",
                   padding: "4px 12px",
                   borderRadius: 999,
                   fontSize: "0.75rem",

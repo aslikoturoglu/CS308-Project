@@ -20,14 +20,13 @@
     transform: scale(1.05);
 }
 
-/* 🧱 Fixed-size widget */
+
 .chat-box {
     position: fixed;
     bottom: 90px;
     right: 20px;
     width: 320px;
     height: 380px;
-    /* fixed height */
     background: #fff;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
