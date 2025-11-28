@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useChat } from "../../context/ChatContext";
 import "../../styles/navbar.css";
 
@@ -9,13 +9,24 @@ const links = [
   { to: "/cart", label: "Cart" },
   { to: "/wishlist", label: "Wishlist" },
   { to: "/profile", label: "Profile" },
+  { to: "/login", label: "Login" },
 ];
 
 function Navbar() {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const { openChat } = useChat();
 
   const handleNavClick = () => setOpen(false);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const term = search.trim();
+    if (!term) return;
+    navigate(`/products?search=${encodeURIComponent(term)}`);
+    setOpen(false);
+  };
 
   return (
     <nav className="nav">
@@ -45,6 +56,17 @@ function Navbar() {
               {link.label}
             </NavLink>
           ))}
+
+          <form className="nav__search" onSubmit={handleSearch}>
+            <input
+              type="search"
+              placeholder="Search products..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <button type="submit">Search</button>
+          </form>
+
           <button
             type="button"
             className="nav__chat"
