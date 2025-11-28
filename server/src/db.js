@@ -4,8 +4,8 @@ import mysql from "mysql2";
 const db = mysql.createConnection({
   host: "127.0.0.1",
   user: "root",
-  password: "0000",      // şu an kullandığın şifre
-  database: "ikea_store",
+  password: "0000",      // kendi MySQL şifren
+  database: "cs308_project",  // YENİ DATABASE
   port: 3306,
 });
 
@@ -13,7 +13,7 @@ db.connect((err) => {
   if (err) {
     console.error("❌ MySQL bağlantı hatası:", err);
   } else {
-    console.log("✅ MySQL'e bağlanıldı!");
+    console.log("✅ Yeni database'e bağlanıldı: cs308_project");
   }
 });
 

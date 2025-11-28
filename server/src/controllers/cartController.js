@@ -1,48 +1,105 @@
-// src/controllers/cartController.js
 import db from "../db.js";
 
-// Tüm cart kayıtlarını getir
-export function getCart(req, res) {
-  db.query("SELECT * FROM cart_items", (err, results) => {
-    if (err) {
-      console.error("Cart alınamadı:", err);
-      res.status(500).json({ error: "Veri alınamadı" });
-    } else {
-      res.json(results);
+// Yardımcı fonksiyon: Kullanıcının sepeti var mı kontrol et, yoksa oluştur
+function getOrCreateCart(user_id, callback) {
+  db.query(
+    "SELECT cart_id FROM carts WHERE user_id = ?",
+    [user_id],
+    (err, rows) => {
+      if (err) return callback(err);
+
+      if (rows.length > 0) {
+        return callback(null, rows[0].cart_id);
+      }
+
+      // Eğer sepet yoksa oluştur
+      db.query(
+        "INSERT INTO carts (user_id) VALUES (?)",
+        [user_id],
+        (err2, result) => {
+          if (err2) return callback(err2);
+          callback(null, result.insertId);
+        }
+      );
     }
+  );
+}
+
+// GET /api/cart?user_id=1
+export function getCart(req, res) {
+  const user_id = req.query.user_id;
+
+  if (!user_id) {
+    return res.status(400).json({ error: "user_id gerekli" });
+  }
+
+  getOrCreateCart(user_id, (err, cart_id) => {
+    if (err) return res.status(500).json({ error: "Cart bulunamadı" });
+
+    db.query(
+      `SELECT ci.product_id, p.name, p.price, ci.quantity
+       FROM cart_items ci
+       JOIN products p ON ci.product_id = p.product_id
+       WHERE ci.cart_id = ?`,
+      [cart_id],
+      (err2, items) => {
+        if (err2) {
+          console.error("Sepet alınamadı:", err2);
+          return res.status(500).json({ error: "Veri alınamadı" });
+        }
+        res.json({ cart_id, items });
+      }
+    );
   });
 }
 
-// Sepete ürün ekle
+// POST /api/cart
 export function addToCart(req, res) {
-  const { product_id, quantity } = req.body;
+  const { user_id, product_id, quantity } = req.body;
 
-  db.query(
-    "INSERT INTO cart_items (product_id, quantity) VALUES (?, ?)",
-    [product_id, quantity],
-    (err, result) => {
-      if (err) {
-        console.error("Ürün eklenemedi:", err);
-        res.status(500).json({ error: "Ekleme başarısız" });
-      } else {
-        res.json({ message: "Ürün eklendi", id: result.insertId });
+  if (!user_id || !product_id || !quantity) {
+    return res.status(400).json({ error: "Eksik parametre" });
+  }
+
+  getOrCreateCart(user_id, (err, cart_id) => {
+    if (err) return res.status(500).json({ error: "Cart oluşturulamadı" });
+
+    db.query(
+      `INSERT INTO cart_items (cart_id, product_id, quantity)
+       VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE quantity = quantity + ?`,
+      [cart_id, product_id, quantity, quantity],
+      (err2) => {
+        if (err2) {
+          console.error("Ürün eklenemedi:", err2);
+          return res.status(500).json({ error: "Ekleme başarısız" });
+        }
+        res.json({ message: "Ürün sepete eklendi", cart_id });
       }
-    }
-  );
+    );
+  });
 }
 
-// Cart'tan ürün sil
+// DELETE /api/cart/:product_id?user_id=1
 export function deleteCartItem(req, res) {
-  db.query(
-    "DELETE FROM cart_items WHERE id = ?",
-    [req.params.id],
-    (err) => {
-      if (err) {
-        console.error("Silinemedi:", err);
-        res.status(500).json({ error: "Silme başarısız" });
-      } else {
-        res.json({ message: "Silindi" });
+  const product_id = req.params.id;
+  const user_id = req.query.user_id;
+
+  if (!user_id) return res.status(400).json({ error: "user_id gerekli" });
+
+  getOrCreateCart(user_id, (err, cart_id) => {
+    if (err) return res.status(500).json({ error: "Cart alınamadı" });
+
+    db.query(
+      "DELETE FROM cart_items WHERE cart_id = ? AND product_id = ?",
+      [cart_id, product_id],
+      (err2) => {
+        if (err2) {
+          console.error("Silinemedi:", err2);
+          return res.status(500).json({ error: "Silme başarısız" });
+        }
+        res.json({ message: "Ürün sepetten silindi" });
       }
-    }
-  );
+    );
+  });
 }

@@ -1,14 +1,13 @@
 // src/controllers/productController.js
 import db from "../db.js";
 
-// Tüm ürünleri getir
+// GET /api/products
 export function getAllProducts(req, res) {
-  db.query("SELECT * FROM Products", (err, results) => {
+  db.query("SELECT * FROM products", (err, results) => {
     if (err) {
       console.error("Ürünler alınamadı:", err);
-      res.status(500).json({ error: "Veritabanı hatası" });
-    } else {
-      res.json(results);
+      return res.status(500).json({ error: "Veritabanı hatası" });
     }
+    res.json(results);
   });
 }
