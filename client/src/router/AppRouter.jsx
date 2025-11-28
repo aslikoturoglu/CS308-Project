@@ -12,6 +12,7 @@ import Checkout from "../pages/Checkout";
 import NotFound from "../pages/NotFound";
 import AdminDashboard from "../pages/AdminDashboard";
 import Invoice from "../pages/Invoice";
+import ProtectedRoute from "../components/auth/ProtectedRoute";
 
 function AppRouter() {
   return (
@@ -20,14 +21,18 @@ function AppRouter() {
       <Route path="/products" element={<ProductList />} />
       <Route path="/products/:id" element={<ProductDetail />} />
       <Route path="/cart" element={<Cart />} />
-      <Route path="/wishlist" element={<Wishlist />} />
-      <Route path="/profile" element={<Profile />} />
+      <Route element={<ProtectedRoute />}>
+        <Route path="/wishlist" element={<Wishlist />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/checkout" element={<Checkout />} />
+        <Route path="/invoice/:id" element={<Invoice />} />
+        <Route path="/orders" element={<OrderHistory />} />
+      </Route>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/checkout" element={<Checkout />} />
-      <Route path="/invoice/:id" element={<Invoice />} />
-      <Route path="/orders" element={<OrderHistory />} />
-      <Route path="/admin" element={<AdminDashboard />} />
+      <Route element={<ProtectedRoute allowedRoles={['admin', 'product_manager', 'sales_manager', 'support']} />}>
+        <Route path="/admin" element={<AdminDashboard />} />
+      </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

@@ -15,6 +15,8 @@ function RegisterForm({ onSuccess }) {
     event.preventDefault();
     setInfo("");
 
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     if (password !== confirmPassword) {
       setError("Passwords do not match. Please check again.");
       return;
@@ -27,6 +29,11 @@ function RegisterForm({ onSuccess }) {
 
     if (!address.trim()) {
       setError("Address is required.");
+      return;
+    }
+
+    if (!emailPattern.test(email.trim())) {
+      setError("Enter a valid email address.");
       return;
     }
 
