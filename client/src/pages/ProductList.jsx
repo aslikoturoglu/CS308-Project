@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { fetchProductsWithMeta } from "../services/productService";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
+import Spinner from "../components/ui/Spinner";
 
 const categories = [
   { label: "All", keywords: [] },
@@ -161,7 +162,11 @@ function ProductList() {
           </div>
         )}
 
-        {loading && <p style={{ color: "#475569" }}>Loading products...</p>}
+        {loading && (
+          <div style={{ color: "#475569", display: "flex", alignItems: "center", gap: 10 }}>
+            <Spinner /> <span>Loading products...</span>
+          </div>
+        )}
 
         {!loading && !error && (
           <>

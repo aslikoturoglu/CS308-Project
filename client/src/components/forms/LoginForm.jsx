@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
 
 function LoginForm({ onSuccess }) {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { addToast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -15,10 +17,12 @@ function LoginForm({ onSuccess }) {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailPattern.test(email.trim())) {
       setError("Enter a valid email address.");
+      addToast("Invalid email format", "error");
       return;
     }
     if (!password.trim()) {
       setError("Email and password are required.");
+      addToast("Email and password are required", "error");
       return;
     }
 
@@ -62,7 +66,9 @@ function LoginForm({ onSuccess }) {
         navigate("/");
       }
     } else {
-      setError("Invalid credentials. Try test@suhome.com / 1234 or register a new account.");
+      const msg = "Invalid credentials. Try test@suhome.com / 1234 or register a new account.";
+      setError(msg);
+      addToast(msg, "error");
     }
   };
 
