@@ -41,13 +41,14 @@ export function getReviewMap() {
   return getStoredJSON(REVIEW_KEY, {});
 }
 
-export function addReview(productId, rating, comment) {
+export function addReview(productId, rating, comment, displayName) {
   if (!productId) return [];
   const review = {
     productId,
     rating: Math.min(5, Math.max(1, Number(rating))),
     comment: comment?.trim() ?? "",
     createdAt: Date.now(),
+    displayName: displayName || "User",
   };
   const current = getReviewMap();
   const nextList = [...(current[productId] ?? []), review];
@@ -68,11 +69,13 @@ function mergeReviewsFromBackend(productId, backendRatings = [], backendComments
     .map((r) => {
       const comment = commentsByUser[r.user_id]?.comment ?? "";
       const createdAt = commentsByUser[r.user_id]?.approved_at ?? r.created_at ?? Date.now();
+      const displayName = commentsByUser[r.user_id]?.display_name || "User";
       return {
         productId,
         rating: Number(r.rating ?? 0),
         comment,
         createdAt,
+        displayName,
       };
     });
 }
