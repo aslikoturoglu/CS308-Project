@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import CheckoutForm from "../components/forms/CheckoutForm";
 import { useCart } from "../context/CartContext";
+import { decreaseInventory } from "../services/productService";
+import { addOrder } from "../services/orderService";
 
 const fallbackItems = [
   { id: 1, name: "Modern Chair", price: 799, quantity: 1 },
@@ -39,6 +41,13 @@ function Checkout() {
       : Math.max(subtotal - discount, 0);
 
   const handleSubmit = (payload) => {
+    const total = merchandiseTotal;
+    const normalizedItems = items.map((item) => ({
+      ...item,
+      quantity: item.quantity ?? 1,
+    }));
+    addOrder({ items: normalizedItems, total });
+    decreaseInventory(normalizedItems);
     alert("Your order has been placed! (mock)");
     console.log("Checkout payload", payload);
     clearCart();

@@ -3,12 +3,13 @@ import { Link } from "react-router-dom";
 import { useWishlist } from "../../context/WishlistContext";
 import { useCart } from "../../context/CartContext";
 import "../../styles/product.css";
+import { fetchProductsWithMeta } from "../../services/productService";
 
 function ProductGrid() {
   const [products, setProducts] = useState([]);
   const [error, setError] = useState("");
   const { toggleItem, inWishlist } = useWishlist();
-  const { addItem } = useCart();
+  const { addItem, items: cartItems } = useCart();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -16,18 +17,7 @@ function ProductGrid() {
     async function loadProducts() {
       try {
         // Use BASE_URL so the JSON file loads correctly even when the app is served from a sub-path (e.g., GitHub Pages).
-        const response = await fetch(
-          `${import.meta.env.BASE_URL}data/products.json`,
-          {
-            signal: controller.signal,
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`Products could not be loaded (${response.status})`);
-        }
-
-        const data = await response.json();
+        const data = await fetchProductsWithMeta(controller.signal);
         setProducts(data);
         setError("");
       } catch (err) {
@@ -57,6 +47,8 @@ function ProductGrid() {
             <img src={p.image} alt={p.name} />
             <h3>{p.name}</h3>
             <p className="price">₺{p.price.toLocaleString("tr-TR")}</p>
+            <p className="stock">Stock: {p.availableStock}</p>
+            <p className="rating">⭐ {p.averageRating} ({p.ratingCount})</p>
             <div className="product-cta">View Details</div>
           </Link>
           <div className="product-actions">
@@ -66,10 +58,16 @@ function ProductGrid() {
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
+                const existingQty = cartItems.find((item) => item.id === p.id)?.quantity ?? 0;
+                if (existingQty + 1 > p.availableStock) {
+                  alert("Not enough stock for this item.");
+                  return;
+                }
                 addItem(p, 1);
               }}
+              disabled={p.availableStock <= 0}
             >
-              Add to Cart
+              {p.availableStock > 0 ? "Add to Cart" : "Out of stock"}
             </button>
           </div>
           <button

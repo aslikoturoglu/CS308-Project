@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import { fetchProductById } from "../services/productService";
 
 function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { addItem } = useCart();
+  const { addItem, items: cartItems } = useCart();
   const [product, setProduct] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -16,16 +17,7 @@ function ProductDetail() {
     async function loadProduct() {
       try {
         setLoading(true);
-        const response = await fetch(`${import.meta.env.BASE_URL}data/products.json`, {
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error(`Product details could not be loaded (${response.status})`);
-        }
-
-        const data = await response.json();
-        const found = data.find((item) => String(item.id) === String(id));
+        const found = await fetchProductById(id, controller.signal);
 
         if (!found) {
           setError("Product not found or has been removed.");
@@ -54,6 +46,11 @@ function ProductDetail() {
 
   const handleAddToCart = () => {
     if (!product) return;
+    const existingQty = cartItems.find((item) => item.id === product.id)?.quantity ?? 0;
+    if (existingQty + 1 > product.availableStock) {
+      alert("Not enough stock for this item.");
+      return;
+    }
     addItem(product, 1);
     alert("Added to cart.");
   };
@@ -125,6 +122,13 @@ function ProductDetail() {
         <div>
           <p style={{ margin: 0, color: "#475569" }}>Product code: #{product.id}</p>
           <h1 style={{ margin: 4, color: "#0f172a" }}>{product.name}</h1>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <span style={{ color: "#f59e0b", fontWeight: 700 }}>⭐ {product.averageRating}</span>
+            <span style={{ color: "#475569" }}>({product.ratingCount} reviews)</span>
+            <span style={{ color: product.availableStock > 0 ? "#059669" : "#b91c1c", fontWeight: 700 }}>
+              {product.availableStock > 0 ? `${product.availableStock} in stock` : "Out of stock"}
+            </span>
+          </div>
         </div>
         <Link
           to="/products"
@@ -204,8 +208,9 @@ function ProductDetail() {
                 cursor: "pointer",
                 minWidth: 160,
               }}
+              disabled={product.availableStock <= 0}
             >
-              Add to Cart
+              {product.availableStock > 0 ? "Add to Cart" : "Out of stock"}
             </button>
             <Link
               to="/checkout"
