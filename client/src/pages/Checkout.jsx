@@ -56,89 +56,39 @@ function Checkout() {
   };
 
   return (
-    <section
-      style={{
-        padding: "40px 24px",
-        background: "#f5f7fb",
-        minHeight: "70vh",
-        display: "flex",
-        flexDirection: "column",
-        gap: 20,
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+    <section className="checkout-page">
+      <div className="checkout-header">
         <div>
-          <h1 style={{ margin: 0, color: "#0f172a" }}>Checkout</h1>
-          <p style={{ margin: 0, color: "#475569" }}>Complete your shipping and payment details.</p>
+          <h1>Checkout</h1>
+          <p>Complete your shipping and payment details.</p>
         </div>
-        <Link
-          to="/cart"
-          style={{
-            color: "#0058a3",
-            textDecoration: "none",
-            fontWeight: 700,
-            border: "1px solid #cbd5e1",
-            borderRadius: 999,
-            padding: "8px 14px",
-            background: "white",
-          }}
-        >
+        <Link to="/cart" className="checkout-back">
           ← Back to cart
         </Link>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 2fr) minmax(280px, 1fr)",
-          gap: 20,
-          alignItems: "start",
-        }}
-      >
+      <div className="checkout-grid">
         <CheckoutForm cartTotal={merchandiseTotal} onSubmit={handleSubmit} />
 
-        <aside
-          style={{
-            background: "white",
-            borderRadius: 16,
-            padding: 20,
-            border: "1px solid #e5e7eb",
-            boxShadow: "0 12px 30px rgba(0,0,0,0.06)",
-          }}
-        >
-          <h3 style={{ marginTop: 0, color: "#0f172a" }}>Order Summary</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <aside className="checkout-summary">
+          <h3>Order Summary</h3>
+          <div className="summary-list">
             {items.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "10px 12px",
-                  borderRadius: 10,
-                  background: "#f8fafc",
-                  border: "1px solid #e5e7eb",
-                }}
-              >
+              <div key={item.id} className="summary-item">
                 <div>
-                  <div style={{ fontWeight: 700, color: "#0f172a" }}>{item.name}</div>
-                  <div style={{ color: "#475569", fontSize: "0.9rem" }}>Qty: {item.quantity}</div>
+                  <div className="summary-name">{item.name}</div>
+                  <div className="summary-meta">Qty: {item.quantity}</div>
                 </div>
-                <div style={{ fontWeight: 700, color: "#0f172a" }}>
-                  ₺{(item.price * item.quantity).toLocaleString("tr-TR")}
-                </div>
+                <div className="summary-price">₺{(item.price * item.quantity).toLocaleString("tr-TR")}</div>
               </div>
             ))}
           </div>
 
-          <div style={{ marginTop: 16, borderTop: "1px solid #e5e7eb", paddingTop: 12, display: "grid", gap: 8 }}>
+          <div className="summary-totals">
             <Row label="Subtotal" value={`₺${subtotal.toLocaleString("tr-TR")}`} />
             <Row label="Discount" value={`-₺${discount.toLocaleString("tr-TR")}`} accent />
             <Row label="Items total" value={`₺${merchandiseTotal.toLocaleString("tr-TR")}`} bold />
-            <p style={{ margin: "8px 0 0", color: "#475569", fontSize: "0.9rem" }}>
-              You will choose shipping in the next step.
-            </p>
+            <p className="summary-note">You will choose shipping in the next step.</p>
           </div>
         </aside>
       </div>

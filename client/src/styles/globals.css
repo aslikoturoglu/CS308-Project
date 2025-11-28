@@ -8,6 +8,47 @@ body {
   color: #1a1a1a;
 }
 
+.checkout-page {
+  padding: 32px 18px 60px;
+  background: radial-gradient(circle at 10% 20%, rgba(0, 88, 163, 0.06), transparent 30%),
+    radial-gradient(circle at 80% 0%, rgba(15, 23, 42, 0.05), transparent 32%),
+    #f5f7fb;
+  min-height: 72vh;
+  max-width: 1240px;
+  margin: 0 auto;
+  display: grid;
+  gap: 18px;
+}
+
+.checkout-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.checkout-header h1 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.checkout-header p {
+  margin: 4px 0 0;
+  color: #475569;
+}
+
+.checkout-back {
+  color: #0058a3;
+  text-decoration: none;
+  font-weight: 700;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: #ffffff;
+  white-space: nowrap;
+}
+
 .app-shell {
   min-height: 100vh;
   display: flex;
@@ -138,5 +179,97 @@ body {
   }
   .login-button {
     font-size: 15px;
+  }
+}
+
+.checkout-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.checkout-card {
+  background: linear-gradient(145deg, #f8fafc 0%, #eff6ff 100%);
+  border-radius: 18px;
+  padding: 24px;
+  width: 100%;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+}
+
+.checkout-card form {
+  width: 100%;
+}
+
+.checkout-card input,
+.checkout-card textarea,
+.checkout-card select {
+  box-sizing: border-box;
+}
+
+.checkout-summary {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+  position: sticky;
+  top: 90px;
+}
+
+.summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+}
+
+.summary-name {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.summary-meta {
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.summary-price {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.summary-totals {
+  margin-top: 16px;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.summary-note {
+  margin: 8px 0 0;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 960px) {
+  .checkout-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .checkout-summary {
+    order: -1;
+    position: static;
   }
 }

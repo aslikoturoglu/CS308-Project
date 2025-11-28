@@ -75,16 +75,7 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
   };
 
   return (
-    <div
-      style={{
-        background: "linear-gradient(145deg, #f8fafc 0%, #eff6ff 100%)",
-        borderRadius: 18,
-        padding: 28,
-        width: "100%",
-        boxShadow: "0 16px 40px rgba(0,0,0,0.08)",
-        border: "1px solid #e5e7eb",
-      }}
-    >
+    <div className="checkout-card">
       <div
         style={{
           display: "flex",
