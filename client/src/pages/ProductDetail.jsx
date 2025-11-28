@@ -10,6 +10,7 @@ function ProductDetail() {
   const [product, setProduct] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [activeImage, setActiveImage] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -43,6 +44,18 @@ function ProductDetail() {
     if (!product) return "";
     return `${product.name} is designed to add a modern, clean touch to your space. Durable materials make assembly easy and provide long-lasting use. With sleek lines and timeless style, it fits effortlessly into any room.`;
   }, [product]);
+
+  const gallery = useMemo(() => {
+    if (!product) return [];
+    const base = product.image;
+    const alt1 = `${base}?v=2`;
+    const alt2 = `${base}?grayscale&v=3`;
+    return [base, alt1, alt2];
+  }, [product]);
+
+  useEffect(() => {
+    if (gallery.length) setActiveImage(gallery[0]);
+  }, [gallery]);
 
   const handleAddToCart = () => {
     if (!product) return;
@@ -154,10 +167,12 @@ function ProductDetail() {
             padding: 18,
             border: "1px solid #e5e7eb",
             boxShadow: "0 12px 30px rgba(0,0,0,0.06)",
+            display: "grid",
+            gap: 12,
           }}
         >
           <img
-            src={product.image}
+            src={activeImage || product.image}
             alt={product.name}
             style={{
               width: "100%",
@@ -166,6 +181,28 @@ function ProductDetail() {
               maxHeight: 420,
             }}
           />
+          <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+            {gallery.map((img) => (
+              <button
+                key={img}
+                type="button"
+                onClick={() => setActiveImage(img)}
+                style={{
+                  border: img === activeImage ? "2px solid #0058a3" : "1px solid #e2e8f0",
+                  padding: 4,
+                  borderRadius: 10,
+                  background: "white",
+                  cursor: "pointer",
+                }}
+              >
+                <img
+                  src={img}
+                  alt="thumb"
+                  style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8 }}
+                />
+              </button>
+            ))}
+          </div>
         </div>
 
         <div
@@ -187,6 +224,22 @@ function ProductDetail() {
             </span>
           </div>
           <p style={{ margin: 0, color: "#334155", lineHeight: 1.5 }}>{fauxDescription}</p>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+              gap: 10,
+              background: "#f8fafc",
+              padding: 12,
+              borderRadius: 12,
+              border: "1px solid #e2e8f0",
+            }}
+          >
+            <Info label="Model" value={`SU-${String(product.id).padStart(4, "0")}`} />
+            <Info label="Serial" value={`SN-${product.id * 9876}`} />
+            <Info label="Distributor" value="SUHome Logistics" />
+          </div>
 
           <ul style={{ paddingLeft: 18, margin: 0, color: "#475569", lineHeight: 1.5, display: "grid", gap: 6 }}>
             <li>2-year warranty and 30-day easy returns</li>
@@ -230,6 +283,54 @@ function ProductDetail() {
           </div>
         </div>
       </div>
+
+      <section
+        style={{
+          marginTop: 28,
+          background: "white",
+          borderRadius: 16,
+          border: "1px solid #e5e7eb",
+          padding: 18,
+          boxShadow: "0 10px 24px rgba(15,23,42,0.05)",
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <h2 style={{ margin: 0, color: "#0f172a" }}>Customer Reviews (Approved)</h2>
+        {product.reviews?.filter((r) => r.comment?.trim()).length === 0 && (
+          <p style={{ margin: 0, color: "#475569" }}>No reviews yet. Be the first after delivery!</p>
+        )}
+        {product.reviews
+          ?.filter((r) => r.comment?.trim())
+          .map((review, idx) => (
+            <div
+              key={`${review.createdAt}-${idx}`}
+              style={{
+                border: "1px solid #e2e8f0",
+                borderRadius: 12,
+                padding: 12,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                background: "#f8fafc",
+                flexWrap: "wrap",
+                gap: 8,
+              }}
+            >
+              <div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", color: "#f59e0b", fontWeight: 800 }}>
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <span key={i}>{i < review.rating ? "★" : "☆"}</span>
+                  ))}
+                </div>
+                <p style={{ margin: "6px 0 0", color: "#0f172a", fontWeight: 600 }}>{review.comment}</p>
+              </div>
+              <p style={{ margin: 0, color: "#94a3b8" }}>
+                {new Date(review.createdAt).toLocaleDateString("en-US")}
+              </p>
+            </div>
+          ))}
+      </section>
     </section>
   );
 }
@@ -239,5 +340,14 @@ const pageStyle = {
   background: "#f5f7fb",
   minHeight: "70vh",
 };
+
+function Info({ label, value }) {
+  return (
+    <div>
+      <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.9rem" }}>{label}</p>
+      <p style={{ margin: "4px 0 0", color: "#0f172a", fontWeight: 700 }}>{value}</p>
+    </div>
+  );
+}
 
 export default ProductDetail;
