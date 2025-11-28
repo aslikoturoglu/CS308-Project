@@ -11,7 +11,7 @@ function Header() {
         boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
       }}
     >
-      <div style={{ fontSize: "1.8rem" }}>SUHome</div>
+      <div style={{ fontSize: "1.8rem" }}>SELAM</div>
       <p style={{ margin: "6px 0 0", color: "rgba(0, 47, 99, 0.8)", fontWeight: 600, letterSpacing: 0.3 }}>
         Modern furniture, fast delivery, friendly support.
       </p>
