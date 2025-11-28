@@ -117,6 +117,13 @@ export async function fetchProductsWithMeta(signal) {
     return acc;
   }, {});
 
+  const activeDiscounts = (data.discounts ?? []).filter((d) => d.active);
+  const discountMap = {};
+  (data.discount_products ?? []).forEach((row) => {
+    const d = activeDiscounts.find((disc) => disc.discount_id === row.discount_id);
+    if (d) discountMap[row.product_id] = d;
+  });
+
   const adjustments = getInventoryAdjustments();
   const reviewMap = getReviewMap();
   const backendRatings = data.product_ratings ?? [];
@@ -124,16 +131,33 @@ export async function fetchProductsWithMeta(signal) {
 
   return (data.products ?? []).map((product) =>
     enrichProduct(
-      {
-        id: product.product_id,
-        name: product.name,
-        model: product.model,
-        serial: product.serial_number,
-        description: product.description,
-        price: product.price,
-        distributor: product.distributor_info,
-        warranty: product.warranty_status,
-      },
+      (() => {
+        const discount = discountMap[product.product_id];
+        let finalPrice = product.price;
+        let discountLabel;
+        if (discount) {
+          if (discount.type === "percentage") {
+            finalPrice = Math.max(0, product.price - (product.price * Number(discount.value || 0)) / 100);
+            discountLabel = `-${discount.value}%`;
+          } else if (discount.type === "fixed") {
+            finalPrice = Math.max(0, product.price - Number(discount.value || 0));
+            discountLabel = `-₺${discount.value}`;
+          }
+        }
+        return {
+          id: product.product_id,
+          name: product.name,
+          model: product.model,
+          serial: product.serial_number,
+          description: product.description,
+          price: finalPrice,
+          originalPrice: product.price,
+          distributor: product.distributor_info,
+          warranty: product.warranty_status,
+          discountLabel,
+          hasDiscount: Boolean(discount),
+        };
+      })(),
       adjustments,
       reviewMap,
       stockMap,

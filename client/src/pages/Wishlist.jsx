@@ -89,9 +89,27 @@ function Wishlist() {
                 style={{ width: "100%", borderRadius: 12, objectFit: "cover", height: 180 }}
               />
               <h3 style={{ margin: "10px 0 4px", color: "#0f172a" }}>{item.name}</h3>
-              <p style={{ margin: 0, color: "#0f172a", fontWeight: 800 }}>
-                ₺{Number(item.price).toLocaleString("tr-TR")}
-              </p>
+              <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+                <p style={{ margin: 0, color: "#0f172a", fontWeight: 800 }}>
+                  ₺{Number(item.price).toLocaleString("tr-TR")}
+                </p>
+                {item.hasDiscount && (
+                  <>
+                    <p style={{ margin: 0, color: "#94a3b8", textDecoration: "line-through" }}>
+                      ₺{Number(item.originalPrice).toLocaleString("tr-TR")}
+                    </p>
+                    <span style={{ color: "#059669", fontWeight: 800, fontSize: "0.9rem" }}>
+                      {item.discountLabel}
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {item.hasDiscount && (
+                <p style={{ margin: "4px 0 0", color: "#059669", fontWeight: 700 }}>
+                  Discount applied to your wishlist item!
+                </p>
+              )}
             </Link>
             <div style={{ display: "flex", gap: 10 }}>
               <Link

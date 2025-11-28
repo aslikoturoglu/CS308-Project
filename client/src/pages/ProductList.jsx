@@ -219,9 +219,21 @@ function ProductList() {
                         <span style={{ color: "#f59e0b", fontWeight: 700 }}>⭐ {p.averageRating}</span>
                         <span style={{ color: "#64748b", fontSize: "0.9rem" }}>({p.ratingCount})</span>
                       </div>
-                      <p style={{ margin: 0, fontWeight: 800, color: "#0f172a" }}>
-                        ₺{p.price.toLocaleString("tr-TR")}
-                      </p>
+                      <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+                        <p style={{ margin: 0, fontWeight: 800, color: "#0f172a" }}>
+                          ₺{p.price.toLocaleString("tr-TR")}
+                        </p>
+                        {p.hasDiscount && (
+                          <>
+                            <p style={{ margin: 0, color: "#94a3b8", textDecoration: "line-through" }}>
+                              ₺{p.originalPrice.toLocaleString("tr-TR")}
+                            </p>
+                            <span style={{ color: "#059669", fontWeight: 800, fontSize: "0.9rem" }}>
+                              {p.discountLabel}
+                            </span>
+                          </>
+                        )}
+                      </div>
                       <p style={{ margin: 0, color: p.availableStock > 0 ? "#059669" : "#b91c1c", fontWeight: 700 }}>
                         {p.availableStock > 0 ? `${p.availableStock} in stock` : "Out of stock"}
                       </p>
