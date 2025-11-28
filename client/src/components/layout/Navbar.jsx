@@ -1,70 +1,61 @@
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
+import { useChat } from "../../context/ChatContext";
+import "../../styles/navbar.css";
 
-const linkStyle = {
-  textDecoration: "none",
-  color: "#0058a3",
-  padding: "10px 14px",
-  borderRadius: "6px",
-  fontWeight: 600,
-  transition: "background-color 0.2s ease",
-};
-
-const activeStyle = {
-  borderBottom: "3px solid #ffcc00",
-};
+const links = [
+  { to: "/", label: "Home", end: true },
+  { to: "/products", label: "Categories" },
+  { to: "/cart", label: "Cart" },
+  { to: "/wishlist", label: "Wishlist" },
+  { to: "/profile", label: "Profile" },
+];
 
 function Navbar() {
+  const [open, setOpen] = useState(false);
+  const { openChat } = useChat();
+
+  const handleNavClick = () => setOpen(false);
+
   return (
-    <nav
-      style={{
-        backgroundColor: "#ffffff",
-        borderBottom: "3px solid #ffcc00",
-        boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 1200,
-          margin: "0 auto",
-          display: "flex",
-          gap: 8,
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "8px 12px",
-          flexWrap: "wrap",
-        }}
-      >
-        <NavLink to="/" style={linkStyle} end>
-          {({ isActive }) => (
-            <span style={isActive ? activeStyle : undefined}>Home</span>
-          )}
-        </NavLink>
+    <nav className="nav">
+      <div className="nav__inner">
+        <div className="nav__brand">SUHome</div>
 
-        <NavLink to="/products" style={linkStyle}>
-          {({ isActive }) => (
-            <span style={isActive ? activeStyle : undefined}>Products</span>
-          )}
-        </NavLink>
+        <button
+          type="button"
+          className="nav__toggle"
+          aria-label="Toggle menu"
+          onClick={() => setOpen((prev) => !prev)}
+        >
+          <span className="nav__burger" />
+          <span className="nav__burger" />
+          <span className="nav__burger" />
+        </button>
 
-        <NavLink to="/cart" style={linkStyle}>
-          {({ isActive }) => (
-            <span style={isActive ? activeStyle : undefined}>Cart</span>
-          )}
-        </NavLink>
-
-        <NavLink to="/wishlist" style={linkStyle}>
-          {({ isActive }) => (
-            <span style={isActive ? activeStyle : undefined}>Wishlist</span>
-          )}
-        </NavLink>
-
-        <NavLink to="/profile" style={linkStyle}>
-          {({ isActive }) => (
-            <span style={isActive ? activeStyle : undefined}>Profile</span>
-          )}
-        </NavLink>
-
+        <div className={`nav__links ${open ? "is-open" : ""}`}>
+          {links.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              end={link.end}
+              className={({ isActive }) => `nav__link ${isActive ? "active" : ""}`}
+              onClick={handleNavClick}
+            >
+              {link.label}
+            </NavLink>
+          ))}
+          <button
+            type="button"
+            className="nav__chat"
+            onClick={() => {
+              openChat();
+              setOpen(false);
+            }}
+          >
+            Support Chat
+          </button>
+        </div>
       </div>
     </nav>
   );
