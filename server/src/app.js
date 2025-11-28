@@ -1,23 +1,21 @@
-// src/app.js
-import express from "express";
-import cors from "cors";
+import mysql from "mysql2";
 import dotenv from "dotenv";
-
-import productRoutes from "./routes/productRoutes.js";
-import cartRoutes from "./routes/cartRoutes.js"; // yeni ekledik
-import "./db.js"; // sadece bağlantının kurulması için import
-
 dotenv.config();
 
-const app = express();
+const db = mysql.createConnection({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT || 3306,
+});
 
-app.use(cors());
-app.use(express.json());
+db.connect((err) => {
+  if (err) {
+    console.error("❌ MySQL bağlantı hatası:", err);
+  } else {
+    console.log("✅ MySQL'e bağlanıldı!");
+  }
+});
 
-app.get("/", (req, res) => res.send("Backend çalışıyor!"));
-
-// ROUTE KULLANIMI
-app.use("/api/products", productRoutes);
-app.use("/api/cart", cartRoutes);
-
-app.listen(5000, () => console.log("Server 5000 portunda"));
+export default db;
