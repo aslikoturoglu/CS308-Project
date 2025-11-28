@@ -71,6 +71,12 @@ export function getOrders() {
   return readOrders();
 }
 
+export function getOrderById(id) {
+  if (!id) return null;
+  const orders = readOrders();
+  return orders.find((order) => order.id === id);
+}
+
 export function addOrder({ items, total }) {
   const now = new Date();
   const orders = readOrders();

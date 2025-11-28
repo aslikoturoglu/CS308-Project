@@ -1,27 +1,68 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useAuth } from "./AuthContext";
 
 const CartContext = createContext(undefined);
 const STORAGE_KEY = "cart";
 
-export function CartProvider({ children }) {
-  const [items, setItems] = useState(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch (error) {
-      console.error("Cart storage read failed", error);
-      return [];
+const buildKey = (user) => (user ? `${STORAGE_KEY}:${user.id ?? user.email}` : STORAGE_KEY);
+
+const readCart = (key) => {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = window.localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error("Cart storage read failed", error);
+    return [];
+  }
+};
+
+const writeCart = (key, value) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.error("Cart storage write failed", error);
+  }
+};
+
+const mergeCarts = (userCart, guestCart) => {
+  const map = new Map();
+  [...userCart, ...guestCart].forEach((item) => {
+    const existing = map.get(item.id);
+    if (existing) {
+      map.set(item.id, { ...existing, quantity: (existing.quantity || 0) + (item.quantity || 0) });
+    } else {
+      map.set(item.id, { ...item });
     }
   });
+  return Array.from(map.values());
+};
 
+export function CartProvider({ children }) {
+  const { user } = useAuth();
+  const [items, setItems] = useState(() => readCart(STORAGE_KEY));
+
+  // Persist cart when items change
   useEffect(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    } catch (error) {
-      console.error("Cart storage write failed", error);
+    const key = buildKey(user);
+    writeCart(key, items);
+  }, [items, user]);
+
+  // When user logs in, merge guest cart into user cart and clear guest cart
+  useEffect(() => {
+    if (!user) {
+      setItems(readCart(STORAGE_KEY));
+      return;
     }
-  }, [items]);
+    const guestCart = readCart(STORAGE_KEY);
+    const userKey = buildKey(user);
+    const userCart = readCart(userKey);
+    const merged = mergeCarts(userCart, guestCart);
+    setItems(merged);
+    writeCart(userKey, merged);
+    writeCart(STORAGE_KEY, []); // clear guest cart
+  }, [user]);
 
   const addItem = (product, quantity = 1) => {
     setItems((prev) => {

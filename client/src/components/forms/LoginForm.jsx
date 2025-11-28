@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 function LoginForm({ onSuccess }) {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -12,6 +14,7 @@ function LoginForm({ onSuccess }) {
 
     if (email.trim() === "test@suhome.com" && password === "1234") {
       setError("");
+      login({ email, name: "Demo User" });
 
       if (typeof onSuccess === "function") {
         onSuccess();

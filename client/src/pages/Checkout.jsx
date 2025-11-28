@@ -46,12 +46,13 @@ function Checkout() {
       ...item,
       quantity: item.quantity ?? 1,
     }));
-    addOrder({ items: normalizedItems, total });
+    const newOrder = addOrder({ items: normalizedItems, total });
     decreaseInventory(normalizedItems);
     alert("Your order has been placed! (mock)");
     console.log("Checkout payload", payload);
     clearCart();
-    navigate("/orders");
+    const orderId = encodeURIComponent(newOrder.id);
+    navigate(`/invoice/${orderId}`, { state: { orderId: newOrder.id } });
   };
 
   return (

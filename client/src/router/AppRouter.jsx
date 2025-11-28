@@ -11,6 +11,7 @@ import ProductDetail from "../pages/ProductDetail";
 import Checkout from "../pages/Checkout";
 import NotFound from "../pages/NotFound";
 import AdminDashboard from "../pages/AdminDashboard";
+import Invoice from "../pages/Invoice";
 
 function AppRouter() {
   return (
@@ -24,6 +25,7 @@ function AppRouter() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/checkout" element={<Checkout />} />
+      <Route path="/invoice/:id" element={<Invoice />} />
       <Route path="/orders" element={<OrderHistory />} />
       <Route path="/admin" element={<AdminDashboard />} />
       <Route path="*" element={<NotFound />} />
