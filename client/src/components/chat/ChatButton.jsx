@@ -1,15 +1,20 @@
-import { useState } from "react";
 import ChatBox from "./ChatBox";
 import "../../styles/chat.css";
+import { useChat } from "../../context/ChatContext";
 
 function ChatButton() {
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, toggleChat, unreadCount } = useChat();
 
   return (
     <>
-      {isOpen && <ChatBox onClose={() => setIsOpen(false)} />}
-      <button className="chat-button" onClick={() => setIsOpen(!isOpen)}>
-        💬
+      {isOpen && <ChatBox />}
+      <button
+        className={`chat-button ${isOpen ? "open" : ""}`}
+        onClick={toggleChat}
+        aria-label={isOpen ? "Close chat" : "Open chat"}
+      >
+        {isOpen ? "✕" : "💬"}
+        {unreadCount > 0 && <span className="chat-badge">{unreadCount}</span>}
       </button>
     </>
   );
