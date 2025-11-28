@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "../../context/ToastContext";
 
 function RegisterForm({ onSuccess }) {
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15,18 +17,29 @@ function RegisterForm({ onSuccess }) {
     event.preventDefault();
     setInfo("");
 
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     if (password !== confirmPassword) {
       setError("Passwords do not match. Please check again.");
+      addToast("Passwords do not match", "error");
       return;
     }
 
     if (password.length < 6) {
       setError("Password must be at least 6 characters.");
+      addToast("Password must be at least 6 characters", "error");
       return;
     }
 
     if (!address.trim()) {
       setError("Address is required.");
+      addToast("Address is required", "error");
+      return;
+    }
+
+    if (!emailPattern.test(email.trim())) {
+      setError("Enter a valid email address.");
+      addToast("Enter a valid email address", "error");
       return;
     }
 
@@ -40,6 +53,7 @@ function RegisterForm({ onSuccess }) {
 
     if (users.some((u) => u.email?.toLowerCase() === email.trim().toLowerCase())) {
       setError("This email is already registered.");
+      addToast("This email is already registered", "error");
       return;
     }
 
@@ -58,6 +72,7 @@ function RegisterForm({ onSuccess }) {
 
     setError("");
     setInfo("Account created! Redirecting you to the login page...");
+    addToast("Account created, redirecting to login", "info");
 
     setTimeout(() => {
       if (typeof onSuccess === "function") {

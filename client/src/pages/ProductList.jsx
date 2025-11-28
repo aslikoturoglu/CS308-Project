@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { fetchProductsWithMeta } from "../services/productService";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
+import Spinner from "../components/ui/Spinner";
 
 const categories = [
   { label: "All", keywords: [] },
@@ -16,11 +17,15 @@ const categories = [
 const PAGE_SIZE = 12;
 
 function ProductList() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [category, setCategory] = useState("All");
   const [page, setPage] = useState(1);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sort, setSort] = useState("popularity");
   const { addItem, items: cartItems } = useCart();
   const { toggleItem, inWishlist } = useWishlist();
 
@@ -40,15 +45,37 @@ function ProductList() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const term = params.get("search") || "";
+    setSearchTerm(term);
+    setPage(1);
+  }, [location.search]);
+
   const filtered = useMemo(() => {
-    if (category === "All") return products;
-    const rule = categories.find((c) => c.label === category);
-    if (!rule || rule.keywords.length === 0) return products;
-    const keywords = rule.keywords;
-    return products.filter((p) =>
-      keywords.some((kw) => p.name.toLowerCase().includes(kw.toLowerCase()))
-    );
-  }, [category, products]);
+    let list = products;
+    if (searchTerm.trim()) {
+      const term = searchTerm.trim().toLowerCase();
+      list = list.filter((p) => p.name.toLowerCase().includes(term));
+    }
+    if (category !== "All") {
+      const rule = categories.find((c) => c.label === category);
+      if (rule && rule.keywords.length > 0) {
+        const keywords = rule.keywords;
+        list = list.filter((p) =>
+          keywords.some((kw) => p.name.toLowerCase().includes(kw.toLowerCase()))
+        );
+      }
+    }
+    if (sort === "price-asc") {
+      list = [...list].sort((a, b) => a.price - b.price);
+    } else if (sort === "price-desc") {
+      list = [...list].sort((a, b) => b.price - a.price);
+    } else if (sort === "popularity") {
+      list = [...list].sort((a, b) => (b.ratingCount || 0) - (a.ratingCount || 0));
+    }
+    return list;
+  }, [category, products, searchTerm, sort]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -71,11 +98,15 @@ function ProductList() {
             <p style={{ margin: 0, color: "#94a3b8", letterSpacing: 1 }}>CATEGORIES</p>
             <h1 style={{ margin: "6px 0 8px", color: "#0f172a" }}>Browse our products</h1>
             <p style={{ margin: 0, color: "#475569" }}>
-              Filter by category, check stock, and jump into details.
+              Filter by category, search, sort, check stock, and jump into details.
             </p>
+            {searchTerm && (
+              <p style={{ margin: "6px 0 0", color: "#0f172a", fontWeight: 700 }}>
+                Showing results for “{searchTerm}”
+              </p>
+            )}
           </div>
-          <div style={{ flex: 1 }} />
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 240, display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
             {categories.map((cat) => (
               <button
                 key={cat.label}
@@ -98,6 +129,22 @@ function ProductList() {
                 {cat.label}
               </button>
             ))}
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              style={{
+                border: "1px solid #cbd5e1",
+                borderRadius: 10,
+                padding: "8px 12px",
+                fontWeight: 700,
+                cursor: "pointer",
+                background: "white",
+              }}
+            >
+              <option value="popularity">Sort: Popularity</option>
+              <option value="price-asc">Price: Low to High</option>
+              <option value="price-desc">Price: High to Low</option>
+            </select>
           </div>
         </header>
 
@@ -115,7 +162,11 @@ function ProductList() {
           </div>
         )}
 
-        {loading && <p style={{ color: "#475569" }}>Loading products...</p>}
+        {loading && (
+          <div style={{ color: "#475569", display: "flex", alignItems: "center", gap: 10 }}>
+            <Spinner /> <span>Loading products...</span>
+          </div>
+        )}
 
         {!loading && !error && (
           <>
@@ -143,20 +194,51 @@ function ProductList() {
                     to={`/products/${p.id}`}
                     style={{ textDecoration: "none", color: "inherit" }}
                   >
-                    <img
-                      src={p.image}
-                      alt={p.name}
-                      style={{ width: "100%", height: 180, objectFit: "cover" }}
-                    />
+                    <div style={{ position: "relative" }}>
+                      <img
+                        src={p.image}
+                        alt={p.name}
+                        style={{ width: "100%", height: 180, objectFit: "cover", borderRadius: "12px 12px 0 0" }}
+                      />
+                      {p.availableStock <= 0 && (
+                        <span
+                          style={{
+                            position: "absolute",
+                            top: 10,
+                            right: 10,
+                            background: "#b91c1c",
+                            color: "white",
+                            padding: "6px 10px",
+                            borderRadius: 12,
+                            fontWeight: 800,
+                            fontSize: "0.85rem",
+                          }}
+                        >
+                          Out of stock
+                        </span>
+                      )}
+                    </div>
                     <div style={{ padding: 14, display: "grid", gap: 6 }}>
                       <h3 style={{ margin: 0, color: "#0f172a" }}>{p.name}</h3>
                       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                         <span style={{ color: "#f59e0b", fontWeight: 700 }}>⭐ {p.averageRating}</span>
                         <span style={{ color: "#64748b", fontSize: "0.9rem" }}>({p.ratingCount})</span>
                       </div>
-                      <p style={{ margin: 0, fontWeight: 800, color: "#0f172a" }}>
-                        ₺{p.price.toLocaleString("tr-TR")}
-                      </p>
+                      <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+                        <p style={{ margin: 0, fontWeight: 800, color: "#0f172a" }}>
+                          ₺{p.price.toLocaleString("tr-TR")}
+                        </p>
+                        {p.hasDiscount && (
+                          <>
+                            <p style={{ margin: 0, color: "#94a3b8", textDecoration: "line-through" }}>
+                              ₺{p.originalPrice.toLocaleString("tr-TR")}
+                            </p>
+                            <span style={{ color: "#059669", fontWeight: 800, fontSize: "0.9rem" }}>
+                              {p.discountLabel}
+                            </span>
+                          </>
+                        )}
+                      </div>
                       <p style={{ margin: 0, color: p.availableStock > 0 ? "#059669" : "#b91c1c", fontWeight: 700 }}>
                         {p.availableStock > 0 ? `${p.availableStock} in stock` : "Out of stock"}
                       </p>

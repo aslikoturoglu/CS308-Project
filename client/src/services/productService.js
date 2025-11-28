@@ -41,13 +41,14 @@ export function getReviewMap() {
   return getStoredJSON(REVIEW_KEY, {});
 }
 
-export function addReview(productId, rating, comment) {
+export function addReview(productId, rating, comment, displayName) {
   if (!productId) return [];
   const review = {
     productId,
     rating: Math.min(5, Math.max(1, Number(rating))),
     comment: comment?.trim() ?? "",
     createdAt: Date.now(),
+    displayName: displayName || "User",
   };
   const current = getReviewMap();
   const nextList = [...(current[productId] ?? []), review];
@@ -68,11 +69,13 @@ function mergeReviewsFromBackend(productId, backendRatings = [], backendComments
     .map((r) => {
       const comment = commentsByUser[r.user_id]?.comment ?? "";
       const createdAt = commentsByUser[r.user_id]?.approved_at ?? r.created_at ?? Date.now();
+      const displayName = commentsByUser[r.user_id]?.display_name || "User";
       return {
         productId,
         rating: Number(r.rating ?? 0),
         comment,
         createdAt,
+        displayName,
       };
     });
 }
@@ -114,6 +117,13 @@ export async function fetchProductsWithMeta(signal) {
     return acc;
   }, {});
 
+  const activeDiscounts = (data.discounts ?? []).filter((d) => d.active);
+  const discountMap = {};
+  (data.discount_products ?? []).forEach((row) => {
+    const d = activeDiscounts.find((disc) => disc.discount_id === row.discount_id);
+    if (d) discountMap[row.product_id] = d;
+  });
+
   const adjustments = getInventoryAdjustments();
   const reviewMap = getReviewMap();
   const backendRatings = data.product_ratings ?? [];
@@ -121,16 +131,33 @@ export async function fetchProductsWithMeta(signal) {
 
   return (data.products ?? []).map((product) =>
     enrichProduct(
-      {
-        id: product.product_id,
-        name: product.name,
-        model: product.model,
-        serial: product.serial_number,
-        description: product.description,
-        price: product.price,
-        distributor: product.distributor_info,
-        warranty: product.warranty_status,
-      },
+      (() => {
+        const discount = discountMap[product.product_id];
+        let finalPrice = product.price;
+        let discountLabel;
+        if (discount) {
+          if (discount.type === "percentage") {
+            finalPrice = Math.max(0, product.price - (product.price * Number(discount.value || 0)) / 100);
+            discountLabel = `-${discount.value}%`;
+          } else if (discount.type === "fixed") {
+            finalPrice = Math.max(0, product.price - Number(discount.value || 0));
+            discountLabel = `-₺${discount.value}`;
+          }
+        }
+        return {
+          id: product.product_id,
+          name: product.name,
+          model: product.model,
+          serial: product.serial_number,
+          description: product.description,
+          price: finalPrice,
+          originalPrice: product.price,
+          distributor: product.distributor_info,
+          warranty: product.warranty_status,
+          discountLabel,
+          hasDiscount: Boolean(discount),
+        };
+      })(),
       adjustments,
       reviewMap,
       stockMap,

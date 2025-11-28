@@ -48,6 +48,30 @@
   gap: 8px;
 }
 
+.nav__search {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.nav__search input {
+  border: 1px solid #dbe3f2;
+  border-radius: 10px;
+  padding: 8px 10px;
+  min-width: 180px;
+  font-size: 0.95rem;
+}
+
+.nav__search button {
+  border: 1px solid #0058a3;
+  background: #0058a3;
+  color: white;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .nav__link {
   text-decoration: none;
   color: #0058a3;
