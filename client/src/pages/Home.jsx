@@ -34,22 +34,33 @@ function Home() {
   const [featured, setFeatured] = useState([]);
 
   useEffect(() => {
-    gsap.from(".hero-item", {
-      opacity: 0,
-      y: 40,
-      duration: 1,
-      stagger: 0.2,
-      ease: "power3.out",
-    });
-  }, []); 
-
-  useEffect(() => {
     const controller = new AbortController();
     fetchProductsWithMeta(controller.signal)
       .then((items) => setFeatured(items.slice(0, 4)))
       .catch((err) => console.error("Featured products failed", err));
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        gsap.fromTo(
+          ".hero-item",
+          {
+            opacity: 0,
+            y: 40,
+          },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 1,
+            stagger: 0.2,
+            ease: "power3.out",
+          }
+        );
+      });
+    });
+  }, []);  
 
   return (
     <main style={{ fontFamily: "Arial, sans-serif" }}>
@@ -62,8 +73,7 @@ function Home() {
           alignItems: "center",
           textAlign: "center",
           padding: "80px 16px",
-          background:
-            "linear-gradient(120deg, rgba(0, 174, 255, 0.9), rgba(0, 14, 79, 0.95))",
+          background: "linear-gradient(120deg, rgba(0, 174, 255, 0.9), rgba(0, 14, 79, 0.95))",
           color: "white",
           gap: 24,
         }}
