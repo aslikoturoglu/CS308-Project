@@ -41,7 +41,7 @@ function Home() {
       stagger: 0.2,
       ease: "power3.out",
     });
-  }, []); // sadece mount’ta çalışır, fetch'ten etkilenmez  
+  }, []); 
 
   useEffect(() => {
     const controller = new AbortController();
