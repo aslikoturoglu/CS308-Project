@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchProductsWithMeta } from "../services/productService";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+gsap.registerPlugin(ScrollTrigger);
+
 
 const highlights = [
   {
@@ -21,13 +25,23 @@ const highlights = [
 ];
 
 const categories = [
-  { name: "Living Room", image: "https://images.unsplash.com/photo-1484100356142-db6ab6244067" },
-  { name: "Bedroom", image: "https://images.unsplash.com/photo-1505691938895-1758d7feb511" },
-  { name: "Workspace", image: "https://images.unsplash.com/photo-1493666438817-866a91353ca9" },
+  { name: "Living Room", image: "https://raw.githubusercontent.com/aslikoturoglu/CS308-Project/main/project_pictures/10027.png" },
+  { name: "Bedroom", image: "https://raw.githubusercontent.com/aslikoturoglu/CS308-Project//main/project_pictures/10049.png" },
+  { name: "Workspace", image: "https://raw.githubusercontent.com/aslikoturoglu/CS308-Project//main/project_pictures/10019.png" },
 ];
 
 function Home() {
   const [featured, setFeatured] = useState([]);
+
+  useEffect(() => {
+    gsap.from(".hero-item", {
+      opacity: 0,
+      y: 40,
+      duration: 1,
+      stagger: 0.2,
+      ease: "power3.out",
+    });
+  }, []); // sadece mount’ta çalışır, fetch'ten etkilenmez  
 
   useEffect(() => {
     const controller = new AbortController();
@@ -54,13 +68,13 @@ function Home() {
           gap: 24,
         }}
       >
-        <p style={{ letterSpacing: 2, fontSize: "0.95rem", margin: 0 }}>
+        <p className="hero-item" style={{ letterSpacing: 2, fontSize: "0.95rem", margin: 0 }}>
           WELCOME
         </p>
-        <h1 style={{ fontSize: "3rem", maxWidth: 720, margin: 0 }}>
+        <h1 className="hero-item" style={{ fontSize: "3rem", maxWidth: 720, margin: 0 }}>
           The SUHome experience that inspires your home starts here
         </h1>
-        <p style={{ maxWidth: 540, lineHeight: 1.6, fontSize: "1.1rem" }}>
+        <p className="hero-item" style={{ maxWidth: 540, lineHeight: 1.6, fontSize: "1.1rem" }}>
           From comfy sofas to smart storage, everything you are looking for is a click away.
           Don’t miss the new season offers.
         </p>
