@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import CheckoutForm from "../components/forms/CheckoutForm";
 import { useCart } from "../context/CartContext";
-import { decreaseInventory } from "../services/productService";
+import { decreaseInventory } from "../services/localStorageHelpers";
 import { addOrder } from "../services/orderService";
 
 const fallbackItems = [

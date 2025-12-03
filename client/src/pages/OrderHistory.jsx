@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { addReview, getReviewMap } from "../services/productService";
+import { addReview, getReviewMap } from "../services/localStorageHelpers";
 import { advanceOrderStatus, getOrders } from "../services/orderService";
 import { useAuth } from "../context/AuthContext";
 

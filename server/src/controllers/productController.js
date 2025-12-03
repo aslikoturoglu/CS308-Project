@@ -1,14 +1,30 @@
-// src/controllers/productController.js
 import db from "../db.js";
 
-// Tüm ürünleri getir
 export function getAllProducts(req, res) {
-  db.query("SELECT * FROM Products", (err, results) => {
+  const sql = "SELECT * FROM products";
+
+  db.query(sql, (err, results) => {
     if (err) {
-      console.error("Ürünler alınamadı:", err);
-      res.status(500).json({ error: "Veritabanı hatası" });
-    } else {
-      res.json(results);
+      console.error("❌ Ürünler alınamadı:", err);
+      return res.status(500).json({ error: "Veritabanı hatası" });
     }
+
+    const normalized = results.map((p) => ({
+      id: p.product_id,
+      name: p.product_name,
+      description: p.product_features,
+      price: Number(p.product_price),
+      originalPrice: Number(p.product_originalprice),
+      stock: Number(p.product_stock),
+      category: p.product_category,
+      mainCategory: p.product_main_category,
+      material: p.product_material,
+      color: p.product_color,
+      image: p.product_image,
+      rating: p.product_rating ?? 0,
+      rating_count: p.rating_count ?? 0,
+    }));
+
+    res.json(normalized);
   });
 }
