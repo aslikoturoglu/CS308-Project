@@ -4,6 +4,9 @@ import { fetchProductsWithMeta } from "../services/productService";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import Spinner from "../components/ui/Spinner";
+import { updateStock } from "../services/api.js";
+
+
 
 const categories = [
   { label: "All", keywords: [] },
@@ -81,14 +84,32 @@ function ProductList() {
   const currentPage = Math.min(page, totalPages);
   const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const handleAdd = (product) => {
-    const existingQty = cartItems.find((item) => item.id === product.id)?.quantity ?? 0;
-    if (existingQty + 1 > product.availableStock) {
-      alert("Not enough stock for this item.");
-      return;
-    }
-    addItem(product, 1);
-  };
+  const handleAdd = async (product) => {
+  const existingQty = cartItems.find(item => item.id === product.id)?.quantity ?? 0;
+
+  if (existingQty + 1 > product.availableStock) {
+    alert("Not enough stock for this item.");
+    return;
+  }
+
+  addItem(product, 1);
+
+  try {
+    await updateStock(product.id, -1); 
+
+  
+    setProducts(prev =>
+      prev.map(p =>
+        p.id === product.id ? { ...p, availableStock: p.availableStock - 1 } : p
+      )
+    );
+
+  } catch (err) {
+    console.error("Stock update failed", err);
+  }
+};
+
+
 
   return (
     <main style={{ padding: "30px 20px", background: "#f5f7fb", minHeight: "75vh" }}>

@@ -7,9 +7,21 @@ export async function getProducts() {
   return res.json();
 }
 
-// ID'ye göre ürün getir
+// ID ile ürün getir
 export async function getProductById(id) {
   const res = await fetch(`${API_URL}/products/${id}`);
   if (!res.ok) throw new Error("Product fetch failed");
+  return res.json();
+}
+
+// STOCK UPDATE --- DÜZELTİLMİŞ HAL
+export async function updateStock(id, amount) {
+  const res = await fetch(`${API_URL}/products/${id}/stock`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json"},
+    body: JSON.stringify({ amount }), // delta değil amount gönderiyoruz!
+  });
+
+  if (!res.ok) throw new Error("Stock update failed");
   return res.json();
 }

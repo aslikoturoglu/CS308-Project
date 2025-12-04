@@ -28,3 +28,19 @@ export function getAllProducts(req, res) {
     res.json(normalized);
   });
 }
+
+export function updateProductStock(req, res) {
+  const { id } = req.params;
+  const { amount } = req.body;
+
+  if (!amount) return res.status(400).json({error:"amount missing"});
+
+  const sql = `UPDATE products SET product_stock = product_stock + ? WHERE product_id = ?`;
+
+  db.query(sql, [amount, id], (err, result) => {
+    if (err) return res.status(500).json({error:"Stock update failed"});
+    res.json({success:true});
+  });
+}
+
+

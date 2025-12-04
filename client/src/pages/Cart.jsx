@@ -2,10 +2,72 @@ import { Link, useNavigate } from "react-router-dom";
 import CartItem from "../components/cart/CartItem";
 import CartSummary from "../components/cart/CartSummary";
 import { useCart } from "../context/CartContext";
+import { updateStock } from "../services/api.js";
+
 
 function Cart() {
   const navigate = useNavigate();
   const { items, subtotal, increment, decrement, removeItem } = useCart();
+
+  // id parametresi CartItem'den geliyor
+const handleIncrease = async (id) => {
+  const item = items.find((p) => p.id === id);
+  if (!item) return;
+
+  try {
+    // stoktan 1 düş
+    await updateStock(id, -1);
+    // cart'ta quantity +1
+    increment(id);
+  } catch (err) {
+    console.error("Increase failed:", err);
+    alert("Not enough stock or stock update failed.");
+  }
+};
+
+const handleDecrease = async (id) => {
+  const item = items.find((p) => p.id === id);
+  if (!item) return;
+
+  // quantity 1 ise, azaltmak yerine tamamen silip stok iade edeceğiz
+  if (item.quantity <= 1) {
+    try {
+      await updateStock(id, item.quantity); // 1 geri ekle
+      removeItem(id);
+    } catch (err) {
+      console.error("Remove failed:", err);
+      alert("Stock update failed.");
+    }
+    return;
+  }
+
+  try {
+    // stok +1 (iade)
+    await updateStock(id, +1);
+    // cart'ta quantity -1
+    decrement(id);
+  } catch (err) {
+    console.error("Decrease failed:", err);
+    alert("Stock update failed.");
+  }
+};
+
+const handleRemove = async (id) => {
+  const item = items.find((p) => p.id === id);
+  if (!item) return;
+
+  try {
+    // ürün cart'tan tamamen silinirken tüm adetleri stoğa geri ekle
+    if (item.quantity > 0) {
+      await updateStock(id, item.quantity);
+    }
+    removeItem(id);
+  } catch (err) {
+    console.error("Full remove failed:", err);
+    alert("Stock update failed.");
+  }
+};
+
 
   const shipping = items.length === 0 ? 0 : 89;
   const discount = subtotal > 4000 ? 250 : 0;
@@ -16,6 +78,7 @@ function Cart() {
       alert("Your cart is empty. Please add items before checking out.");
       return;
     }
+
     const merchandiseTotal = Math.max(subtotal - discount, 0);
 
     navigate("/checkout", {
@@ -42,10 +105,10 @@ function Cart() {
           color: "#0058a3",
           textAlign: "center",
           padding: 24,
-      }}
-    >
-      <h2>Your cart is empty 🛍️</h2>
-      <p>Browse popular items and add what you like.</p>
+        }}
+      >
+        <h2>Your cart is empty 🛍️</h2>
+        <p>Browse popular items and add what you like.</p>
         <Link
           to="/products"
           style={{
@@ -87,10 +150,10 @@ function Cart() {
             <CartItem
               key={item.id}
               item={item}
-              onIncrease={increment}
-              onDecrease={decrement}
-              onRemove={removeItem}
-            />
+              onIncrease={handleIncrease}
+              onDecrease={handleDecrease}
+               onRemove={handleRemove}
+               />
           ))}
         </div>
 

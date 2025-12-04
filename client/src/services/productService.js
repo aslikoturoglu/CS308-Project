@@ -1,4 +1,4 @@
-import { getProducts, getProductById } from "./api";
+import { getProducts, getProductById, updateStock } from "./api.js";
 import { getInventoryAdjustments, getReviewMap } from "./localStorageHelpers";
 
 // Ürünü zenginleştirme
