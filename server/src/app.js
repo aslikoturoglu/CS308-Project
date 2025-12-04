@@ -1,7 +1,16 @@
 import express from "express";
 import cors from "cors";
+
+import "./db.js";
+
 import productRoutes from "./routes/productRoutes.js";
-import db from "./db.js"; // DB bağlantısı burada load ediliyor
+import orderRoutes from "./routes/orderRoutes.js";
+import {
+  getCart,
+  addToCart,
+  deleteCartItem,
+  syncCart,
+} from "./controllers/cartController.js";
 
 const app = express();
 
@@ -10,11 +19,16 @@ app.use(express.json());
 
 // ROUTES
 app.use("/products", productRoutes);
+app.use("/orders", orderRoutes);
 
-// PORT
+// CART ENDPOINTLERİ
+app.get("/cart", getCart);               // GET /cart
+app.post("/cart", addToCart);            // POST /cart
+app.post("/cart/sync", syncCart);        // POST /cart/sync
+app.delete("/cart/:id", deleteCartItem); // DELETE /cart/:id
+
 const PORT = process.env.PORT || 3000;
 
-// SERVER START
 app.listen(PORT, () => {
   console.log(`🚀 Server çalışıyor → http://localhost:${PORT}`);
 });
