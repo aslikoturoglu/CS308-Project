@@ -40,10 +40,12 @@ function ProductDetail() {
     return () => controller.abort();
   }, [id]);
 
+  /*
   const fauxDescription = useMemo(() => {
     if (!product) return "";
     return `${product.name} is designed to add a modern, clean touch to your space. Durable materials make assembly easy and provide long-lasting use. With sleek lines and timeless style, it fits effortlessly into any room.`;
   }, [product]);
+  */
 
   const gallery = useMemo(() => {
     if (!product) return [];
@@ -223,7 +225,12 @@ function ProductDetail() {
               ₺{product.price.toLocaleString("tr-TR")}
             </span>
           </div>
-          <p style={{ margin: 0, color: "#334155", lineHeight: 1.5 }}>{fauxDescription}</p>
+          {product.description && (
+            <p style={{ margin: 0, color: "#334155", lineHeight: 1.5 }}>
+            {product.description}
+            </p>
+          )}
+
 
           <div
             style={{

@@ -147,7 +147,7 @@ const handleDecrease = async (p) => {
           (p[field] || "").toString().toLowerCase().includes(term)
         )
       );
-      //list = list.filter((p) => p.name.toLowerCase().includes(term));
+  
     }
     if (category !== "All") {
       const rule = categories.find((c) => c.label === category);

@@ -175,7 +175,7 @@ function Home() {
                   <span style={{ color: "#f59e0b", fontWeight: 700 }}>⭐ {item.averageRating}</span>
                   <span style={{ color: "#64748b", fontSize: "0.9rem" }}>({item.ratingCount})</span>
                 </div>
-                <p style={{ margin: 0, fontWeight: 800, color: "#0f172a" }}>₺{item.price.toLocaleString("tr-TR")}</p>
+                <p style={{ margin: 0, fontWeight: 800, color: "#0f172a" }}>₺{Number(item.price || 0).toLocaleString("tr-TR")}</p>
                 <p style={{ margin: 0, color: item.availableStock > 0 ? "#059669" : "#b91c1c", fontWeight: 700 }}>
                   {item.availableStock > 0 ? `${item.availableStock} in stock` : "Out of stock"}
                 </p>

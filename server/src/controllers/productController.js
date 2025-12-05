@@ -43,4 +43,41 @@ export function updateProductStock(req, res) {
   });
 }
 
+export function getProductById(req, res) {
+  const { id } = req.params;
+
+  const sql = "SELECT * FROM products WHERE product_id = ?";
+
+  db.query(sql, [id], (err, results) => {
+    if (err) {
+      console.error("❌ Ürün alınamadı:", err);
+      return res.status(500).json({ error: "Veritabanı hatası" });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ error: "Ürün bulunamadı" });
+    }
+
+    const p = results[0];
+
+    const normalized = {
+      id: p.product_id,
+      name: p.product_name,
+      description: p.product_features,
+      price: Number(p.product_price),
+      originalPrice: Number(p.product_originalprice),
+      stock: Number(p.product_stock),
+      category: p.product_category,
+      mainCategory: p.product_main_category,
+      material: p.product_material,
+      color: p.product_color,
+      image: p.product_image,
+      rating: p.product_rating ?? 0,
+      rating_count: p.rating_count ?? 0,
+    };
+
+    res.json(normalized);
+  });
+}
+
 
