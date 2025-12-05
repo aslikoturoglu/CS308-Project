@@ -225,12 +225,39 @@ function ProductDetail() {
               ₺{product.price.toLocaleString("tr-TR")}
             </span>
           </div>
-          {product.description && (
-            <p style={{ margin: 0, color: "#334155", lineHeight: 1.5 }}>
-            {product.description}
-            </p>
-          )}
 
+          {product.description && (
+               <section
+               style={{
+                 background: "#f8fafc",
+                 borderRadius: 12,
+                 padding: 12,
+                 border: "1px solid #e2e8f0",
+               }}
+             >
+               <h3 style={{ margin: 0, marginBottom: 6, color: "#0f172a" }}>Description</h3>
+               <p style={{ margin: 0, lineHeight: 1.5, color: "#475569" }}>{product.description}</p>
+             </section>
+           )}
+
+           {/* CHANGE #2 — MATERIAL + COLOR ALANI */}
+          <section
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              padding: 12,
+              border: "1px solid #e2e8f0",
+              display: "grid",
+              gap: 8,
+            }}
+          >
+            <h3 style={{ margin: 0, marginBottom: 4, color: "#0f172a" }}>Product Details</h3>
+
+            <Info label="Material" value={product.material ?? "N/A"} />
+            <Info label="Color" value={product.color ?? "N/A"} />
+            <Info label="Category" value={product.category ?? "N/A"} />
+          </section>
+          
 
           <div
             style={{
