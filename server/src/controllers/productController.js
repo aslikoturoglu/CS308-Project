@@ -16,6 +16,7 @@ export function getAllProducts(req, res) {
       id: p.product_id,
       name: p.product_name,
       features: p.product_features,
+<<<<<<< Updated upstream
       price: Number(p.product_price),
       stock: Number(p.product_stock),
       category: p.product_category,
@@ -171,8 +172,9 @@ export function getProductById(req, res) {
       id: p.product_id,
       name: p.product_name,
       description: p.product_features,
+=======
+>>>>>>> Stashed changes
       price: Number(p.product_price),
-      originalPrice: Number(p.product_originalprice),
       stock: Number(p.product_stock),
       category: p.product_category,
       mainCategory: p.product_main_category,
@@ -180,11 +182,129 @@ export function getProductById(req, res) {
       color: p.product_color,
       image: p.product_image,
       rating: p.product_rating ?? 0,
+<<<<<<< Updated upstream
       rating_count: p.rating_count ?? 0,
     };
+=======
+    }));
+>>>>>>> Stashed changes
 
     res.json(normalized);
   });
 }
 
+<<<<<<< Updated upstream
 
+=======
+/* =========================================================
+   POST — YENİ ÜRÜN EKLE
+   ========================================================= */
+export function addProduct(req, res) {
+  const { name, price, stock, category } = req.body;
+
+  if (!name || !price || !stock) {
+    return res.status(400).json({ error: "Eksik alanlar var" });
+  }
+
+  // 1) Önce yeni ürün için id üret (MAX(product_id) + 1)
+  const getNextIdSql = "SELECT MAX(product_id) AS maxId FROM products";
+
+  db.query(getNextIdSql, (err, rows) => {
+    if (err) {
+      console.error("❌ Yeni ürün ID'si alınamadı:", err);
+      return res.status(500).json({ error: "Veritabanı hatası (id)" });
+    }
+
+    const currentMax = rows[0]?.maxId || 0;
+    const nextId = Number(currentMax) + 1;
+
+    const insertSql = `
+      INSERT INTO products
+      (product_id, product_name, product_price, product_stock, product_category, product_image)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+
+    const defaultImg = "https://placehold.co/400x400?text=New+Product";
+
+    db.query(
+      insertSql,
+      [nextId, name, price, stock, category, defaultImg],
+      (insertErr) => {
+        if (insertErr) {
+          console.error("❌ Ürün eklenemedi:", insertErr);
+          return res.status(500).json({ error: "Veritabanı hatası (insert)" });
+        }
+
+        res.json({ success: true, id: nextId });
+      }
+    );
+  });
+}
+
+
+/* =========================================================
+   PUT — ÜRÜN GÜNCELLE
+   ========================================================= */
+export function updateProduct(req, res) {
+  const { id } = req.params;
+  const { name, price, stock, category } = req.body;
+
+  const sql = `
+    UPDATE products
+    SET product_name=?, product_price=?, product_stock=?, product_category=?
+    WHERE product_id=?
+  `;
+
+  db.query(sql, [name, price, stock, category, id], (err) => {
+    if (err) {
+      console.error("❌ Ürün güncellenemedi:", err);
+      return res.status(500).json({ error: "Güncelleme hatası" });
+    }
+
+    res.json({ success: true });
+  });
+}
+
+/* =========================================================
+   DELETE — ÜRÜN SİL
+   ========================================================= */
+export function deleteProduct(req, res) {
+  const { id } = req.params;
+
+  const sql = "DELETE FROM products WHERE product_id = ?";
+
+  db.query(sql, [id], (err) => {
+    if (err) {
+      console.error("❌ Ürün silinemedi:", err);
+      return res.status(500).json({ error: "Silme hatası" });
+    }
+
+    res.json({ success: true });
+  });
+}
+
+/* =========================================================
+   PUT — STOK ARTTIR / AZALT
+   ========================================================= */
+export function updateProductStock(req, res) {
+  const { id } = req.params;
+  const { amount } = req.body;
+
+  if (!amount) return res.status(400).json({ error: "amount missing" });
+
+  const sql = `
+    UPDATE products 
+    SET product_stock = product_stock + ?
+    WHERE product_id = ?
+  `;
+
+  db.query(sql, [amount, id], (err) => {
+    if (err) {
+      console.error("❌ Stok güncellenemedi:", err);
+      return res.status(500).json({ error: "Stock update failed" });
+    }
+
+    res.json({ success: true });
+  });
+}
+>>>>>>> Stashed changes

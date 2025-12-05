@@ -16,8 +16,11 @@ const router = Router();
 // Tüm ürünleri getir
 router.get("/", getAllProducts);
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 router.get("/:id", getProductById); 
 =======
+=======
+>>>>>>> Stashed changes
 
 // Yeni ürün ekle
 router.post("/", addProduct);
@@ -29,6 +32,9 @@ router.put("/:id", updateProduct);
 router.delete("/:id", deleteProduct);
 
 // Sadece stok artır / azalt
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 router.put("/:id/stock", updateProductStock);
 
