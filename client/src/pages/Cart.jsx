@@ -14,6 +14,11 @@ const handleIncrease = async (id) => {
   const item = items.find((p) => p.id === id);
   if (!item) return;
 
+  if (item.availableStock <= item.quantity) {
+    alert("Not enough stock for this item.");
+    return;
+  }
+
   try {
     // stoktan 1 düş
     await updateStock(id, -1);
