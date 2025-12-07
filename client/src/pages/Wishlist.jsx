@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
 import { useWishlist } from "../context/WishlistContext";
+import { useCart } from "../context/CartContext";
 
 function Wishlist() {
   const { items, removeItem } = useWishlist();
+  const { addItem } = useCart();
 
   if (items.length === 0) {
     return (
@@ -110,23 +112,27 @@ function Wishlist() {
                   Discount applied to your wishlist item!
                 </p>
               )}
+          
             </Link>
             <div style={{ display: "flex", gap: 10 }}>
-              <Link
-                to="/cart"
-                style={{
-                  flex: 1,
-                  background: "#0058a3",
-                  color: "white",
-                  padding: "10px 12px",
-                  borderRadius: 10,
-                  textDecoration: "none",
-                  fontWeight: 700,
-                  textAlign: "center",
-                }}
-              >
-                Go to cart
-              </Link>
+            <button
+              type="button"
+              onClick={() => addItem(item, 1)}
+              style={{
+                flex: 1,
+                background: "#0058a3",
+                color: "white",
+                padding: "10px 12px",
+                borderRadius: 10,
+                fontWeight: 700,
+                cursor: "pointer",
+                border: "none",
+              }}
+            >
+            Add to Cart
+            </button>
+
+              
               <button
                 type="button"
                 onClick={() => removeItem(item.id)}

@@ -29,20 +29,28 @@ export default Header;
 function Header() {
   return (
     <>
-      {/* INLINE KEYFRAMES — animasyon garantili */}
       <style>
         {`
-          @keyframes tickerScroll {
-            0% { transform: translateX(100%); }
-            100% { transform: translateX(-100%); }
+          .ticker-container {
+            position: relative;
           }
 
           .ticker-track {
-            display: inline-block;
-            white-space: nowrap;
-            animation: tickerScroll 18s linear infinite;
+            display: inline-flex;
+            gap: 60px;
             font-weight: 600;
             color: #003f7f;
+            padding-right: 60px;
+            animation: scrollLeft 15s linear infinite;
+          }
+
+          @keyframes scrollLeft {
+            0% {
+              transform: translateX(0);
+            }
+            100% {
+              transform: translateX(-100%);
+            }
           }
         `}
       </style>
@@ -51,18 +59,28 @@ function Header() {
         style={{
           background: "#ffcc00",
           color: "#0058a3",
-          padding: "12px 18px 0px",
+          padding: "10px 18px 0px",
           textAlign: "center",
           fontWeight: "bold",
           fontFamily: "Arial, sans-serif",
           boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
-          position: "sticky",
-          top: 0,
-          zIndex: 1000,
+          
         }}
       >
         {/* MAIN TITLE */}
-        <div style={{ fontSize: "1.8rem", marginBottom: 6 }}>SUHome</div>
+        
+        <img 
+          src= "https://raw.githubusercontent.com/aslikoturoglu/CS308-Project/main/suhome_logo_1.png" 
+          alt="SUHome Logo"
+          style={{
+          height: "60px",
+          maxWidth: "300px",
+          objectFit: "contain",
+          marginBottom: "8px",
+          cursor: "pointer"
+  }}
+/>
+
 
         {/* 🔥 TICKER (Modern furniture yazısının yerine geçti) */}
         <div
@@ -71,15 +89,27 @@ function Header() {
             overflow: "hidden",
             whiteSpace: "nowrap",
             background: "#ffcc00",
-            padding: "6px 0",
-            
+            padding: "4px 0",
           }}
         >
           <div className="ticker-track">
-            <span style={{ marginRight: 60 }}>🔥 Big Sale Week! Up to 50% Off!</span>
+            <span style={{ marginRight: 60 }}>🛋️ Modern Furniture </span>
+            <span style={{ marginRight: 60 }}>📦 Fast Delivery</span>
+            <span style={{ marginRight: 60 }}>🤗 Friendly Support </span>
+            <span style={{ marginRight: 60 }}>🔥 Big Sale Week! 250₺ Off! </span>
             <span style={{ marginRight: 60 }}>🎁 New Arrivals Just Landed — Check Them Out!</span>
-            <span style={{ marginRight: 60 }}>🚚 Free Shipping on Orders Over 500₺!</span>
+            <span style={{ marginRight: 60 }}>🚚 Only 89₺ Shipping!</span>
           </div>
+          
+          <div className="ticker-track">
+            <span style={{ marginRight: 60 }}>🛋️ Modern Furniture </span>
+            <span style={{ marginRight: 60 }}>📦 Fast Delivery</span>
+            <span style={{ marginRight: 60 }}>🤗 Friendly Support </span>
+            <span style={{ marginRight: 60 }}>🔥 Big Sale Week! 250₺ Off! </span>
+            <span style={{ marginRight: 60 }}>🎁 New Arrivals Just Landed — Check Them Out!</span>
+            <span style={{ marginRight: 60 }}>🚚 Only 89₺ Shipping!</span>
+          </div>
+
         </div>
       </header>
     </>
@@ -87,4 +117,3 @@ function Header() {
 }
 
 export default Header;
-

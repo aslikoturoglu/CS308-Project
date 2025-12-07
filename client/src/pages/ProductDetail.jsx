@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { fetchProductById } from "../services/productService";
+import { useWishlist } from "../context/WishlistContext";
+
 
 function ProductDetail() {
   const { id } = useParams();
@@ -11,6 +13,7 @@ function ProductDetail() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState("");
+  const { toggleItem, inWishlist } = useWishlist();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -39,6 +42,13 @@ function ProductDetail() {
 
     return () => controller.abort();
   }, [id]);
+/*
+  useEffect(() => {
+    if (!product) return;
+    const stored = JSON.parse(localStorage.getItem("wishlist")) || [];
+    setInWishlist(stored.some((item) => item.id === product.id));
+  }, [product]);
+  */
 
   /*
   const fauxDescription = useMemo(() => {
@@ -282,6 +292,24 @@ function ProductDetail() {
           </ul>
 
           <div style={{ display: "flex", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
+          
+          <button
+  type="button"
+  onClick={() => toggleItem(product)}
+  style={{
+    background: inWishlist(product.id) ? "#e2e8f0" : "#facc15",
+    color: "#0f172a",
+    borderRadius: 12,
+    padding: "12px 16px",
+    fontWeight: 800,
+    cursor: "pointer",
+    minWidth: 160,
+  }}
+>
+  {inWishlist(product.id) ? "❤️ In Wishlist" : "🤍 Add to Wishlist"}
+</button>
+
+
             <button
               type="button"
               onClick={handleAddToCart}
