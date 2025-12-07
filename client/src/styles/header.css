@@ -8,6 +8,41 @@
     z-index: 1000;
 }
 
+.header-ticker {
+    width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    background: #ffcc00;
+    padding: 6px 0;
+    border-top: 2px solid rgba(0,0,0,0.1);
+    border-bottom: 2px solid rgba(0,0,0,0.15);
+    animation: ticker 18s linear infinite;
+  }
+  
+  .ticker-track {
+    display: inline-block;
+    white-space: nowrap;
+    animation: ticker 18s linear infinite;
+  }
+  
+  .ticker-track span {
+    display: inline-block;
+    margin-right: 60px;
+    font-weight: 700;
+    color: #333;
+    font-size: 0.95rem;
+  }
+  
+  @keyframes ticker {
+    0% {
+      transform: translateX(100%);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
+  }
+  
+
 .header__container {
     width: 90%;
     max-width: 1300px;
