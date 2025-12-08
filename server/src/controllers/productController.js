@@ -82,21 +82,21 @@ export function addProduct(req, res) {
     return res.status(400).json({ error: "Eksik alanlar var" });
   }
 
-  // Elle ID üret (AUTO_INCREMENT olmadığından)
   const getNextIdSql = "SELECT MAX(product_id) AS maxId FROM products";
 
   db.query(getNextIdSql, (err, rows) => {
     if (err) {
-      console.error("❌ Yeni ID alınamadı:", err);
+      console.error("❌ Yeni ürün ID'si alınamadı:", err);
       return res.status(500).json({ error: "Veritabanı hatası (id)" });
     }
 
-    const nextId = Number(rows[0]?.maxId || 0) + 1;
+    const currentMax = rows[0]?.maxId || 0;
+    const nextId = Number(currentMax) + 1;
 
     const defaultImg = "https://placehold.co/400x400?text=New+Product";
 
     const insertSql = `
-      INSERT INTO products 
+      INSERT INTO products
       (product_id, product_name, product_price, product_stock, product_category, product_image)
       VALUES (?, ?, ?, ?, ?, ?)
     `;
@@ -104,9 +104,9 @@ export function addProduct(req, res) {
     db.query(
       insertSql,
       [nextId, name, price, stock, category, defaultImg],
-      (err2) => {
-        if (err2) {
-          console.error("❌ Ürün eklenemedi:", err2);
+      (insertErr) => {
+        if (insertErr) {
+          console.error("❌ Ürün eklenemedi:", insertErr);
           return res.status(500).json({ error: "Veritabanı hatası (insert)" });
         }
 
