@@ -15,15 +15,17 @@ export function getAllProducts(req, res) {
     const normalized = results.map((p) => ({
       id: p.product_id,
       name: p.product_name,
-      features: p.product_features,
-      price: Number(p.product_price),
-      stock: Number(p.product_stock),
-      category: p.product_category,
       mainCategory: p.product_main_category,
+      category: p.product_category,
       material: p.product_material,
       color: p.product_color,
+      features: p.product_features,
+      stock: Number(p.product_stock),
+      price: Number(p.product_price),
       image: p.product_image,
-      rating: p.product_rating ?? 0,
+      comment: p.product_comment,
+      rating: Number(p.product_rating ?? 0),
+      commentApproved: Boolean(p.comment_approved),
     }));
 
     res.json(normalized);
@@ -31,7 +33,47 @@ export function getAllProducts(req, res) {
 }
 
 /* =========================================================
-   POST — ÜRÜN EKLE
+   GET — ÜRÜNÜ ID İLE GETİR
+   ========================================================= */
+export function getProductById(req, res) {
+  const { id } = req.params;
+
+  const sql = "SELECT * FROM products WHERE product_id = ?";
+
+  db.query(sql, [id], (err, rows) => {
+    if (err) {
+      console.error("❌ Ürün getirilemedi:", err);
+      return res.status(500).json({ error: "Veritabanı hatası" });
+    }
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Ürün bulunamadı" });
+    }
+
+    const p = rows[0];
+
+    const normalized = {
+      id: p.product_id,
+      name: p.product_name,
+      mainCategory: p.product_main_category,
+      category: p.product_category,
+      material: p.product_material,
+      color: p.product_color,
+      features: p.product_features,
+      stock: Number(p.product_stock),
+      price: Number(p.product_price),
+      image: p.product_image,
+      comment: p.product_comment,
+      rating: Number(p.product_rating ?? 0),
+      commentApproved: Boolean(p.comment_approved),
+    };
+
+    res.json(normalized);
+  });
+}
+
+/* =========================================================
+   POST — YENİ ÜRÜN EKLE
    ========================================================= */
 export function addProduct(req, res) {
   const { name, price, stock, category } = req.body;
@@ -40,23 +82,24 @@ export function addProduct(req, res) {
     return res.status(400).json({ error: "Eksik alanlar var" });
   }
 
+  // Elle ID üret (AUTO_INCREMENT olmadığından)
   const getNextIdSql = "SELECT MAX(product_id) AS maxId FROM products";
 
   db.query(getNextIdSql, (err, rows) => {
     if (err) {
-      console.error("❌ Yeni ürün ID alınamadı:", err);
+      console.error("❌ Yeni ID alınamadı:", err);
       return res.status(500).json({ error: "Veritabanı hatası (id)" });
     }
 
     const nextId = Number(rows[0]?.maxId || 0) + 1;
 
+    const defaultImg = "https://placehold.co/400x400?text=New+Product";
+
     const insertSql = `
-      INSERT INTO products
+      INSERT INTO products 
       (product_id, product_name, product_price, product_stock, product_category, product_image)
       VALUES (?, ?, ?, ?, ?, ?)
     `;
-
-    const defaultImg = "https://placehold.co/400x400?text=New+Product";
 
     db.query(
       insertSql,
@@ -70,45 +113,6 @@ export function addProduct(req, res) {
         res.json({ success: true, id: nextId });
       }
     );
-  });
-}
-
-/* =========================================================
-   GET — ÜRÜN GETİR (ID İLE)
-   ========================================================= */
-export function getProductById(req, res) {
-  const { id } = req.params;
-
-  const sql = "SELECT * FROM products WHERE product_id = ?";
-
-  db.query(sql, [id], (err, rows) => {
-    if (err) {
-      console.error("❌ Ürün alınamadı:", err);
-      return res.status(500).json({ error: "Veritabanı hatası" });
-    }
-
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "Ürün bulunamadı" });
-    }
-
-    const p = rows[0];
-
-    const normalized = {
-      id: p.product_id,
-      name: p.product_name,
-      description: p.product_features,
-      price: Number(p.product_price),
-      stock: Number(p.product_stock),
-      category: p.product_category,
-      mainCategory: p.product_main_category,
-      material: p.product_material,
-      color: p.product_color,
-      image: p.product_image,
-      rating: p.product_rating ?? 0,
-      rating_count: p.rating_count ?? 0,
-    };
-
-    res.json(normalized);
   });
 }
 
@@ -165,7 +169,7 @@ export function updateProductStock(req, res) {
   }
 
   const sql = `
-    UPDATE products 
+    UPDATE products
     SET product_stock = product_stock + ?
     WHERE product_id = ?
   `;
