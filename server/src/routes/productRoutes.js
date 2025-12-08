@@ -1,3 +1,16 @@
+// server/src/routes/productRoutes.js
+import { Router } from "express";
+import {
+  getAllProducts,
+  getProductById,
+  addProduct,
+  updateProduct,
+  deleteProduct,
+  updateProductStock,
+} from "../controllers/productController.js";
+
+const router = Router();
+
 // Tüm ürünleri getir
 router.get("/", getAllProducts);
 

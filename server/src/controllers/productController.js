@@ -25,7 +25,7 @@ export function getAllProducts(req, res) {
       image: p.product_image,
       comment: p.product_comment,
       rating: Number(p.product_rating ?? 0),
-      commentApproved: Boolean(p.comment_approved),
+      commentApproved: Boolean(p.comment_approved)
     }));
 
     res.json(normalized);
@@ -65,7 +65,7 @@ export function getProductById(req, res) {
       image: p.product_image,
       comment: p.product_comment,
       rating: Number(p.product_rating ?? 0),
-      commentApproved: Boolean(p.comment_approved),
+      commentApproved: Boolean(p.comment_approved)
     };
 
     res.json(normalized);
@@ -92,7 +92,6 @@ export function addProduct(req, res) {
 
     const currentMax = rows[0]?.maxId || 0;
     const nextId = Number(currentMax) + 1;
-
     const defaultImg = "https://placehold.co/400x400?text=New+Product";
 
     const insertSql = `
@@ -101,18 +100,14 @@ export function addProduct(req, res) {
       VALUES (?, ?, ?, ?, ?, ?)
     `;
 
-    db.query(
-      insertSql,
-      [nextId, name, price, stock, category, defaultImg],
-      (insertErr) => {
-        if (insertErr) {
-          console.error("❌ Ürün eklenemedi:", insertErr);
-          return res.status(500).json({ error: "Veritabanı hatası (insert)" });
-        }
-
-        res.json({ success: true, id: nextId });
+    db.query(insertSql, [nextId, name, price, stock, category, defaultImg], (insertErr) => {
+      if (insertErr) {
+        console.error("❌ Ürün eklenemedi:", insertErr);
+        return res.status(500).json({ error: "Veritabanı hatası (insert)" });
       }
-    );
+
+      res.json({ success: true, id: nextId });
+    });
   });
 }
 
