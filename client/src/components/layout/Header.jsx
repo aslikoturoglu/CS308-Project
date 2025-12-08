@@ -41,7 +41,7 @@ function Header() {
             font-weight: 600;
             color: #003f7f;
             padding-right: 60px;
-            animation: scrollLeft 15s linear infinite;
+            animation: scrollLeft 40s linear infinite;
           }
 
           @keyframes scrollLeft {
