@@ -80,8 +80,6 @@ export function updateProductStock(req, res) {
     });
   }
 }
-<<<<<<< HEAD
-=======
 
 export function getProductById(req, res) {
   const { id } = req.params;
@@ -120,5 +118,3 @@ export function getProductById(req, res) {
   });
 }
 
-
->>>>>>> 1e33c3f5427e7037bc22f7dc8057c4e775659807
