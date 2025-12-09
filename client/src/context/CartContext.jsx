@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useAuth } from "./AuthContext";
 
 const CartContext = createContext(undefined);
@@ -29,54 +36,89 @@ const writeCart = (key, value) => {
 
 const mergeCarts = (userCart, guestCart) => {
   const map = new Map();
+
   [...userCart, ...guestCart].forEach((item) => {
     const existing = map.get(item.id);
     if (existing) {
       map.set(item.id, {
         ...existing,
         quantity:
-          (existing.quantity || 0) + (Number(item.quantity) || 0),
+          (Number(existing.quantity) || 0) + (Number(item.quantity) || 0),
       });
     } else {
-      map.set(item.id, { ...item });
+      map.set(item.id, {
+        ...item,
+        quantity: Number(item.quantity) || 1,
+      });
     }
   });
+
   return Array.from(map.values());
 };
 
 export function CartProvider({ children }) {
   const { user } = useAuth();
+
+  // ilk açılışta sadece guest cart'ı oku
   const [items, setItems] = useState(() => readCart(STORAGE_KEY));
 
-  // items değişince localStorage’a yaz
+  // user'in önceki değerini tut (login transition'u yakalamak için)
+  const prevUserRef = useRef(null);
+
+  // items veya user değişince ilgili key'e yaz
   useEffect(() => {
     const key = buildKey(user);
     writeCart(key, items);
   }, [items, user]);
 
-  // user login olunca guest cart + user cart merge et
-  useEffect(() => {
-    if (!user) {
-      setItems(readCart(STORAGE_KEY));
-      return;
-    }
+  // user değişince sepeti yönet
+useEffect(() => {
+  const prevUser = prevUserRef.current;
+
+  // LOGOUT / guest mode
+  if (!user) {
     const guestCart = readCart(STORAGE_KEY);
-    const userKey = buildKey(user);
-    const userCart = readCart(userKey);
-    const merged = mergeCarts(userCart, guestCart);
+    setItems(guestCart);
+    prevUserRef.current = null;
+    return;
+  }
+
+  const userKey = buildKey(user);
+
+  // 1) İlk defa login oldu (guest → user geçişi)
+  if (!prevUser && user) {
+    const guestCart = readCart(STORAGE_KEY);
+    // *** ÖNEMLİ: Eski user cart'ı HİÇ dikkate almıyoruz ***
+    const merged = guestCart; // sadece guest cart'ı al
+
     setItems(merged);
-    writeCart(userKey, merged);
+    writeCart(userKey, merged); // bunu user'a kaydet
     writeCart(STORAGE_KEY, []); // guest cart temizle
-  }, [user]);
+    prevUserRef.current = user;
+    return;
+  }
+
+  // 2) Zaten loginli user, sayfa yenileme / route değişimi
+  const userCart = readCart(userKey);
+  setItems(userCart);
+  prevUserRef.current = user;
+}, [user]);
+
+
+  // === Cart operations ===
 
   const addItem = (product, quantity = 1) => {
-    const qty = Number(quantity) || 1;
+    const qty = Math.max(1, Number(quantity) || 1);
+
     setItems((prev) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
         return prev.map((item) =>
           item.id === product.id
-            ? { ...item, quantity: (item.quantity || 0) + qty }
+            ? {
+                ...item,
+                quantity: (Number(item.quantity) || 0) + qty,
+              }
             : item
         );
       }
@@ -91,7 +133,7 @@ export function CartProvider({ children }) {
     setItems((prev) =>
       prev.map((item) =>
         item.id === id
-          ? { ...item, quantity: (item.quantity || 0) + 1 }
+          ? { ...item, quantity: (Number(item.quantity) || 0) + 1 }
           : item
       )
     );
@@ -101,13 +143,29 @@ export function CartProvider({ children }) {
       prev
         .map((item) =>
           item.id === id
-            ? { ...item, quantity: Math.max(0, (item.quantity || 0) - 1) }
+            ? {
+                ...item,
+                quantity: Math.max(
+                  0,
+                  (Number(item.quantity) || 0) - 1
+                ),
+              }
             : item
         )
-        .filter((item) => item.quantity > 0)
+        .filter((item) => (Number(item.quantity) || 0) > 0)
     );
 
   const clearCart = () => setItems([]);
+
+  const itemCount = useMemo(
+    () =>
+      items.reduce(
+        (sum, item) =>
+          sum + (Number(item.quantity) || Number(item.qty) || 0),
+        0
+      ),
+    [items]
+  );
 
   const subtotal = useMemo(
     () =>
@@ -115,7 +173,7 @@ export function CartProvider({ children }) {
         (sum, item) =>
           sum +
           Number(item.price || 0) *
-            Number(item.quantity || item.qty || 0),
+            (Number(item.quantity) || Number(item.qty) || 0),
         0
       ),
     [items]
@@ -125,13 +183,14 @@ export function CartProvider({ children }) {
     () => ({
       items,
       subtotal,
+      itemCount,
       addItem,
       removeItem,
       increment,
       decrement,
       clearCart,
     }),
-    [items, subtotal]
+    [items, subtotal, itemCount]
   );
 
   return (
