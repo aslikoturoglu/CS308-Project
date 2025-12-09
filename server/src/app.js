@@ -26,6 +26,9 @@ app.use(express.static(publicDir));
 
 // SPA fallback
 app.get("*", (req, res) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).send("Not Found");
+  }
   if (fs.existsSync(indexPath)) {
     return res.sendFile(indexPath);
   }

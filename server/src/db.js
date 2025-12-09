@@ -13,12 +13,14 @@ const {
   DB_PORT,
 } = process.env;
 
+const dbPort = DB_PORT ? Number(DB_PORT) : undefined;
+
 const db = mysql.createConnection({
   host: DB_HOST,
   user: DB_USER,
   password: DB_PASS ?? DB_PASSWORD,
   database: DB_NAME ?? DB_DATABASE,
-  port: DB_PORT,
+  port: dbPort ?? 3306,
 });
 
 // DATABASE CONNECTION
