@@ -1,4 +1,6 @@
+// server/src/routes/productRoutes.js
 import { Router } from "express";
+
 import {
   getAllProducts,
   getProductById,
@@ -7,6 +9,15 @@ import {
   deleteProduct,
   updateProductStock,
 } from "../controllers/productController.js";
+
+
+import {
+  getAllProducts,
+  updateProductStock,
+} from "../controllers/productController.js";
+
+import { getAllProducts, updateProductStock, getProductById } from "../controllers/productController.js";
+
 
 const router = Router();
 

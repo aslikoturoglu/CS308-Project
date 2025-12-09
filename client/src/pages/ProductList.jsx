@@ -140,6 +140,8 @@ const handleDecrease = async (p) => {
         "name",
         "description",
         "category",
+        "material",
+        "color",
       ];
       
       list = list.filter((p) =>

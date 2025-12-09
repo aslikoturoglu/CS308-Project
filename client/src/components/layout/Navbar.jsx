@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useChat } from "../../context/ChatContext";
 import "../../styles/navbar.css";
+import { useAuth } from "../../context/AuthContext";
 
 const links = [
   { to: "/", label: "Home", end: true },
@@ -13,10 +14,18 @@ const links = [
 ];
 
 function Navbar() {
-  const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const { openChat } = useChat();
+  const navigate = useNavigate(); //
+  const [open, setOpen] = useState(false); //
+  const [search, setSearch] = useState(""); //
+  const { openChat } = useChat(); //
+
+  const { user, logout } = useAuth(); 
+  const userLoggedIn = !!user; 
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
 
   const handleNavClick = () => setOpen(false);
 
@@ -31,7 +40,10 @@ function Navbar() {
   return (
     <nav className="nav">
       <div className="nav__inner">
-        <div className="nav__brand">SUHome</div>
+
+      <div className={`nav__brand ${userLoggedIn ? "logged-in-shadow" : ""}`}>
+          {userLoggedIn ? `Welcome, ${user.name}` : "SUHome"}
+        </div>
 
         <button
           type="button"
@@ -45,7 +57,9 @@ function Navbar() {
         </button>
 
         <div className={`nav__links ${open ? "is-open" : ""}`}>
-          {links.map((link) => (
+          {links.filter(
+              (link) => !(link.to === "/login" && userLoggedIn) // login olduysan login linkini gösterme
+            ).map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
@@ -56,6 +70,19 @@ function Navbar() {
               {link.label}
             </NavLink>
           ))}
+
+           {userLoggedIn && (
+            <a
+              href="#"
+              className="nav__link signout-link"
+              onClick={(e) => {
+                e.preventDefault();
+                handleLogout();
+              }}
+            >
+              Sign Out
+            </a>
+          )}
 
           <form className="nav__search" onSubmit={handleSearch}>
             <input

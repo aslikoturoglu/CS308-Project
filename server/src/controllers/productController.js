@@ -1,3 +1,4 @@
+// server/src/controllers/productController.js
 import db from "../db.js";
 
 /* =========================================================
@@ -32,9 +33,65 @@ export function getAllProducts(req, res) {
   });
 }
 
+<<<<<<< HEAD
 /* =========================================================
    GET — ÜRÜNÜ ID İLE GETİR
    ========================================================= */
+=======
+export function updateProductStock(req, res) {
+  const { id } = req.params;
+  let { amount } = req.body;
+
+  // amount zorunlu
+  amount = Number(amount);
+  if (!Number.isFinite(amount) || amount === 0) {
+    return res.status(400).json({ error: "amount missing or invalid" });
+  }
+
+  // 🔽 Stok azaltma (amount < 0) -> stok yetiyor mu kontrol et
+  if (amount < 0) {
+    const need = Math.abs(amount);
+
+    const sql = `
+      UPDATE products
+      SET product_stock = product_stock + ?
+      WHERE product_id = ? AND product_stock >= ?
+    `;
+
+    db.query(sql, [amount, id, need], (err, result) => {
+      if (err) {
+        console.error("Stock update failed:", err);
+        return res.status(500).json({ error: "Stock update failed" });
+      }
+
+      // etkilenen satır yoksa stok yetmedi
+      if (result.affectedRows === 0) {
+        return res.status(400).json({ error: "Not enough stock" });
+      }
+
+      return res.json({ success: true });
+    });
+  } else {
+    // 🔼 Stok arttırma (iade, admin panel vs.)
+    const sql = `
+      UPDATE products
+      SET product_stock = product_stock + ?
+      WHERE product_id = ?
+    `;
+
+    db.query(sql, [amount, id], (err) => {
+      if (err) {
+        console.error("Stock update failed:", err);
+        return res.status(500).json({ error: "Stock update failed" });
+      }
+      return res.json({ success: true });
+    });
+  }
+}
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 export function getProductById(req, res) {
   const { id } = req.params;
 
@@ -78,6 +135,7 @@ export function getProductById(req, res) {
 export function addProduct(req, res) {
   const { name, price, stock, category } = req.body;
 
+<<<<<<< HEAD
   if (!name || !price || !stock) {
     return res.status(400).json({ error: "Eksik alanlar var" });
   }
@@ -178,3 +236,6 @@ export function updateProductStock(req, res) {
     res.json({ success: true });
   });
 }
+=======
+>>>>>>> 1e33c3f5427e7037bc22f7dc8057c4e775659807
+>>>>>>> origin/main

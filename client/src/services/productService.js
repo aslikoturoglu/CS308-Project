@@ -44,6 +44,9 @@ export async function fetchProductsWithMeta() {
         stock: p.stock,
         image: p.image,
         category: p.category,
+        material: p.material,
+        color: p.color,
+        mainCategory: p.mainCategory,
       },
       adjustments,
       reviewMap
@@ -68,6 +71,9 @@ export async function fetchProductById(id) {
       stock: p.stock,
       image: p.image,
       category: p.category,
+      material: p.material,
+      color: p.color,
+      mainCategory: p.mainCategory,
     },
     adjustments,
     reviewMap
