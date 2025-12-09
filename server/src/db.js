@@ -15,6 +15,10 @@ const {
   DB_PORT,
 } = process.env;
 
+if (process.env.NODE_ENV === "production" && !DB_HOST) {
+  throw new Error("DB_HOST is required in production");
+}
+
 const dbPort = DB_PORT ? Number(DB_PORT) : undefined;
 
 const db = mysql.createConnection({
