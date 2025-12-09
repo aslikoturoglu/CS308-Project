@@ -135,7 +135,21 @@ const handleDecrease = async (p) => {
     let list = products;
     if (searchTerm.trim()) {
       const term = searchTerm.trim().toLowerCase();
-      list = list.filter((p) => p.name.toLowerCase().includes(term));
+      
+      const searchableFields = [
+        "name",
+        "description",
+        "category",
+        "material",
+        "color",
+      ];
+      
+      list = list.filter((p) =>
+        searchableFields.some((field) =>
+          (p[field] || "").toString().toLowerCase().includes(term)
+        )
+      );
+  
     }
     if (category !== "All") {
       const rule = categories.find((c) => c.label === category);

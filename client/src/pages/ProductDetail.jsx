@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { fetchProductById } from "../services/productService";
+import { useWishlist } from "../context/WishlistContext";
+
 
 function ProductDetail() {
   const { id } = useParams();
@@ -11,6 +13,7 @@ function ProductDetail() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState("");
+  const { toggleItem, inWishlist } = useWishlist();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -39,11 +42,20 @@ function ProductDetail() {
 
     return () => controller.abort();
   }, [id]);
+/*
+  useEffect(() => {
+    if (!product) return;
+    const stored = JSON.parse(localStorage.getItem("wishlist")) || [];
+    setInWishlist(stored.some((item) => item.id === product.id));
+  }, [product]);
+  */
 
+  /*
   const fauxDescription = useMemo(() => {
     if (!product) return "";
     return `${product.name} is designed to add a modern, clean touch to your space. Durable materials make assembly easy and provide long-lasting use. With sleek lines and timeless style, it fits effortlessly into any room.`;
   }, [product]);
+  */
 
   const gallery = useMemo(() => {
     if (!product) return [];
@@ -223,7 +235,39 @@ function ProductDetail() {
               ₺{product.price.toLocaleString("tr-TR")}
             </span>
           </div>
-          <p style={{ margin: 0, color: "#334155", lineHeight: 1.5 }}>{fauxDescription}</p>
+
+          {product.description && (
+               <section
+               style={{
+                 background: "#f8fafc",
+                 borderRadius: 12,
+                 padding: 12,
+                 border: "1px solid #e2e8f0",
+               }}
+             >
+               <h3 style={{ margin: 0, marginBottom: 6, color: "#0f172a" }}>Description</h3>
+               <p style={{ margin: 0, lineHeight: 1.5, color: "#475569" }}>{product.description}</p>
+             </section>
+           )}
+
+           {/* CHANGE #2 — MATERIAL + COLOR ALANI */}
+          <section
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              padding: 12,
+              border: "1px solid #e2e8f0",
+              display: "grid",
+              gap: 8,
+            }}
+          >
+            <h3 style={{ margin: 0, marginBottom: 4, color: "#0f172a" }}>Product Details</h3>
+
+            <Info label="Material" value={product.material ?? "N/A"} />
+            <Info label="Color" value={product.color ?? "N/A"} />
+            <Info label="Category" value={product.category ?? "N/A"} />
+          </section>
+          
 
           <div
             style={{
@@ -248,6 +292,24 @@ function ProductDetail() {
           </ul>
 
           <div style={{ display: "flex", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
+          
+          <button
+  type="button"
+  onClick={() => toggleItem(product)}
+  style={{
+    background: inWishlist(product.id) ? "#e2e8f0" : "#facc15",
+    color: "#0f172a",
+    borderRadius: 12,
+    padding: "12px 16px",
+    fontWeight: 800,
+    cursor: "pointer",
+    minWidth: 160,
+  }}
+>
+  {inWishlist(product.id) ? "❤️ In Wishlist" : "🤍 Add to Wishlist"}
+</button>
+
+
             <button
               type="button"
               onClick={handleAddToCart}

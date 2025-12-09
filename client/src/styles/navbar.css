@@ -1,6 +1,6 @@
 .nav {
   background-color: #ffffff;
-  border-bottom: 3px solid #ffcc00;
+  border-bottom: 3px solid #0057a3d2;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
   font-family: Arial, sans-serif;
   position: sticky;
@@ -86,8 +86,8 @@
 }
 
 .nav__link.active {
-  border-bottom: 3px solid #ffcc00;
-  color: #0f172a;
+  border-bottom: 3px solid #0058a3;
+  color: #0058a3;
 }
 
 .nav__chat {
@@ -134,4 +134,25 @@
     width: 100%;
     text-align: left;
   }
+}
+
+.nav__brand.logged-in-shadow {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #0058a3;
+
+  /* 🔽 Aşağı doğru yumuşak gölge */
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+
+  letter-spacing: 0.3px;
+  transition: 0.2s ease;
+}
+
+.nav__brand.logged-in-shadow:hover {
+  text-shadow: 0 3px 6px rgba(0, 0, 0, 0.45);
+  transform: translateY(-1px);
+}
+
+.signout-link::after {
+  display: none !important;
 }
