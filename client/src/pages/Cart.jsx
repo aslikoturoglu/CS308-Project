@@ -12,31 +12,12 @@ function Cart() {
     const item = items.find((p) => p.id === id);
     if (!item) return;
 
-<<<<<<< HEAD
-=======
-  if (item.availableStock <= item.quantity) {
-    alert("Not enough stock for this item.");
-    return;
-  }
+    // Stok kontrolü
+    if (item.availableStock <= item.quantity) {
+      alert("Not enough stock for this item.");
+      return;
+    }
 
-  try {
-    // stoktan 1 düş
-    await updateStock(id, -1);
-    // cart'ta quantity +1
-    increment(id);
-  } catch (err) {
-    console.error("Increase failed:", err);
-    alert("Not enough stock or stock update failed.");
-  }
-};
-
-const handleDecrease = async (id) => {
-  const item = items.find((p) => p.id === id);
-  if (!item) return;
-
-  // quantity 1 ise, azaltmak yerine tamamen silip stok iade edeceğiz
-  if (item.quantity <= 1) {
->>>>>>> 1e33c3f5427e7037bc22f7dc8057c4e775659807
     try {
       // stoktan 1 düş
       await updateStock(id, -1);
@@ -55,7 +36,7 @@ const handleDecrease = async (id) => {
     // quantity 1 ise, azaltmak yerine tamamen silip stoğa iade
     if (item.quantity <= 1) {
       try {
-        await updateStock(id, item.quantity); // 1 geri ekle
+        await updateStock(id, item.quantity); // sepetteki miktarı stoğa geri ekle (1)
         removeItem(id);
       } catch (err) {
         console.error("Remove failed:", err);
