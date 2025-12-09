@@ -126,6 +126,7 @@ export function getProductById(req, res) {
   });
 }
 
+<<<<<<< HEAD
 /* =========================================================
    POST — YENİ ÜRÜN EKLE
    ========================================================= */
@@ -234,3 +235,5 @@ export function updateProductStock(req, res) {
   });
 }
 
+=======
+>>>>>>> main
