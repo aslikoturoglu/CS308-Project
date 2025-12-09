@@ -33,11 +33,11 @@ export function getAllProducts(req, res) {
   });
 }
 
-<<<<<<< HEAD
+
 /* =========================================================
    GET — ÜRÜNÜ ID İLE GETİR
    ========================================================= */
-=======
+
 export function updateProductStock(req, res) {
   const { id } = req.params;
   let { amount } = req.body;
@@ -88,10 +88,7 @@ export function updateProductStock(req, res) {
     });
   }
 }
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/main
 export function getProductById(req, res) {
   const { id } = req.params;
 
@@ -135,7 +132,7 @@ export function getProductById(req, res) {
 export function addProduct(req, res) {
   const { name, price, stock, category } = req.body;
 
-<<<<<<< HEAD
+
   if (!name || !price || !stock) {
     return res.status(400).json({ error: "Eksik alanlar var" });
   }
@@ -236,6 +233,4 @@ export function updateProductStock(req, res) {
     res.json({ success: true });
   });
 }
-=======
->>>>>>> 1e33c3f5427e7037bc22f7dc8057c4e775659807
->>>>>>> origin/main
+
