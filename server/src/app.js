@@ -1,3 +1,8 @@
+if (process.env.NODE_ENV !== "production") {
+  const { config } = await import("dotenv");
+  config();
+}
+
 import express from "express";
 import cors from "cors";
 import fs from "fs";
