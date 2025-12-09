@@ -20,7 +20,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 
 // Static serve for built client
-const publicDir = path.join(__dirname, "public");
+const publicDir = path.resolve(__dirname, "../public");
 const indexPath = path.join(publicDir, "index.html");
 app.use(express.static(publicDir));
 
