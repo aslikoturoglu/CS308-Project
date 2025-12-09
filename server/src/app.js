@@ -24,11 +24,8 @@ const publicDir = path.resolve(__dirname, "../public");
 const indexPath = path.join(publicDir, "index.html");
 app.use(express.static(publicDir));
 
-// SPA fallback
-app.get("*", (req, res) => {
-  if (req.path.startsWith("/api/")) {
-    return res.status(404).send("Not Found");
-  }
+// SPA fallback (Express 5 compatible, ignore /api/*)
+app.get(/^(?!\/api\/).*/, (req, res) => {
   if (fs.existsSync(indexPath)) {
     return res.sendFile(indexPath);
   }
