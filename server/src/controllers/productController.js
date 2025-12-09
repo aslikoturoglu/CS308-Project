@@ -1,3 +1,4 @@
+// server/src/controllers/productController.js
 import db from "../db.js";
 
 export function getAllProducts(req, res) {
@@ -31,16 +32,53 @@ export function getAllProducts(req, res) {
 
 export function updateProductStock(req, res) {
   const { id } = req.params;
-  const { amount } = req.body;
+  let { amount } = req.body;
 
-  if (!amount) return res.status(400).json({error:"amount missing"});
+  // amount zorunlu
+  amount = Number(amount);
+  if (!Number.isFinite(amount) || amount === 0) {
+    return res.status(400).json({ error: "amount missing or invalid" });
+  }
 
-  const sql = `UPDATE products SET product_stock = product_stock + ? WHERE product_id = ?`;
+  // 🔽 Stok azaltma (amount < 0) -> stok yetiyor mu kontrol et
+  if (amount < 0) {
+    const need = Math.abs(amount);
 
-  db.query(sql, [amount, id], (err, result) => {
-    if (err) return res.status(500).json({error:"Stock update failed"});
-    res.json({success:true});
-  });
+    const sql = `
+      UPDATE products
+      SET product_stock = product_stock + ?
+      WHERE product_id = ? AND product_stock >= ?
+    `;
+
+    db.query(sql, [amount, id, need], (err, result) => {
+      if (err) {
+        console.error("Stock update failed:", err);
+        return res.status(500).json({ error: "Stock update failed" });
+      }
+
+      // etkilenen satır yoksa stok yetmedi
+      if (result.affectedRows === 0) {
+        return res.status(400).json({ error: "Not enough stock" });
+      }
+
+      return res.json({ success: true });
+    });
+  } else {
+    // 🔼 Stok arttırma (iade, admin panel vs.)
+    const sql = `
+      UPDATE products
+      SET product_stock = product_stock + ?
+      WHERE product_id = ?
+    `;
+
+    db.query(sql, [amount, id], (err) => {
+      if (err) {
+        console.error("Stock update failed:", err);
+        return res.status(500).json({ error: "Stock update failed" });
+      }
+      return res.json({ success: true });
+    });
+  }
 }
 
 export function getProductById(req, res) {
@@ -79,5 +117,4 @@ export function getProductById(req, res) {
     res.json(normalized);
   });
 }
-
 

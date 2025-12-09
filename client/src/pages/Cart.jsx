@@ -2,77 +2,75 @@ import { Link, useNavigate } from "react-router-dom";
 import CartItem from "../components/cart/CartItem";
 import CartSummary from "../components/cart/CartSummary";
 import { useCart } from "../context/CartContext";
-import { updateStock } from "../services/api.js";
-
+import { updateStock } from "../services/api.js"; // products/:id/stock endpoint
 
 function Cart() {
   const navigate = useNavigate();
   const { items, subtotal, increment, decrement, removeItem } = useCart();
 
-  // id parametresi CartItem'den geliyor
-const handleIncrease = async (id) => {
-  const item = items.find((p) => p.id === id);
-  if (!item) return;
+  const handleIncrease = async (id) => {
+    const item = items.find((p) => p.id === id);
+    if (!item) return;
 
-  if (item.availableStock <= item.quantity) {
-    alert("Not enough stock for this item.");
-    return;
-  }
+    // Stok kontrolü
+    if (item.availableStock <= item.quantity) {
+      alert("Not enough stock for this item.");
+      return;
+    }
 
-  try {
-    // stoktan 1 düş
-    await updateStock(id, -1);
-    // cart'ta quantity +1
-    increment(id);
-  } catch (err) {
-    console.error("Increase failed:", err);
-    alert("Not enough stock or stock update failed.");
-  }
-};
-
-const handleDecrease = async (id) => {
-  const item = items.find((p) => p.id === id);
-  if (!item) return;
-
-  // quantity 1 ise, azaltmak yerine tamamen silip stok iade edeceğiz
-  if (item.quantity <= 1) {
     try {
-      await updateStock(id, item.quantity); // 1 geri ekle
-      removeItem(id);
+      // stoktan 1 düş
+      await updateStock(id, -1);
+      // cart'ta quantity +1
+      increment(id);
     } catch (err) {
-      console.error("Remove failed:", err);
+      console.error("Increase failed:", err);
+      alert("Not enough stock or stock update failed.");
+    }
+  };
+
+  const handleDecrease = async (id) => {
+    const item = items.find((p) => p.id === id);
+    if (!item) return;
+
+    // quantity 1 ise, azaltmak yerine tamamen silip stoğa iade
+    if (item.quantity <= 1) {
+      try {
+        await updateStock(id, item.quantity); // sepetteki miktarı stoğa geri ekle (1)
+        removeItem(id);
+      } catch (err) {
+        console.error("Remove failed:", err);
+        alert("Stock update failed.");
+      }
+      return;
+    }
+
+    try {
+      // stok +1 (iade)
+      await updateStock(id, +1);
+      // cart'ta quantity -1
+      decrement(id);
+    } catch (err) {
+      console.error("Decrease failed:", err);
       alert("Stock update failed.");
     }
-    return;
-  }
+  };
 
-  try {
-    // stok +1 (iade)
-    await updateStock(id, +1);
-    // cart'ta quantity -1
-    decrement(id);
-  } catch (err) {
-    console.error("Decrease failed:", err);
-    alert("Stock update failed.");
-  }
-};
+  const handleRemove = async (id) => {
+    const item = items.find((p) => p.id === id);
+    if (!item) return;
 
-const handleRemove = async (id) => {
-  const item = items.find((p) => p.id === id);
-  if (!item) return;
-
-  try {
-    // ürün cart'tan tamamen silinirken tüm adetleri stoğa geri ekle
-    if (item.quantity > 0) {
-      await updateStock(id, item.quantity);
+    try {
+      // ürün cart'tan tamamen silinirken tüm adetleri stoğa geri ekle
+      if (item.quantity > 0) {
+        await updateStock(id, item.quantity);
+      }
+      removeItem(id);
+    } catch (err) {
+      console.error("Full remove failed:", err);
+      alert("Stock update failed.");
     }
-    removeItem(id);
-  } catch (err) {
-    console.error("Full remove failed:", err);
-    alert("Stock update failed.");
-  }
-};
-
+  };
 
   const shipping = items.length === 0 ? 0 : 89;
   const discount = subtotal > 4000 ? 250 : 0;
@@ -157,8 +155,8 @@ const handleRemove = async (id) => {
               item={item}
               onIncrease={handleIncrease}
               onDecrease={handleDecrease}
-               onRemove={handleRemove}
-               />
+              onRemove={handleRemove}
+            />
           ))}
         </div>
 

@@ -16,12 +16,22 @@ export async function getProductById(id) {
 
 // STOCK UPDATE --- DÜZELTİLMİŞ HAL
 export async function updateStock(id, amount) {
-  const res = await fetch(`${API_URL}/products/${id}/stock`, {
+  const res = await fetch(`http://localhost:3000/products/${id}/stock`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json"},
-    body: JSON.stringify({ amount }), // delta değil amount gönderiyoruz!
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ amount }),
   });
 
-  if (!res.ok) throw new Error("Stock update failed");
-  return res.json();
+  if (!res.ok) {
+    let data = {};
+    try {
+      data = await res.json();
+    } catch (e) {}
+
+    // backendten "Not enough stock" gelirse onu fırlat
+    throw new Error(data.error || "Stock update failed");
+  }
+
+  return await res.json(); // { success: true }
 }
+
