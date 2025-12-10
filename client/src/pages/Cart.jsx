@@ -12,7 +12,7 @@ function Cart() {
     const item = items.find((p) => p.id === id);
     if (!item) return;
 
-<<<<<<< HEAD
+
   if (item.availableStock <= item.quantity) {
     alert("Not enough stock for this item.");
     return;
@@ -37,21 +37,21 @@ function Cart() {
 
   // quantity 1 ise, azaltmak yerine tamamen silip stoğa iade
   if (item.quantity <= 1) {
-=======
+
     // Stok kontrolü
     if (item.availableStock <= item.quantity) {
       alert("Not enough stock for this item.");
       return;
     }
 
->>>>>>> main
+
     try {
       await updateStock(id, item.quantity); // stoğa tüm adedi geri ekle
       removeItem(id);
     } catch (err) {
-<<<<<<< HEAD
+
       console.error("Remove failed:", err);
-=======
+
       console.error("Increase failed:", err);
       alert("Not enough stock or stock update failed.");
     }
@@ -80,7 +80,7 @@ function Cart() {
       decrement(id);
     } catch (err) {
       console.error("Decrease failed:", err);
->>>>>>> main
+
       alert("Stock update failed.");
     }
     return;
