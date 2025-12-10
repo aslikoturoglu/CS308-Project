@@ -7,20 +7,17 @@ import {
   useState,
 } from "react";
 import { useAuth } from "./AuthContext";
-import { getOrCreateClientToken } from "../utils/storage";
-import { fetchCart, syncCartItems } from "../services/cartService";
 
 const CartContext = createContext(undefined);
 const STORAGE_KEY = "cart";
-const GUEST_TOKEN_KEY = "cart-guest-token";
 
-const storageKeyFor = (token) =>
-  token ? `${STORAGE_KEY}:${token}` : STORAGE_KEY;
+const buildKey = (user) =>
+  user ? `${STORAGE_KEY}:${user.id ?? user.email}` : STORAGE_KEY;
 
-const readCart = (token) => {
+const readCart = (key) => {
   if (typeof window === "undefined") return [];
   try {
-    const stored = window.localStorage.getItem(storageKeyFor(token));
+    const stored = window.localStorage.getItem(key);
     return stored ? JSON.parse(stored) : [];
   } catch (error) {
     console.error("Cart storage read failed", error);
@@ -28,157 +25,112 @@ const readCart = (token) => {
   }
 };
 
-const writeCart = (token, value) => {
+const writeCart = (key, value) => {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(storageKeyFor(token), JSON.stringify(value));
+    window.localStorage.setItem(key, JSON.stringify(value));
   } catch (error) {
     console.error("Cart storage write failed", error);
   }
 };
 
-const normalizeItems = (apiItems = []) =>
-  apiItems.map((row) => {
-    const productId = row.product_id ?? row.id;
-    const quantity = Number(row.quantity ?? row.qty ?? 1);
-    const price = Number(row.price ?? row.unit_price ?? row.product_price ?? 0);
-    return {
-      id: productId,
-      productId,
-      cartItemId: row.id ?? row.cart_item_id,
-      name: row.name ?? row.product_name,
-      price,
-      quantity,
-      image: row.image ?? row.product_image,
-      availableStock: Number(row.availableStock ?? row.stock ?? row.product_stock ?? 0),
-      stock: Number(row.stock ?? row.product_stock ?? 0),
-      line_total: row.line_total ?? price * quantity,
-    };
+const mergeCarts = (userCart, guestCart) => {
+  const map = new Map();
+
+  [...userCart, ...guestCart].forEach((item) => {
+    const existing = map.get(item.id);
+    if (existing) {
+      map.set(item.id, {
+        ...existing,
+        quantity:
+          (Number(existing.quantity) || 0) + (Number(item.quantity) || 0),
+      });
+    } else {
+      map.set(item.id, {
+        ...item,
+        quantity: Number(item.quantity) || 1,
+      });
+    }
   });
 
-const toSyncPayload = (items) =>
-  items
-    .map((item) => ({
-      product_id: item.productId ?? item.id,
-      quantity: Number(item.quantity ?? item.qty ?? 1),
-    }))
-    .filter(
-      (row) =>
-        row.product_id &&
-        Number.isFinite(row.quantity) &&
-        row.quantity > 0
-    );
-
-const buildCartToken = (user) =>
-  user ? `user-${user.id ?? user.email}` : getOrCreateClientToken(GUEST_TOKEN_KEY);
+  return Array.from(map.values());
+};
 
 export function CartProvider({ children }) {
   const { user } = useAuth();
 
-  const [cartToken, setCartToken] = useState(() => buildCartToken(user));
-  const [items, setItems] = useState(() => readCart(cartToken));
+  // ilk açılışta sadece guest cart'ı oku
+  const [items, setItems] = useState(() => readCart(STORAGE_KEY));
 
-  const syncRef = useRef(Promise.resolve());
-  const prevTokenRef = useRef(cartToken);
+  // user'in önceki değerini tut (login transition'u yakalamak için)
+  const prevUserRef = useRef(null);
 
+  // items veya user değişince ilgili key'e yaz
   useEffect(() => {
-    setCartToken(buildCartToken(user));
-  }, [user]);
+    const key = buildKey(user);
+    writeCart(key, items);
+  }, [items, user]);
 
-  useEffect(() => {
-    if (!cartToken) return;
+  // user değişince sepeti yönet
+useEffect(() => {
+  const prevUser = prevUserRef.current;
 
-    // Token değiştiğinde eldeki item'ları yeni token'a taşı
-    if (prevTokenRef.current && prevTokenRef.current !== cartToken) {
-      if (items.length > 0) {
-        writeCart(cartToken, items);
-        syncToBackend(items);
-      }
-    }
-    prevTokenRef.current = cartToken;
-  }, [cartToken]);
+  // LOGOUT / guest mode
+  if (!user) {
+    const guestCart = readCart(STORAGE_KEY);
+    setItems(guestCart);
+    prevUserRef.current = null;
+    return;
+  }
 
-  useEffect(() => {
-    if (!cartToken) return;
-    let cancelled = false;
+  const userKey = buildKey(user);
 
-    fetchCart(cartToken)
-      .then((data) => {
-        if (cancelled) return;
-        const normalized = normalizeItems(data.items ?? data ?? []);
-        setItems(normalized);
-        writeCart(cartToken, normalized);
-      })
-      .catch((error) => {
-        console.error("Cart fetch failed, using local fallback", error);
-        const local = readCart(cartToken);
-        setItems(local);
-        writeCart(cartToken, local);
-      });
+  // 1) İlk defa login oldu (guest → user geçişi)
+  if (!prevUser && user) {
+    const guestCart = readCart(STORAGE_KEY);
+    // *** ÖNEMLİ: Eski user cart'ı HİÇ dikkate almıyoruz ***
+    const merged = guestCart; // sadece guest cart'ı al
 
-    return () => {
-      cancelled = true;
-    };
-  }, [cartToken]);
+    setItems(merged);
+    writeCart(userKey, merged); // bunu user'a kaydet
+    writeCart(STORAGE_KEY, []); // guest cart temizle
+    prevUserRef.current = user;
+    return;
+  }
 
-  const syncToBackend = (nextItems) => {
-    if (!cartToken) return;
-    const payload = toSyncPayload(nextItems);
-    syncRef.current = syncRef.current
-      .catch(() => undefined)
-      .then(async () => {
-        try {
-          await syncCartItems({ token: cartToken, items: payload });
-          const refreshed = await fetchCart(cartToken);
-          const normalized = normalizeItems(refreshed.items ?? refreshed ?? []);
-          setItems(normalized);
-          writeCart(cartToken, normalized);
-        } catch (error) {
-          console.error("Cart sync failed", error);
-        }
-      });
-  };
+  // 2) Zaten loginli user, sayfa yenileme / route değişimi
+  const userCart = readCart(userKey);
+  setItems(userCart);
+  prevUserRef.current = user;
+}, [user]);
 
-  const applyAndSync = (updater) => {
-    setItems((prev) => {
-      const next = updater(prev);
-      writeCart(cartToken, next);
-      syncToBackend(next);
-      return next;
-    });
-  };
 
   // === Cart operations ===
 
   const addItem = (product, quantity = 1) => {
     const qty = Math.max(1, Number(quantity) || 1);
 
-    applyAndSync((prev) => {
+    setItems((prev) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
         return prev.map((item) =>
           item.id === product.id
-            ? { ...item, quantity: (Number(item.quantity) || 0) + qty }
+            ? {
+                ...item,
+                quantity: (Number(item.quantity) || 0) + qty,
+              }
             : item
         );
       }
-      return [
-        ...prev,
-        {
-          ...product,
-          id: product.id,
-          productId: product.id,
-          quantity: qty,
-        },
-      ];
+      return [...prev, { ...product, quantity: qty }];
     });
   };
 
   const removeItem = (id) =>
-    applyAndSync((prev) => prev.filter((item) => item.id !== id));
+    setItems((prev) => prev.filter((item) => item.id !== id));
 
   const increment = (id) =>
-    applyAndSync((prev) =>
+    setItems((prev) =>
       prev.map((item) =>
         item.id === id
           ? { ...item, quantity: (Number(item.quantity) || 0) + 1 }
@@ -187,17 +139,23 @@ export function CartProvider({ children }) {
     );
 
   const decrement = (id) =>
-    applyAndSync((prev) =>
+    setItems((prev) =>
       prev
         .map((item) =>
           item.id === id
-            ? { ...item, quantity: Math.max(0, (Number(item.quantity) || 0) - 1) }
+            ? {
+                ...item,
+                quantity: Math.max(
+                  0,
+                  (Number(item.quantity) || 0) - 1
+                ),
+              }
             : item
         )
         .filter((item) => (Number(item.quantity) || 0) > 0)
     );
 
-  const clearCart = () => applyAndSync(() => []);
+  const clearCart = () => setItems([]);
 
   const itemCount = useMemo(
     () =>

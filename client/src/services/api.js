@@ -16,7 +16,7 @@ export async function getProductById(id) {
 
 // STOCK UPDATE --- DÜZELTİLMİŞ HAL
 export async function updateStock(id, amount) {
-  const res = await fetch(`/api/products/${id}/stock`, {
+  const res = await fetch(`http://localhost:3000/products/${id}/stock`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ amount }),
@@ -34,3 +34,4 @@ export async function updateStock(id, amount) {
 
   return await res.json(); // { success: true }
 }
+
