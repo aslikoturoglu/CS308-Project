@@ -1,119 +1,116 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+// client/src/context/ChatContext.jsx
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  connectCustomerSocket,
+  sendCustomerMessage,
+  disconnectCustomerSocket,
+} from "../services/chatService";
 
 const ChatContext = createContext(undefined);
-const STORAGE_KEY = "chat-thread";
 
-const seedMessages = [
-  {
-    id: "welcome",
-    from: "assistant",
-    text: "Hi there! Ask about orders, returns, or product suggestions anytime.",
-    timestamp: Date.now(),
-  },
-];
-
-const cannedReplies = [
-  {
-    match: /cargo|shipping|delivery|kargo|teslim/i,
-    text: "Orders ship in 1-3 business days. I can share your tracking code once it’s ready.",
-  },
-  {
-    match: /return|refund|exchange|iade|degisim|değişim/i,
-    text: "You can return items within 14 days for free. I can create a return code for you.",
-  },
-  {
-    match: /stock|size|color|ürün|beden/i,
-    text: "Share the product name and I’ll check available sizes and colors for you.",
-  },
-  {
-    match: /price|discount|sale|fiyat|indirim/i,
-    text: "We apply basket-only discounts automatically when you add items to cart.",
-  },
-];
-
-const fallbackReplies = [
-  "Got it—I'll get back to you with the details in a moment.",
-  "I’m putting together a couple of options for you.",
-  "Checking that now. Let me know if you have another question meanwhile.",
-];
-
-const buildMessage = (text, from) => ({
-  id: `${from}-${Date.now()}-${Math.round(Math.random() * 1000)}`,
-  from,
-  text,
-  timestamp: Date.now(),
-});
-
-function resolveReply(input) {
-  const found = cannedReplies.find((item) => item.match.test(input));
-  if (found) return found.text;
-  return fallbackReplies[Math.floor(Math.random() * fallbackReplies.length)];
+function mapBackendMessage(msg) {
+  return {
+    id: `${msg.timestamp}-${Math.random().toString(16).slice(2)}`,
+    from: msg.from === "agent" ? "assistant" : "user",
+    text: msg.text,
+    timestamp: msg.timestamp || Date.now(),
+  };
 }
 
 export function ChatProvider({ children }) {
-  const [messages, setMessages] = useState(() => {
-    if (typeof window === "undefined") return seedMessages;
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : seedMessages;
-    } catch (error) {
-      console.error("Chat storage read failed", error);
-      return seedMessages;
-    }
-  });
   const [isOpen, setIsOpen] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
+  const [messages, setMessages] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isTyping] = useState(false); // typing şimdilik yok
+  const [conversationId, setConversationId] = useState(null);
+
+  const socketReadyRef = useRef(false);
+
+  const handleConversation = useCallback((conv) => {
+    setConversationId(conv.id);
+
+    if (Array.isArray(conv.messages)) {
+      setMessages(conv.messages.map(mapBackendMessage));
+    }
+  }, []);
+
+  const handleIncomingMessage = useCallback(
+    (_convId, msg) => {
+      const mapped = mapBackendMessage(msg);
+      setMessages((prev) => [...prev, mapped]);
+
+      if (!isOpen) {
+        setUnreadCount((prev) => prev + 1);
+      }
+    },
+    [isOpen]
+  );
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
-    } catch (error) {
-      console.error("Chat storage write failed", error);
-    }
-  }, [messages]);
+    if (!isOpen) return;
+    if (socketReadyRef.current) return;
 
-  useEffect(() => {
-    if (isOpen) setUnreadCount(0);
-  }, [isOpen]);
+    connectCustomerSocket({
+      onConversation: handleConversation,
+      onMessage: handleIncomingMessage,
+    });
 
-  const appendMessage = (text, from) => {
-    const message = buildMessage(text, from);
-    setMessages((prev) => [...prev, message]);
-    if (from === "assistant" && !isOpen) {
-      setUnreadCount((prev) => prev + 1);
-    }
-    return message;
-  };
+    socketReadyRef.current = true;
 
-  const sendMessage = (text) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    appendMessage(trimmed, "user");
-    setIsTyping(true);
-    setTimeout(() => {
-      appendMessage(resolveReply(trimmed), "assistant");
-      setIsTyping(false);
-    }, 450);
-  };
+    return () => {
+      // Uygulama tamamen kapanırken disconnect istersen burayı açarsın
+      // disconnectCustomerSocket();
+    };
+  }, [isOpen, handleConversation, handleIncomingMessage]);
 
-  const openChat = () => setIsOpen(true);
-  const closeChat = () => setIsOpen(false);
-  const toggleChat = () => setIsOpen((prev) => !prev);
+  const sendMessage = useCallback(
+    (text) => {
+      if (!conversationId || !text.trim()) return;
+
+      const myMsg = {
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        from: "user",
+        text,
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => [...prev, myMsg]);
+
+      sendCustomerMessage(conversationId, text);
+    },
+    [conversationId]
+  );
+
+  const toggleChat = useCallback(() => {
+    setIsOpen((prev) => {
+      const next = !prev;
+      if (next) setUnreadCount(0);
+      return next;
+    });
+  }, []);
+
+  const closeChat = useCallback(() => {
+    setIsOpen(false);
+  }, []);
 
   const value = useMemo(
     () => ({
-      messages,
       isOpen,
+      toggleChat,
+      closeChat,
+      messages,
+      sendMessage,
       isTyping,
       unreadCount,
-      sendMessage,
-      appendMessage,
-      openChat,
-      closeChat,
-      toggleChat,
     }),
-    [messages, isOpen, isTyping, unreadCount]
+    [isOpen, toggleChat, closeChat, messages, sendMessage, isTyping, unreadCount]
   );
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
@@ -121,6 +118,8 @@ export function ChatProvider({ children }) {
 
 export function useChat() {
   const ctx = useContext(ChatContext);
-  if (!ctx) throw new Error("useChat must be used within a ChatProvider");
+  if (!ctx) {
+    throw new Error("useChat must be used within a ChatProvider");
+  }
   return ctx;
 }
