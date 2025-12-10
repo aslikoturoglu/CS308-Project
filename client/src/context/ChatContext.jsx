@@ -41,6 +41,7 @@ export function ChatProvider({ children }) {
     window.localStorage.setItem(key, fresh);
     return fresh;
   });
+  const [serverUserId, setServerUserId] = useState(null);
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState(seedMessages);
   const [isLoading, setIsLoading] = useState(false);
@@ -49,7 +50,10 @@ export function ChatProvider({ children }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [syncError, setSyncError] = useState(null);
 
-  const activeUserId = useMemo(() => user?.id ?? clientToken, [user, clientToken]);
+  const activeUserId = useMemo(
+    () => serverUserId ?? user?.id ?? clientToken,
+    [serverUserId, user, clientToken]
+  );
   const identityEmail = useMemo(
     () => user?.email || `${clientToken}@chat.local`,
     [user, clientToken]
@@ -60,8 +64,9 @@ export function ChatProvider({ children }) {
     (incoming) =>
       (incoming || []).map((msg) => ({
         id: msg.id ?? msg.message_id ?? `${msg.from}-${msg.timestamp}`,
-        from: (msg.from === "support" ? "assistant" : msg.from) ??
-          (msg.sender_id === activeUserId ? "user" : "assistant"),
+        from:
+          (msg.from === "support" ? "assistant" : msg.from) ??
+          (String(msg.sender_id ?? "") === String(activeUserId) ? "user" : "assistant"),
         sender_id: msg.sender_id ?? activeUserId,
         text: msg.text ?? msg.message_text ?? "",
         timestamp: msg.timestamp ?? msg.created_at ?? Date.now(),
@@ -77,6 +82,9 @@ export function ChatProvider({ children }) {
         email: identityEmail,
         name: identityName,
       });
+      if (data?.user_id) {
+        setServerUserId(data.user_id);
+      }
       setConversationId(data.conversation_id);
       const nextMessages = normalizeMessages(data.messages);
       setMessages((prev) => {
@@ -143,6 +151,9 @@ export function ChatProvider({ children }) {
               msg.id === optimistic.id ? confirmed : msg
             )
           );
+        }
+        if (payload?.user_id) {
+          setServerUserId(payload.user_id);
         }
         setSyncError(null);
       })
