@@ -1,5 +1,15 @@
 const ORDER_KEY = "orders";
 
+export function formatOrderId(id) {
+  if (!id && id !== 0) return "#ORD-00000";
+  const numeric = Number(id);
+  if (Number.isFinite(numeric)) {
+    return `#ORD-${String(numeric).padStart(5, "0")}`;
+  }
+  const asString = String(id);
+  return asString.startsWith("#ORD-") ? asString : `#ORD-${asString}`;
+}
+
 const seedOrders = [
   {
     id: "#ORD-9821",
@@ -106,17 +116,19 @@ export function getOrders() {
 export function getOrderById(id) {
   if (!id) return null;
   const orders = readOrders();
-  return orders.find((order) => order.id === id);
+  const normalized = formatOrderId(id);
+  return orders.find((order) => formatOrderId(order.id) === normalized);
 }
 
 export function addOrder({ items, total, id: providedId }) {
   const now = new Date();
   const orders = readOrders();
+  const formattedId = formatOrderId(
+    providedId ?? Math.floor(Math.random() * 9000 + 1000)
+  );
   const newOrder = {
     // Backend order_id ile aynı olsun diye gelen ID'yi kullan.
-    id: String(
-      providedId ?? `#ORD-${Math.floor(Math.random() * 9000 + 1000)}`
-    ),
+    id: formattedId,
     date: now.toLocaleDateString("en-US", {
       day: "2-digit",
       month: "long",
@@ -151,7 +163,8 @@ export function addOrder({ items, total, id: providedId }) {
 
 export function advanceOrderStatus(id) {
   const orders = readOrders();
-  const idx = orders.findIndex((o) => o.id === id);
+  const targetId = formatOrderId(id);
+  const idx = orders.findIndex((o) => formatOrderId(o.id) === targetId);
   if (idx === -1) return orders;
   const order = orders[idx];
   const steps = ["Processing", "In-transit", "Delivered"];

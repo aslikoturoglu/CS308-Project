@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { getOrders } from "../services/orderService";
+import { formatOrderId, getOrders } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
 
 const mockPreferences = [
@@ -189,35 +189,38 @@ function Profile() {
         >
           <h2 style={{ marginTop: 0, color: "#0058a3" }}>Recent orders</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {orders.slice(0, 3).map((order) => (
-              <article
-                key={order.id}
-                style={{
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 12,
-                  padding: 16,
-                }}
-              >
-                <div
+            {orders.slice(0, 3).map((order) => {
+              const formattedId = formatOrderId(order.id);
+              return (
+                <article
+                  key={formattedId}
                   style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: 8,
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 12,
+                    padding: 16,
                   }}
                 >
-                  <strong>{order.id}</strong>
-                  <span style={{ color: "#6b7280", fontSize: "0.9rem" }}>{order.date}</span>
-                </div>
-                <p style={{ margin: "4px 0", color: "#4b5563" }}>
-                  {order.items.map((it) => it.name).join(", ")}
-                </p>
-                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-                  <span style={{ fontWeight: 600 }}>{formatPrice(order.total)}</span>
-                  <span style={{ color: "#059669", fontWeight: 600 }}>{order.status}</span>
-                </div>
-              </article>
-            ))}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 8,
+                    }}
+                  >
+                    <strong>{formattedId}</strong>
+                    <span style={{ color: "#6b7280", fontSize: "0.9rem" }}>{order.date}</span>
+                  </div>
+                  <p style={{ margin: "4px 0", color: "#4b5563" }}>
+                    {order.items.map((it) => it.name).join(", ")}
+                  </p>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+                    <span style={{ fontWeight: 600 }}>{formatPrice(order.total)}</span>
+                    <span style={{ color: "#059669", fontWeight: 600 }}>{order.status}</span>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </section>
 
