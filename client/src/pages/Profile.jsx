@@ -1,23 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
-const mockOrders = [
-  {
-    id: "#ORD-9821",
-    date: "12 February 2025",
-    total: 2899,
-    status: "Shipped",
-    items: ["Velvet Armchair", "Round Side Table"],
-  },
-  {
-    id: "#ORD-9534",
-    date: "27 January 2025",
-    total: 1699,
-    status: "Delivered",
-    items: ["Leather Office Chair"],
-  },
-];
+import { getOrders } from "../services/orderService";
+import { formatPrice } from "../utils/formatPrice";
 
 const mockPreferences = [
   { label: "Email notifications", enabled: true },
@@ -40,7 +25,17 @@ function Profile() {
   );
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(profile || {});
-  const completedOrders = useMemo(() => mockOrders.length, []);
+  const [orders, setOrders] = useState(() => getOrders());
+
+  useEffect(() => {
+    // in case orders change elsewhere (checkout), re-read on mount
+    setOrders(getOrders());
+  }, []);
+
+  const completedOrders = useMemo(
+    () => orders.filter((o) => o.status === "Delivered").length,
+    [orders]
+  );
 
   if (!user) {
     return (
@@ -194,7 +189,7 @@ function Profile() {
         >
           <h2 style={{ marginTop: 0, color: "#0058a3" }}>Recent orders</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {mockOrders.map((order) => (
+            {orders.slice(0, 3).map((order) => (
               <article
                 key={order.id}
                 style={{
@@ -214,9 +209,11 @@ function Profile() {
                   <strong>{order.id}</strong>
                   <span style={{ color: "#6b7280", fontSize: "0.9rem" }}>{order.date}</span>
                 </div>
-                <p style={{ margin: "4px 0", color: "#4b5563" }}>{order.items.join(", ")}</p>
+                <p style={{ margin: "4px 0", color: "#4b5563" }}>
+                  {order.items.map((it) => it.name).join(", ")}
+                </p>
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-                  <span style={{ fontWeight: 600 }}>₺{order.total.toLocaleString("tr-TR")}</span>
+                  <span style={{ fontWeight: 600 }}>{formatPrice(order.total)}</span>
                   <span style={{ color: "#059669", fontWeight: 600 }}>{order.status}</span>
                 </div>
               </article>

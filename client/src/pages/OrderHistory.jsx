@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { addReview, getReviewMap } from "../services/localStorageHelpers";
 import { advanceOrderStatus, getOrders } from "../services/orderService";
+import { formatPrice } from "../utils/formatPrice";
 import { useAuth } from "../context/AuthContext";
 
 const timelineSteps = ["Processing", "In-transit", "Delivered"];
@@ -12,13 +13,6 @@ const statusPills = {
   "In-transit": { bg: "rgba(59,130,246,0.15)", color: "#1d4ed8" },
   Delivered: { bg: "rgba(34,197,94,0.15)", color: "#15803d" },
 };
-
-const formatPrice = (value) =>
-  value.toLocaleString("tr-TR", {
-    style: "currency",
-    currency: "TRY",
-    minimumFractionDigits: 0,
-  });
 
 function OrderHistory() {
   const { user } = useAuth();

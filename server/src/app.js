@@ -1,34 +1,48 @@
+if (process.env.NODE_ENV !== "production") {
+  const { config } = await import("dotenv");
+  config();
+}
+
 import express from "express";
 import cors from "cors";
-
-import "./db.js";
-
+import fs from "fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import productRoutes from "./routes/productRoutes.js";
+import cartRoutes from "./routes/cartRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
-import {
-  getCart,
-  addToCart,
-  deleteCartItem,
-  syncCart,
-} from "./controllers/cartController.js";
+import db from "./db.js"; // DB bağlantısı burada load ediliyor
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// ROUTES
-app.use("/products", productRoutes);
-app.use("/orders", orderRoutes);
+// API ROUTES (keep under /api to avoid SPA clashes)
+app.use("/api/products", productRoutes);
+app.use("/api/cart", cartRoutes);
+app.use("/api/orders", orderRoutes);
 
-// CART ENDPOINTLERİ
-app.get("/cart", getCart);          // GET  /cart
-app.post("/cart", addToCart);       // POST /cart
-app.post("/cart/sync", syncCart);   // POST /cart/sync
-app.delete("/cart/:id", deleteCartItem); // DELETE /cart/:id
+// Static serve for built client
+const publicDir = path.resolve(__dirname, "../public");
+const indexPath = path.join(publicDir, "index.html");
+app.use(express.static(publicDir));
 
-const PORT = process.env.PORT || 3000;
+// SPA fallback (Express 5 compatible, ignore /api/*)
+app.get(/^(?!\/api\/).*/, (req, res) => {
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  res.status(404).send("Not Found");
+});
 
+// PORT (Cloud Run provides PORT)
+const PORT = process.env.PORT || 8080;
+
+// SERVER START
 app.listen(PORT, () => {
   console.log(`🚀 Server çalışıyor → http://localhost:${PORT}`);
 });

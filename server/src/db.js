@@ -1,14 +1,32 @@
 import mysql from "mysql2";
-import dotenv from "dotenv";
 
-dotenv.config();
+if (process.env.NODE_ENV !== "production") {
+  const { config } = await import("dotenv");
+  config();
+}
+
+const {
+  DB_HOST,
+  DB_USER,
+  DB_PASS,
+  DB_PASSWORD,
+  DB_NAME,
+  DB_DATABASE,
+  DB_PORT,
+} = process.env;
+
+if (process.env.NODE_ENV === "production" && !DB_HOST) {
+  throw new Error("DB_HOST is required in production");
+}
+
+const dbPort = DB_PORT ? Number(DB_PORT) : undefined;
 
 const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_DATABASE, 
-  port: process.env.DB_PORT,
+  host: DB_HOST,
+  user: DB_USER,
+  password: DB_PASS ?? DB_PASSWORD,
+  database: DB_NAME ?? DB_DATABASE,
+  port: dbPort ?? 3306,
 });
 
 // DATABASE CONNECTION

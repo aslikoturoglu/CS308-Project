@@ -55,48 +55,33 @@ function Checkout() {
         return;
       }
 
-      // 1) Cart'ı DB ile senkronla
-      const syncBody = {
-        items: items.map((item) => ({
-          product_id: item.id,
-          quantity: item.quantity ?? item.qty ?? 1,
-        })),
-      };
+      const normalizedItems = items.map((item) => ({
+        product_id: item.id,
+        id: item.id,
+        name: item.name,
+        price: Number(item.price),
+        quantity: item.quantity ?? item.qty ?? 1,
+      }));
 
-      const syncRes = await fetch("http://localhost:3000/cart/sync", {
+      // Sipariş oluştur
+      const orderRes = await fetch("/api/orders/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(syncBody),
+        body: JSON.stringify({
+          user_id: user?.id || 1, // şimdilik 1
+          shipping_address:
+            payload.shippingAddress ||
+            payload.address ||
+            payload.fullAddress ||
+            "",
+          billing_address:
+            payload.billingAddress ||
+            payload.address ||
+            payload.fullAddress ||
+            "",
+          items: normalizedItems,
+        }),
       });
-
-      if (!syncRes.ok) {
-        const errData = await syncRes.json().catch(() => ({}));
-        console.error("Cart sync failed:", errData);
-        alert("Cart sync failed. Please try again.");
-        return;
-      }
-
-      // 2) Sipariş oluştur
-      const orderRes = await fetch(
-        "http://localhost:3000/orders/checkout",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_id: user?.id || 1, // şimdilik 1
-            shipping_address:
-              payload.shippingAddress ||
-              payload.address ||
-              payload.fullAddress ||
-              "",
-            billing_address:
-              payload.billingAddress ||
-              payload.address ||
-              payload.fullAddress ||
-              "",
-          }),
-        }
-      );
 
       if (!orderRes.ok) {
         const errData = await orderRes.json().catch(() => ({}));
@@ -110,17 +95,12 @@ function Checkout() {
       console.log("Backend order created:", backendOrderId);
 
       // 3) Invoice & order history için localStorage’a da order yaz
-      const normalizedItems = items.map((item) => ({
-        id: item.id,
-        name: item.name,
-        price: Number(item.price),
-        quantity: item.quantity ?? item.qty ?? 1,
-      }));
 
       const newOrder = addOrder({
+        id: backendOrderId, // frontend ID = backend order_id
         items: normalizedItems,
         total: merchandiseTotal,
-      }); // id: "#ORD-xxxx"
+      });
 
       clearCart();
       alert("Your order has been placed!");

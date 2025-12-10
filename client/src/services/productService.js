@@ -1,4 +1,5 @@
 import { getProducts, getProductById, updateStock } from "./api.js";
+import { calculateAverageRating } from "../utils/ratingUtils.js";
 import { getInventoryAdjustments, getReviewMap } from "./localStorageHelpers";
 
 // Ürünü zenginleştirme
@@ -11,10 +12,7 @@ function enrichProduct(product, adjustments, reviewMap) {
   const userReviews = reviewMap[product.id] ?? [];
   const averageRating =
     userReviews.length > 0
-      ? (
-          userReviews.reduce((s, r) => s + Number(r.rating), 0) /
-          userReviews.length
-        ).toFixed(1)
+      ? calculateAverageRating(userReviews).toFixed(1)
       : 0;
 
   return {

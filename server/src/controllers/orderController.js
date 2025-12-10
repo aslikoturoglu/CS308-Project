@@ -8,7 +8,7 @@ import db from "../db.js";
  * Basit versiyon: cart_items tablosundaki TÜM kayıtları tek bir sipariş sayıyoruz.
  */
 export function checkout(req, res) {
-  let { user_id, shipping_address, billing_address } = req.body;
+  let { user_id, shipping_address, billing_address, items } = req.body;
 
   // 🔹 user_id güvenli hale getir (email vs gelirse 1'e düş)
   const safeUserId = Number(user_id);
@@ -22,31 +22,32 @@ export function checkout(req, res) {
     return res.status(400).json({ error: "user_id zorunludur" });
   }
 
-  // 1) Cart item'ları ürün fiyatıyla beraber al
-  const sqlCart = `
-    SELECT 
-      ci.cart_item_id AS id,
-      ci.product_id,
-      ci.quantity,
-      p.product_price
-    FROM cart_items ci
-    JOIN products p ON ci.product_id = p.product_id
-  `;
+  // Eğer body'den items geliyorsa (SPA'den) onu kullan; yoksa cart_items tablosundan oku.
+  const providedItems = Array.isArray(items)
+    ? items
+        .map((it) => ({
+          product_id: it.product_id ?? it.id,
+          quantity: Number(it.quantity ?? it.qty ?? 1),
+          unit_price: Number(it.price ?? it.unit_price ?? it.product_price),
+        }))
+        .filter(
+          (it) =>
+            it.product_id &&
+            Number.isFinite(it.quantity) &&
+            it.quantity > 0 &&
+            Number.isFinite(it.unit_price)
+        )
+    : [];
 
-  db.query(sqlCart, (err, cartItems) => {
-    if (err) {
-      console.error("Cart okunamadı:", err);
-      return res.status(500).json({ error: "Sepet okunamadı" });
-    }
-
-    if (cartItems.length === 0) {
+  const handleCheckout = (cartItems) => {
+    if (!cartItems.length) {
       return res.status(400).json({ error: "Sepet boş" });
     }
 
     // 2) Toplam tutarı hesapla
     let totalAmount = 0;
     cartItems.forEach((it) => {
-      totalAmount += Number(it.product_price) * it.quantity;
+      totalAmount += Number(it.unit_price) * Number(it.quantity);
     });
 
     // 3) orders tablosuna kaydet (status = 'placed')
@@ -71,7 +72,7 @@ export function checkout(req, res) {
           order_id,
           it.product_id,
           it.quantity,
-          Number(it.product_price),
+          Number(it.unit_price),
         ]);
 
         const sqlOrderItems = `
@@ -134,6 +135,31 @@ export function checkout(req, res) {
         });
       }
     );
+  };
+
+  // Body'de items varsa direkt kullan.
+  if (providedItems.length > 0) {
+    return handleCheckout(providedItems);
+  }
+
+  // 1) Cart item'ları ürün fiyatıyla beraber al (fallback)
+  const sqlCart = `
+    SELECT 
+      ci.cart_item_id AS id,
+      ci.product_id,
+      ci.quantity,
+      p.product_price AS unit_price
+    FROM cart_items ci
+    JOIN products p ON ci.product_id = p.product_id
+  `;
+
+  db.query(sqlCart, (err, cartItems) => {
+    if (err) {
+      console.error("Cart okunamadı:", err);
+      return res.status(500).json({ error: "Sepet okunamadı" });
+    }
+
+    handleCheckout(cartItems);
   });
 }
 

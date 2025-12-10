@@ -1,12 +1,6 @@
 import { Link, useParams, useLocation } from "react-router-dom";
 import { getOrderById } from "../services/orderService";
-
-const formatPrice = (value) =>
-  value.toLocaleString("tr-TR", {
-    style: "currency",
-    currency: "TRY",
-    minimumFractionDigits: 0,
-  });
+import { formatPrice } from "../utils/formatPrice";
 
 function Invoice() {
   const { id } = useParams();
