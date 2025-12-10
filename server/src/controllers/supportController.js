@@ -237,26 +237,55 @@ export function postSupportReply(req, res) {
     return res.status(400).json({ error: "Mesaj metni boş olamaz" });
   }
 
-  const insertSql = `
-    INSERT INTO support_messages (conversation_id, sender_id, message_text, created_at)
-    VALUES (?, ?, ?, NOW())
+  const convoSql = `
+    SELECT conversation_id, user_id
+    FROM support_conversations
+    WHERE conversation_id = ?
   `;
 
-  db.query(insertSql, [conversationId, agentId, text.trim()], (err, result) => {
-    if (err) {
-      console.error("Support reply insert failed:", err);
-      return res.status(500).json({ error: "Mesaj kaydedilemedi" });
+  db.query(convoSql, [conversationId], (metaErr, rows) => {
+    if (metaErr) {
+      console.error("Support conversation lookup failed:", metaErr);
+      return res.status(500).json({ error: "Konuşma okunamadı" });
+    }
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Konuşma bulunamadı" });
     }
 
-    res.json({
-      conversation_id: conversationId,
-      message: {
-        id: result.insertId,
-        sender_id: agentId,
-        from: "support",
-        text: text.trim(),
-        timestamp: new Date().toISOString(),
-      },
-    });
+    const conversation = rows[0];
+    const fallbackSender = conversation.user_id;
+    const sender = Number.isFinite(agentId) ? agentId : fallbackSender;
+
+    const insertSql = `
+      INSERT INTO support_messages (conversation_id, sender_id, message_text, created_at)
+      VALUES (?, ?, ?, NOW())
+    `;
+
+    const doInsert = (senderId, attemptFallback) => {
+      db.query(insertSql, [conversationId, senderId, text.trim()], (err, result) => {
+        if (err) {
+          // If agent user_id is missing, retry with conversation owner id to satisfy FK.
+          if (attemptFallback && senderId !== fallbackSender) {
+            console.warn("Agent user missing, falling back to conversation user:", senderId, err?.code);
+            return doInsert(fallbackSender, false);
+          }
+          console.error("Support reply insert failed:", err);
+          return res.status(500).json({ error: "Mesaj kaydedilemedi" });
+        }
+
+        res.json({
+          conversation_id: conversationId,
+          message: {
+            id: result.insertId,
+            sender_id: senderId,
+            from: "support",
+            text: text.trim(),
+            timestamp: new Date().toISOString(),
+          },
+        });
+      });
+    };
+
+    doInsert(sender, true);
   });
 }
