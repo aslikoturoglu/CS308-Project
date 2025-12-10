@@ -33,6 +33,8 @@ function Invoice() {
     (sum, item) => sum + Number(item.qty || item.quantity || 1),
     0
   );
+  const realOrderId = order.order_id ?? order.id;
+  
   const displayId = formatOrderId(order.id);
 
   // 🔹 Backend URL (lokalde 3000, prod'da VITE_API_BASE_URL ile değiştirilebilir)
