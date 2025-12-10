@@ -23,3 +23,21 @@ export async function loginUser({ email, password }) {
   });
   return handle(res);
 }
+
+export async function requestPasswordReset(email) {
+  const res = await fetch("/api/auth/forgot", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  return handle(res);
+}
+
+export async function submitPasswordReset({ token, password }) {
+  const res = await fetch("/api/auth/reset", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, password }),
+  });
+  return handle(res);
+}
