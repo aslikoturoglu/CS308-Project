@@ -109,11 +109,14 @@ export function getOrderById(id) {
   return orders.find((order) => order.id === id);
 }
 
-export function addOrder({ items, total }) {
+export function addOrder({ items, total, id: providedId }) {
   const now = new Date();
   const orders = readOrders();
   const newOrder = {
-    id: `#ORD-${Math.floor(Math.random() * 9000 + 1000)}`,
+    // Backend order_id ile aynı olsun diye gelen ID'yi kullan.
+    id: String(
+      providedId ?? `#ORD-${Math.floor(Math.random() * 9000 + 1000)}`
+    ),
     date: now.toLocaleDateString("en-US", {
       day: "2-digit",
       month: "long",

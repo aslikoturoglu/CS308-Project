@@ -118,9 +118,10 @@ function Checkout() {
       }));
 
       const newOrder = addOrder({
+        id: backendOrderId, // frontend ID = backend order_id
         items: normalizedItems,
         total: merchandiseTotal,
-      }); // id: "#ORD-xxxx"
+      });
 
       clearCart();
       alert("Your order has been placed!");
