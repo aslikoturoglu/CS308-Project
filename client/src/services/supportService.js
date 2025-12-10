@@ -9,19 +9,21 @@ async function handleResponse(res) {
   return data;
 }
 
-export async function fetchUserConversation(userId, orderId) {
+export async function fetchUserConversation({ userId, orderId, email, name }) {
   const params = new URLSearchParams();
   if (userId) params.set("user_id", userId);
   if (orderId) params.set("order_id", orderId);
+  if (email) params.set("email", email);
+  if (name) params.set("name", name);
   const res = await fetch(`${SUPPORT_BASE}/conversation?${params.toString()}`);
   return handleResponse(res);
 }
 
-export async function sendUserMessage({ userId, text, orderId }) {
+export async function sendUserMessage({ userId, text, orderId, email, name }) {
   const res = await fetch(`${SUPPORT_BASE}/message`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_id: userId, text, order_id: orderId }),
+    body: JSON.stringify({ user_id: userId, text, order_id: orderId, email, name }),
   });
   return handleResponse(res);
 }

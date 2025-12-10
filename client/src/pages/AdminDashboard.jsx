@@ -81,20 +81,25 @@ function AdminDashboard() {
 
   useEffect(() => {
     loadInbox();
-    const interval = setInterval(loadInbox, 7000);
+    const interval = setInterval(loadInbox, 4000);
     return () => clearInterval(interval);
   }, [loadInbox]);
 
   useEffect(() => {
-    if (!activeConversationId) return;
-    setIsLoadingThread(true);
-    fetchSupportMessages(activeConversationId)
-      .then((data) => setChatMessages(data.messages || []))
-      .catch((error) => {
-        console.error("Support messages fetch failed", error);
-        addToast("Konuşma açılamadı", "error");
-      })
-      .finally(() => setIsLoadingThread(false));
+    if (!activeConversationId) return undefined;
+    const fetchThread = () => {
+      setIsLoadingThread(true);
+      fetchSupportMessages(activeConversationId)
+        .then((data) => setChatMessages(data.messages || []))
+        .catch((error) => {
+          console.error("Support messages fetch failed", error);
+          addToast("Konuşma açılamadı", "error");
+        })
+        .finally(() => setIsLoadingThread(false));
+    };
+    fetchThread();
+    const interval = setInterval(fetchThread, 3000);
+    return () => clearInterval(interval);
   }, [activeConversationId, addToast]);
 
   const permittedSections = rolesToSections[user?.role] || [];
@@ -197,6 +202,10 @@ function AdminDashboard() {
       }
       setReplyDraft("");
       loadInbox();
+      // thread hemen güncellensin
+      fetchSupportMessages(activeConversationId)
+        .then((data) => setChatMessages(data.messages || []))
+        .catch(() => {});
     } catch (error) {
       console.error("Support reply failed", error);
       addToast("Mesaj gönderilemedi", "error");

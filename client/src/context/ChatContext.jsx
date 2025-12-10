@@ -32,6 +32,15 @@ const buildMessage = (text, from) => ({
 
 export function ChatProvider({ children }) {
   const { user } = useAuth();
+  const [clientToken] = useState(() => {
+    if (typeof window === "undefined") return "guest";
+    const key = "chat-client-token";
+    const existing = window.localStorage.getItem(key);
+    if (existing) return existing;
+    const fresh = `g-${crypto.randomUUID?.() ?? Math.random().toString(16).slice(2)}`;
+    window.localStorage.setItem(key, fresh);
+    return fresh;
+  });
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState(seedMessages);
   const [isLoading, setIsLoading] = useState(false);
@@ -40,10 +49,12 @@ export function ChatProvider({ children }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [syncError, setSyncError] = useState(null);
 
-  const activeUserId = useMemo(
-    () => (Number(user?.id) && Number(user?.id) > 0 ? Number(user?.id) : 1),
-    [user]
+  const activeUserId = useMemo(() => user?.id ?? clientToken, [user, clientToken]);
+  const identityEmail = useMemo(
+    () => user?.email || `${clientToken}@chat.local`,
+    [user, clientToken]
   );
+  const identityName = useMemo(() => user?.name || "Guest", [user]);
 
   const normalizeMessages = useCallback(
     (incoming) =>
@@ -61,7 +72,11 @@ export function ChatProvider({ children }) {
   const hydrateFromServer = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await fetchUserConversation(activeUserId);
+      const data = await fetchUserConversation({
+        userId: activeUserId,
+        email: identityEmail,
+        name: identityName,
+      });
       setConversationId(data.conversation_id);
       const nextMessages = normalizeMessages(data.messages);
       setMessages((prev) => {
@@ -111,7 +126,12 @@ export function ChatProvider({ children }) {
     setMessages((prev) => [...prev, optimistic]);
     setIsSending(true);
 
-    sendUserMessage({ userId: activeUserId, text: trimmed })
+    sendUserMessage({
+      userId: activeUserId,
+      text: trimmed,
+      email: identityEmail,
+      name: identityName,
+    })
       .then((payload) => {
         if (payload?.conversation_id) {
           setConversationId(payload.conversation_id);
