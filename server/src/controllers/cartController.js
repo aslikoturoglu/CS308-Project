@@ -1,25 +1,42 @@
 // server/src/controllers/cartController.js
 import db from "../db.js";
 
+// Basit cart anahtarı: header/query/body'den cart_token veya user_id al.
+function resolveCartToken(req) {
+  const headerToken = req.headers["x-cart-token"];
+  const queryToken = req.query?.cart_token || req.query?.cartId || req.query?.cart;
+  const bodyToken = req.body?.cart_token || req.body?.cartId;
+  const userId = req.body?.user_id || req.query?.user_id;
+
+  const token =
+    headerToken ||
+    queryToken ||
+    bodyToken ||
+    // user_id varsa onu anahtar olarak kullan
+    (userId ? `user-${userId}` : null) ||
+    "default-cart";
+
+  return String(token);
+}
+
 /**
- * Yardımcı: varsayılan cart'ı bulur, yoksa oluşturur.
+ * Verilen cart_token için cart kaydını bulur; yoksa oluşturur.
  * callback(err, cartId)
  */
-function getOrCreateDefaultCart(callback) {
-  const findCartSql = "SELECT cart_id FROM carts LIMIT 1";
+function getOrCreateCart(cartToken, callback) {
+  const findCartSql = "SELECT cart_id FROM carts WHERE cart_token = ? LIMIT 1";
 
-  db.query(findCartSql, (err, rows) => {
+  db.query(findCartSql, [cartToken], (err, rows) => {
     if (err) {
       console.error("Cart aranırken hata:", err);
       return callback(err);
     }
 
-    // hiç cart yoksa yenisini oluştur
     if (rows.length === 0) {
       const insertCartSql =
         "INSERT INTO carts (cart_token, created_at) VALUES (?, NOW())";
 
-      db.query(insertCartSql, ["default-cart"], (err2, result2) => {
+      db.query(insertCartSql, [cartToken], (err2, result2) => {
         if (err2) {
           console.error("Cart oluşturulamadı:", err2);
           return callback(err2);
@@ -40,6 +57,8 @@ function getOrCreateDefaultCart(callback) {
  * Sepeti ürün bilgisi + fiyat + stok ile getirir
  */
 export function getCart(req, res) {
+  const cartToken = resolveCartToken(req);
+
   const sql = `
     SELECT 
       ci.cart_item_id,
@@ -52,10 +71,12 @@ export function getCart(req, res) {
       p.product_stock
     FROM cart_items ci
     JOIN products p ON ci.product_id = p.product_id
+    JOIN carts c ON c.cart_id = ci.cart_id
+    WHERE c.cart_token = ?
     ORDER BY ci.cart_item_id ASC
   `;
 
-  db.query(sql, (err, results) => {
+  db.query(sql, [cartToken], (err, results) => {
     if (err) {
       console.error("Cart alınamadı:", err);
       return res.status(500).json({ error: "Veri alınamadı" });
@@ -91,6 +112,7 @@ export function getCart(req, res) {
  */
 export function addToCart(req, res) {
   const { product_id, quantity } = req.body;
+  const cartToken = resolveCartToken(req);
 
   if (!product_id || !quantity || Number(quantity) <= 0) {
     return res
@@ -123,8 +145,8 @@ export function addToCart(req, res) {
       return res.status(400).json({ error: "Yeterli stok yok" });
     }
 
-    // 2) Cart'ı bul ya da oluştur
-    getOrCreateDefaultCart((errCart, cartId) => {
+    // 2) Cart'ı bul ya da oluştur (kullanıcıya/guest'e özel)
+    getOrCreateCart(cartToken, (errCart, cartId) => {
       if (errCart) {
         return res
           .status(500)
@@ -171,13 +193,37 @@ export function addToCart(req, res) {
  */
 export function syncCart(req, res) {
   const { items } = req.body;
+  const cartToken = resolveCartToken(req);
+
+  // Boş array geldiyse cart'ı temizle ve dön
+  if (Array.isArray(items) && items.length === 0) {
+    return getOrCreateCart(cartToken, (errCart, cartId) => {
+      if (errCart) {
+        return res
+          .status(500)
+          .json({ error: "Sepet bulunamadı / oluşturulamadı" });
+      }
+
+      return db.query(
+        "DELETE FROM cart_items WHERE cart_id = ?",
+        [cartId],
+        (errDel) => {
+          if (errDel) {
+            console.error("Cart temizlenemedi:", errDel);
+            return res.status(500).json({ error: "Sepet temizlenemedi" });
+          }
+          return res.json({ success: true, cart_id: cartId, items: [] });
+        }
+      );
+    });
+  }
 
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: "Sepet boş, sync yapılamaz" });
   }
 
   // 1) Cart'ı bul / oluştur
-  getOrCreateDefaultCart((errCart, cartId) => {
+  getOrCreateCart(cartToken, (errCart, cartId) => {
     if (errCart) {
       return res
         .status(500)
@@ -260,21 +306,25 @@ export function syncCart(req, res) {
  */
 export function deleteCartItem(req, res) {
   const { id } = req.params;
+  const cartToken = resolveCartToken(req);
 
-  db.query(
-    "DELETE FROM cart_items WHERE cart_item_id = ?",
-    [id],
-    (err, result) => {
-      if (err) {
-        console.error("Silinemedi:", err);
-        return res.status(500).json({ error: "Silme başarısız" });
-      }
+  // Hangi cart'a ait olduğunu da doğrula ki başka kullanıcılar etkilenmesin
+  const sql = `
+    DELETE ci FROM cart_items ci
+    JOIN carts c ON c.cart_id = ci.cart_id
+    WHERE ci.cart_item_id = ? AND c.cart_token = ?
+  `;
 
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ error: "Kayıt bulunamadı" });
-      }
-
-      res.json({ message: "Silindi", id });
+  db.query(sql, [id, cartToken], (err, result) => {
+    if (err) {
+      console.error("Silinemedi:", err);
+      return res.status(500).json({ error: "Silme başarısız" });
     }
-  );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Kayıt bulunamadı" });
+    }
+
+    res.json({ message: "Silindi", id });
+  });
 }

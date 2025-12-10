@@ -54,3 +54,18 @@ export function updateJSON(key, updater, fallback = null) {
   setJSON(key, next);
   return next;
 }
+
+// Persistent client token generator (e.g., guest cart/chat).
+export function getOrCreateClientToken(key = "client-token") {
+  if (!hasStorage) return null;
+  try {
+    const existing = window.localStorage.getItem(key);
+    if (existing) return existing;
+    const fresh = `guest-${crypto.randomUUID?.() ?? Math.random().toString(16).slice(2)}`;
+    window.localStorage.setItem(key, fresh);
+    return fresh;
+  } catch (error) {
+    logError("Token generation failed", error);
+    return null;
+  }
+}
