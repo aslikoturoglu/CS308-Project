@@ -17,6 +17,43 @@ function pickAgentId(rawId) {
   return DEFAULT_AGENT_ID;
 }
 
+function ensureUser({ user_id, email, name }, callback) {
+  const numericId = Number(user_id);
+  if (Number.isFinite(numericId) && numericId > 0) {
+    return callback(null, numericId);
+  }
+
+  const safeEmail =
+    email && String(email).includes("@")
+      ? String(email)
+      : `guest-${Math.random().toString(16).slice(2)}@chat.local`;
+  const displayName =
+    name && String(name).trim().length > 0 ? String(name).trim() : "Guest";
+
+  const findSql = "SELECT user_id FROM users WHERE email = ?";
+  db.query(findSql, [safeEmail], (findErr, rows) => {
+    if (findErr) {
+      console.error("User lookup failed:", findErr);
+      return callback(findErr);
+    }
+    if (rows.length > 0) {
+      return callback(null, rows[0].user_id);
+    }
+
+    const insertSql = `
+      INSERT INTO users (full_name, email, password_hash)
+      VALUES (?, ?, 'support-auto')
+    `;
+    db.query(insertSql, [displayName, safeEmail], (insErr, result) => {
+      if (insErr) {
+        console.error("User create failed:", insErr);
+        return callback(insErr);
+      }
+      callback(null, result.insertId);
+    });
+  });
+}
+
 function ensureConversation(userId, orderId, callback) {
   const findSql = `
     SELECT conversation_id, status
@@ -62,71 +99,84 @@ function mapMessages(rows, userId) {
 }
 
 export function getConversation(req, res) {
-  const userId = pickUserId(req.query.user_id);
   const orderId = req.query.order_id ? Number(req.query.order_id) : null;
+  const incomingUserId = req.query.user_id;
+  const { email, name } = req.query;
 
-  ensureConversation(userId, orderId, (convErr, conversationId) => {
-    if (convErr) {
-      return res.status(500).json({ error: "Destek kaydı açılamadı" });
+  ensureUser({ user_id: incomingUserId, email, name }, (userErr, userId) => {
+    if (userErr) {
+      return res.status(500).json({ error: "Kullanıcı oluşturulamadı" });
     }
 
-    const messagesSql = `
-      SELECT message_id, sender_id, message_text, created_at
-      FROM support_messages
-      WHERE conversation_id = ?
-      ORDER BY created_at ASC
-    `;
-
-    db.query(messagesSql, [conversationId], (msgErr, rows) => {
-      if (msgErr) {
-        console.error("Support messages fetch failed:", msgErr);
-        return res.status(500).json({ error: "Mesajlar alınamadı" });
+    ensureConversation(userId, orderId, (convErr, conversationId) => {
+      if (convErr) {
+        return res.status(500).json({ error: "Destek kaydı açılamadı" });
       }
 
-      res.json({
-        conversation_id: conversationId,
-        user_id: userId,
-        order_id: orderId,
-        messages: mapMessages(rows, userId),
+      const messagesSql = `
+        SELECT message_id, sender_id, message_text, created_at
+        FROM support_messages
+        WHERE conversation_id = ?
+        ORDER BY created_at ASC
+      `;
+
+      db.query(messagesSql, [conversationId], (msgErr, rows) => {
+        if (msgErr) {
+          console.error("Support messages fetch failed:", msgErr);
+          return res.status(500).json({ error: "Mesajlar alınamadı" });
+        }
+
+        res.json({
+          conversation_id: conversationId,
+          user_id: userId,
+          order_id: orderId,
+          messages: mapMessages(rows, userId),
+        });
       });
     });
   });
 }
 
 export function postCustomerMessage(req, res) {
-  const userId = pickUserId(req.body.user_id);
-  const { text } = req.body;
   const orderId = req.body.order_id ? Number(req.body.order_id) : null;
+  const { text, email, name } = req.body;
 
   if (!text || !text.trim()) {
     return res.status(400).json({ error: "Mesaj metni boş olamaz" });
   }
 
-  ensureConversation(userId, orderId, (convErr, conversationId) => {
-    if (convErr) {
-      return res.status(500).json({ error: "Destek kaydı açılamadı" });
+  ensureUser({ user_id: req.body.user_id, email, name }, (userErr, userId) => {
+    if (userErr) {
+      return res.status(500).json({ error: "Kullanıcı oluşturulamadı" });
     }
 
-    const insertSql = `
-      INSERT INTO support_messages (conversation_id, sender_id, message_text, created_at)
-      VALUES (?, ?, ?, NOW())
-    `;
-
-    db.query(insertSql, [conversationId, userId, text.trim()], (msgErr, result) => {
-      if (msgErr) {
-        console.error("Support message insert failed:", msgErr);
-        return res.status(500).json({ error: "Mesaj kaydedilemedi" });
+    ensureConversation(userId, orderId, (convErr, conversationId) => {
+      if (convErr) {
+        return res.status(500).json({ error: "Destek kaydı açılamadı" });
       }
 
-      res.json({
-        conversation_id: conversationId,
-        message: {
-          id: result.insertId,
-          text: text.trim(),
-          sender_id: userId,
-          from: "customer",
-          timestamp: new Date().toISOString(),
-        },
+      const insertSql = `
+        INSERT INTO support_messages (conversation_id, sender_id, message_text, created_at)
+        VALUES (?, ?, ?, NOW())
+      `;
+
+      db.query(insertSql, [conversationId, userId, text.trim()], (msgErr, result) => {
+        if (msgErr) {
+          console.error("Support message insert failed:", msgErr);
+          return res.status(500).json({ error: "Mesaj kaydedilemedi" });
+        }
+
+        res.json({
+          conversation_id: conversationId,
+          message: {
+            id: result.insertId,
+            text: text.trim(),
+            sender_id: userId,
+            from: "customer",
+            timestamp: new Date().toISOString(),
+          },
+          user_id: userId,
+        });
       });
     });
   });

@@ -16,7 +16,16 @@ const formatTime = (value) =>
   });
 
 function ChatBox() {
-  const { messages, sendMessage, isSending, isLoading, syncError, closeChat } = useChat();
+  const {
+    messages,
+    sendMessage,
+    isSending,
+    isLoading,
+    syncError,
+    lastError,
+    hasHydrated,
+    closeChat,
+  } = useChat();
   const [draft, setDraft] = useState("");
   const endRef = useRef(null);
 
@@ -24,7 +33,7 @@ function ChatBox() {
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isSending, isLoading]);
+  }, [messages, isSending]);
 
   const handleSend = (text = draft) => {
     if (!text.trim()) return;
@@ -53,7 +62,7 @@ function ChatBox() {
       </div>
 
       <div className="chat-messages">
-        {isLoading && <p className="placeholder">Connecting you to support...</p>}
+        {isLoading && !hasHydrated && <p className="placeholder">Connecting you to support...</p>}
         {!isLoading && !hasMessages ? (
           <p className="placeholder">Type your question and we’ll jump in to help.</p>
         ) : (
@@ -81,9 +90,9 @@ function ChatBox() {
         <div ref={endRef} />
       </div>
 
-      {syncError && (
+      {(syncError || lastError) && (
         <div style={{ padding: "8px 12px", color: "#b91c1c", fontSize: "0.9rem" }}>
-          {syncError}
+          {syncError || lastError}
         </div>
       )}
 

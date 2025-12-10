@@ -12,6 +12,7 @@ import productRoutes from "./routes/productRoutes.js";
 import cartRoutes from "./routes/cartRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import supportRoutes from "./routes/supportRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
 import db from "./db.js"; // DB bağlantısı burada load ediliyor
 
 const __filename = fileURLToPath(import.meta.url);
@@ -27,6 +28,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/support", supportRoutes);
+app.use("/api/auth", authRoutes);
 
 // Static serve for built client
 const publicDir = path.resolve(__dirname, "../public");

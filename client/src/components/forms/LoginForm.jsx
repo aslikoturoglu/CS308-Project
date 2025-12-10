@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
+import { loginUser } from "../../services/authService";
 
 function LoginForm({ onSuccess }) {
   const navigate = useNavigate();
@@ -26,55 +27,31 @@ function LoginForm({ onSuccess }) {
       return;
     }
 
-    const stored = (() => {
-      try {
-        return JSON.parse(window.localStorage.getItem("registered-users") || "[]");
-      } catch {
-        return [];
-      }
-    })();
-
-    const found = stored.find(
-      (u) => u.email?.toLowerCase() === email.trim().toLowerCase() && u.password === password
-    );
-
-    const demoRoles = {
-      "test@suhome.com": "customer",
-      "demo1@suhome.com": "product_manager",
-      "demo2@suhome.com": "sales_manager",
-      "support@suhome.com": "support",
-    };
-    const isDemo =
-      (email.trim().toLowerCase() === "test@suhome.com" && password === "1234") ||
-      (email.trim().toLowerCase() === "demo1@suhome.com" && password === "demo1pass") ||
-      (email.trim().toLowerCase() === "demo2@suhome.com" && password === "demo2pass") ||
-      (email.trim().toLowerCase() === "support@suhome.com" && password === "support");
-
-    if (found || isDemo) {
-      setError("");
-      const role = found?.role || demoRoles[email.trim().toLowerCase()] || "customer";
-      const userPayload = found || { email, name: "Demo User", address: "N/A", role };
-      login({
-        email: userPayload.email,
-        name: userPayload.fullName || userPayload.name || "User",
-        address: userPayload.address,
-        role,
-      });
-
-      if (typeof onSuccess === "function") {
-        onSuccess();
-      } else {
-        if (role === "admin" || role === "product_manager" || role === "sales_manager" || role === "support") {
-          navigate("/admin");
-        } else {
-          navigate("/");
+    loginUser({ email: email.trim(), password })
+      .then((data) => {
+        const userPayload = data?.user;
+        if (!userPayload) {
+          throw new Error("Login response missing user");
         }
-      }
-    } else {
-      const msg = "Invalid credentials. Try test@suhome.com / 1234 or register a new account.";
-      setError(msg);
-      addToast(msg, "error");
-    }
+        setError("");
+        login(userPayload);
+        addToast("Logged in", "info");
+        if (typeof onSuccess === "function") {
+          onSuccess();
+        } else {
+          const role = userPayload.role;
+          if (role === "admin" || role === "product_manager" || role === "sales_manager" || role === "support") {
+            navigate("/admin");
+          } else {
+            navigate("/");
+          }
+        }
+      })
+      .catch((apiError) => {
+        const msg = apiError.message || "Invalid credentials.";
+        setError(msg);
+        addToast(msg, "error");
+      });
   };
 
   return (

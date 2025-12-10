@@ -14,14 +14,7 @@ import {
 
 const ChatContext = createContext(undefined);
 
-const seedMessages = [
-  {
-    id: "welcome",
-    from: "assistant",
-    text: "Hi there! Ask about orders, returns, or product suggestions anytime.",
-    timestamp: Date.now(),
-  },
-];
+const seedMessages = [];
 
 const buildMessage = (text, from) => ({
   id: `${from}-${Date.now()}-${Math.round(Math.random() * 1000)}`,
@@ -32,6 +25,16 @@ const buildMessage = (text, from) => ({
 
 export function ChatProvider({ children }) {
   const { user } = useAuth();
+  const [clientToken] = useState(() => {
+    if (typeof window === "undefined") return "guest";
+    const key = "chat-client-token";
+    const existing = window.localStorage.getItem(key);
+    if (existing) return existing;
+    const fresh = `g-${crypto.randomUUID?.() ?? Math.random().toString(16).slice(2)}`;
+    window.localStorage.setItem(key, fresh);
+    return fresh;
+  });
+  const [serverUserId, setServerUserId] = useState(null);
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState(seedMessages);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,18 +42,26 @@ export function ChatProvider({ children }) {
   const [isSending, setIsSending] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [syncError, setSyncError] = useState(null);
+  const [lastError, setLastError] = useState(null);
+  const [hasHydrated, setHasHydrated] = useState(false);
 
   const activeUserId = useMemo(
-    () => (Number(user?.id) && Number(user?.id) > 0 ? Number(user?.id) : 1),
-    [user]
+    () => serverUserId ?? user?.id ?? clientToken,
+    [serverUserId, user, clientToken]
   );
+  const identityEmail = useMemo(
+    () => user?.email || `${clientToken}@chat.local`,
+    [user, clientToken]
+  );
+  const identityName = useMemo(() => user?.name || "Guest", [user]);
 
   const normalizeMessages = useCallback(
     (incoming) =>
       (incoming || []).map((msg) => ({
         id: msg.id ?? msg.message_id ?? `${msg.from}-${msg.timestamp}`,
-        from: (msg.from === "support" ? "assistant" : msg.from) ??
-          (msg.sender_id === activeUserId ? "user" : "assistant"),
+        from:
+          (msg.from === "support" ? "assistant" : msg.from) ??
+          (String(msg.sender_id ?? "") === String(activeUserId) ? "user" : "assistant"),
         sender_id: msg.sender_id ?? activeUserId,
         text: msg.text ?? msg.message_text ?? "",
         timestamp: msg.timestamp ?? msg.created_at ?? Date.now(),
@@ -59,33 +70,40 @@ export function ChatProvider({ children }) {
   );
 
   const hydrateFromServer = useCallback(async () => {
-    setIsLoading(true);
+    setIsLoading((prev) => prev || !hasHydrated);
     try {
-      const data = await fetchUserConversation(activeUserId);
+      const data = await fetchUserConversation({
+        userId: activeUserId,
+        email: identityEmail,
+        name: identityName,
+      });
+      if (data?.user_id) {
+        setServerUserId(data.user_id);
+      }
       setConversationId(data.conversation_id);
       const nextMessages = normalizeMessages(data.messages);
-      setMessages((prev) => {
-        const existingIds = new Set(prev.map((m) => String(m.id)));
-        const incoming =
-          nextMessages.length > 0 ? nextMessages : seedMessages;
-        if (!isOpen) {
-          const newSupportMessages = incoming.filter(
-            (m) => m.from !== "user" && !existingIds.has(String(m.id))
-          ).length;
-          if (newSupportMessages > 0) {
-            setUnreadCount((val) => val + newSupportMessages);
-          }
+      const existingIds = new Set(messages.map((m) => String(m.id)));
+      const incoming = nextMessages.length > 0 ? nextMessages : seedMessages;
+      if (!isOpen) {
+        const newSupportMessages = incoming.filter(
+          (m) => m.from !== "user" && !existingIds.has(String(m.id))
+        ).length;
+        if (newSupportMessages > 0) {
+          setUnreadCount((val) => val + newSupportMessages);
         }
-        return incoming;
-      });
+      }
+      setMessages(incoming);
       setSyncError(null);
+      setLastError(null);
+      setHasHydrated(true);
     } catch (error) {
       console.error("Chat sync failed", error);
       setSyncError(error.message);
+      setLastError(error.message);
     } finally {
       setIsLoading(false);
     }
-  }, [activeUserId, isOpen, normalizeMessages]);
+  }, [activeUserId, isOpen, normalizeMessages, messages]);
 
   useEffect(() => {
     hydrateFromServer();
@@ -111,7 +129,12 @@ export function ChatProvider({ children }) {
     setMessages((prev) => [...prev, optimistic]);
     setIsSending(true);
 
-    sendUserMessage({ userId: activeUserId, text: trimmed })
+    sendUserMessage({
+      userId: activeUserId,
+      text: trimmed,
+      email: identityEmail,
+      name: identityName,
+    })
       .then((payload) => {
         if (payload?.conversation_id) {
           setConversationId(payload.conversation_id);
@@ -124,21 +147,16 @@ export function ChatProvider({ children }) {
             )
           );
         }
+        if (payload?.user_id) {
+          setServerUserId(payload.user_id);
+        }
         setSyncError(null);
       })
       .catch((error) => {
         console.error("Support message send failed", error);
         setSyncError(error.message);
-        setMessages((prev) =>
-          prev
-            .filter((msg) => msg.id !== optimistic.id)
-            .concat(
-              buildMessage(
-                "Mesaj gönderilemedi, lütfen tekrar deneyin.",
-                "assistant"
-              )
-            )
-        );
+        setLastError(error.message);
+        setMessages((prev) => prev.filter((msg) => msg.id !== optimistic.id));
       })
       .finally(() => setIsSending(false));
   };
@@ -156,6 +174,8 @@ export function ChatProvider({ children }) {
       unreadCount,
       conversationId,
       syncError,
+      lastError,
+      hasHydrated,
       sendMessage,
       openChat,
       closeChat,
@@ -169,6 +189,8 @@ export function ChatProvider({ children }) {
       unreadCount,
       conversationId,
       syncError,
+      lastError,
+      hasHydrated,
     ]
   );
 

@@ -21,11 +21,13 @@ if (process.env.NODE_ENV === "production" && !DB_HOST) {
 
 const dbPort = DB_PORT ? Number(DB_PORT) : undefined;
 
+const resolvedDatabase = DB_NAME ?? DB_DATABASE ?? "storeDB";
+
 const db = mysql.createConnection({
   host: DB_HOST,
   user: DB_USER,
   password: DB_PASS ?? DB_PASSWORD,
-  database: DB_NAME ?? DB_DATABASE,
+  database: resolvedDatabase,
   port: dbPort ?? 3306,
 });
 
@@ -34,7 +36,11 @@ db.connect((err) => {
   if (err) {
     console.error("❌ MySQL bağlantı hatası:", err);
   } else {
-    console.log("✅ MySQL'e bağlanıldı!");
+    console.log(
+      `✅ MySQL'e bağlanıldı! host=${DB_HOST ?? "localhost"} db=${resolvedDatabase} user=${
+        DB_USER ?? "unknown"
+      }`
+    );
   }
 });
 

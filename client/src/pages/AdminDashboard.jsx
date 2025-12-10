@@ -68,7 +68,8 @@ function AdminDashboard() {
     try {
       const list = await fetchSupportInbox();
       setChats(list);
-      if (!activeConversationId && list.length > 0) {
+      const hasActive = list.some((c) => c.id === activeConversationId);
+      if ((!activeConversationId || !hasActive) && list.length > 0) {
         setActiveConversationId(list[0].id);
       }
     } catch (error) {
@@ -81,20 +82,27 @@ function AdminDashboard() {
 
   useEffect(() => {
     loadInbox();
-    const interval = setInterval(loadInbox, 7000);
+    const interval = setInterval(loadInbox, 4000);
     return () => clearInterval(interval);
   }, [loadInbox]);
 
   useEffect(() => {
-    if (!activeConversationId) return;
-    setIsLoadingThread(true);
-    fetchSupportMessages(activeConversationId)
-      .then((data) => setChatMessages(data.messages || []))
-      .catch((error) => {
-        console.error("Support messages fetch failed", error);
-        addToast("Konuşma açılamadı", "error");
-      })
-      .finally(() => setIsLoadingThread(false));
+    if (!activeConversationId) return undefined;
+    const fetchThread = (options = { showSpinner: false }) => {
+      if (options.showSpinner) setIsLoadingThread(true);
+      fetchSupportMessages(activeConversationId)
+        .then((data) => setChatMessages(data.messages || []))
+        .catch((error) => {
+          console.error("Support messages fetch failed", error);
+          addToast("Konuşma açılamadı", "error");
+        })
+        .finally(() => {
+          if (options.showSpinner) setIsLoadingThread(false);
+        });
+    };
+    fetchThread({ showSpinner: true });
+    const interval = setInterval(() => fetchThread({ showSpinner: false }), 3000);
+    return () => clearInterval(interval);
   }, [activeConversationId, addToast]);
 
   const permittedSections = rolesToSections[user?.role] || [];
@@ -197,6 +205,10 @@ function AdminDashboard() {
       }
       setReplyDraft("");
       loadInbox();
+      // thread hemen güncellensin
+      fetchSupportMessages(activeConversationId)
+        .then((data) => setChatMessages(data.messages || []))
+        .catch(() => {});
     } catch (error) {
       console.error("Support reply failed", error);
       addToast("Mesaj gönderilemedi", "error");
@@ -685,28 +697,29 @@ function AdminDashboard() {
                         gap: 8,
                       }}
                     >
-                      {isLoadingThread && <p style={{ margin: 0, color: "#6b7280" }}>Loading messages...</p>}
-                      {!isLoadingThread &&
-                        chatMessages.map((msg) => (
-                          <div
-                            key={msg.id}
-                            style={{
-                              justifySelf: msg.from === "support" ? "flex-end" : "flex-start",
-                              background: msg.from === "support" ? "linear-gradient(135deg,#0ea5e9,#2563eb)" : "#f8fafc",
-                              color: msg.from === "support" ? "white" : "#0f172a",
-                              padding: "10px 12px",
-                              borderRadius: msg.from === "support" ? "12px 12px 4px 12px" : "12px 12px 12px 4px",
-                              maxWidth: "80%",
-                            }}
-                          >
-                            <p style={{ margin: 0 }}>{msg.text}</p>
-                            <small style={{ opacity: 0.8 }}>
-                              {new Date(msg.timestamp).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
-                            </small>
-                          </div>
-                        ))}
-                      {!isLoadingThread && chatMessages.length === 0 && (
+                      {chatMessages.map((msg) => (
+                        <div
+                          key={msg.id}
+                          style={{
+                            justifySelf: msg.from === "support" ? "flex-end" : "flex-start",
+                            background: msg.from === "support" ? "linear-gradient(135deg,#0ea5e9,#2563eb)" : "#f8fafc",
+                            color: msg.from === "support" ? "white" : "#0f172a",
+                            padding: "10px 12px",
+                            borderRadius: msg.from === "support" ? "12px 12px 4px 12px" : "12px 12px 12px 4px",
+                            maxWidth: "80%",
+                          }}
+                        >
+                          <p style={{ margin: 0 }}>{msg.text}</p>
+                          <small style={{ opacity: 0.8 }}>
+                            {new Date(msg.timestamp).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+                          </small>
+                        </div>
+                      ))}
+                      {chatMessages.length === 0 && !isLoadingThread && (
                         <p style={{ margin: 0, color: "#6b7280" }}>No messages yet. Say hi to the customer.</p>
+                      )}
+                      {isLoadingThread && (
+                        <p style={{ margin: 0, color: "#6b7280", fontSize: "0.9rem" }}>Refreshing…</p>
                       )}
                     </div>
                     <div style={{ display: "grid", gap: 8 }}>
