@@ -35,9 +35,8 @@ export function getAllProducts(req, res) {
 
 
 /* =========================================================
-   GET — ÜRÜNÜ ID İLE GETİR
+   PUT — STOK ARTTIR / AZALT
    ========================================================= */
-
 export function updateProductStock(req, res) {
   const { id } = req.params;
   let { amount } = req.body;
@@ -72,7 +71,7 @@ export function updateProductStock(req, res) {
       return res.json({ success: true });
     });
   } else {
-    // 🔼 Stok arttırma (iade, admin panel vs.)
+    // 🔼 Stok arttırma
     const sql = `
       UPDATE products
       SET product_stock = product_stock + ?
@@ -89,6 +88,10 @@ export function updateProductStock(req, res) {
   }
 }
 
+
+/* =========================================================
+   GET — ÜRÜNÜ ID İLE GETİR
+   ========================================================= */
 export function getProductById(req, res) {
   const { id } = req.params;
 
@@ -133,7 +136,6 @@ export function getProductById(req, res) {
 export function addProduct(req, res) {
   const { name, price, stock, category } = req.body;
 
-
   if (!name || !price || !stock) {
     return res.status(400).json({ error: "Eksik alanlar var" });
   }
@@ -167,6 +169,7 @@ export function addProduct(req, res) {
   });
 }
 
+
 /* =========================================================
    PUT — ÜRÜN GÜNCELLE
    ========================================================= */
@@ -190,6 +193,7 @@ export function updateProduct(req, res) {
   });
 }
 
+
 /* =========================================================
    DELETE — ÜRÜN SİL
    ========================================================= */
@@ -207,32 +211,3 @@ export function deleteProduct(req, res) {
     res.json({ success: true });
   });
 }
-
-/* =========================================================
-   PUT — STOK ARTTIR / AZALT
-   ========================================================= */
-export function updateProductStock(req, res) {
-  const { id } = req.params;
-  const { amount } = req.body;
-
-  if (!amount) {
-    return res.status(400).json({ error: "amount missing" });
-  }
-
-  const sql = `
-    UPDATE products
-    SET product_stock = product_stock + ?
-    WHERE product_id = ?
-  `;
-
-  db.query(sql, [amount, id], (err) => {
-    if (err) {
-      console.error("❌ Stok güncellenemedi:", err);
-      return res.status(500).json({ error: "Stock update failed" });
-    }
-
-    res.json({ success: true });
-  });
-}
-
-
