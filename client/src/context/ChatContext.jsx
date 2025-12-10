@@ -14,14 +14,7 @@ import {
 
 const ChatContext = createContext(undefined);
 
-const seedMessages = [
-  {
-    id: "welcome",
-    from: "assistant",
-    text: "Hi there! Ask about orders, returns, or product suggestions anytime.",
-    timestamp: Date.now(),
-  },
-];
+const seedMessages = [];
 
 const buildMessage = (text, from) => ({
   id: `${from}-${Date.now()}-${Math.round(Math.random() * 1000)}`,
@@ -49,6 +42,8 @@ export function ChatProvider({ children }) {
   const [isSending, setIsSending] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [syncError, setSyncError] = useState(null);
+  const [lastError, setLastError] = useState(null);
+  const [hasHydrated, setHasHydrated] = useState(false);
 
   const activeUserId = useMemo(
     () => serverUserId ?? user?.id ?? clientToken,
@@ -75,7 +70,7 @@ export function ChatProvider({ children }) {
   );
 
   const hydrateFromServer = useCallback(async () => {
-    setIsLoading(true);
+    setIsLoading((prev) => prev || !hasHydrated);
     try {
       const data = await fetchUserConversation({
         userId: activeUserId,
@@ -87,28 +82,28 @@ export function ChatProvider({ children }) {
       }
       setConversationId(data.conversation_id);
       const nextMessages = normalizeMessages(data.messages);
-      setMessages((prev) => {
-        const existingIds = new Set(prev.map((m) => String(m.id)));
-        const incoming =
-          nextMessages.length > 0 ? nextMessages : seedMessages;
-        if (!isOpen) {
-          const newSupportMessages = incoming.filter(
-            (m) => m.from !== "user" && !existingIds.has(String(m.id))
-          ).length;
-          if (newSupportMessages > 0) {
-            setUnreadCount((val) => val + newSupportMessages);
-          }
+      const existingIds = new Set(messages.map((m) => String(m.id)));
+      const incoming = nextMessages.length > 0 ? nextMessages : seedMessages;
+      if (!isOpen) {
+        const newSupportMessages = incoming.filter(
+          (m) => m.from !== "user" && !existingIds.has(String(m.id))
+        ).length;
+        if (newSupportMessages > 0) {
+          setUnreadCount((val) => val + newSupportMessages);
         }
-        return incoming;
-      });
+      }
+      setMessages(incoming);
       setSyncError(null);
+      setLastError(null);
+      setHasHydrated(true);
     } catch (error) {
       console.error("Chat sync failed", error);
       setSyncError(error.message);
+      setLastError(error.message);
     } finally {
       setIsLoading(false);
     }
-  }, [activeUserId, isOpen, normalizeMessages]);
+  }, [activeUserId, isOpen, normalizeMessages, messages]);
 
   useEffect(() => {
     hydrateFromServer();
@@ -160,16 +155,8 @@ export function ChatProvider({ children }) {
       .catch((error) => {
         console.error("Support message send failed", error);
         setSyncError(error.message);
-        setMessages((prev) =>
-          prev
-            .filter((msg) => msg.id !== optimistic.id)
-            .concat(
-              buildMessage(
-                "Mesaj gönderilemedi, lütfen tekrar deneyin.",
-                "assistant"
-              )
-            )
-        );
+        setLastError(error.message);
+        setMessages((prev) => prev.filter((msg) => msg.id !== optimistic.id));
       })
       .finally(() => setIsSending(false));
   };
@@ -187,6 +174,8 @@ export function ChatProvider({ children }) {
       unreadCount,
       conversationId,
       syncError,
+      lastError,
+      hasHydrated,
       sendMessage,
       openChat,
       closeChat,
@@ -200,6 +189,8 @@ export function ChatProvider({ children }) {
       unreadCount,
       conversationId,
       syncError,
+      lastError,
+      hasHydrated,
     ]
   );
 

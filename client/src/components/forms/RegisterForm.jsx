@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../context/ToastContext";
+import { registerUser } from "../../services/authService";
 
 function RegisterForm({ onSuccess }) {
   const navigate = useNavigate();
@@ -43,44 +44,29 @@ function RegisterForm({ onSuccess }) {
       return;
     }
 
-    const users = (() => {
-      try {
-        return JSON.parse(window.localStorage.getItem("registered-users") || "[]");
-      } catch {
-        return [];
-      }
-    })();
-
-    if (users.some((u) => u.email?.toLowerCase() === email.trim().toLowerCase())) {
-      setError("This email is already registered.");
-      addToast("This email is already registered", "error");
-      return;
-    }
-
-    const newUser = {
+    registerUser({
       fullName,
       email: email.trim(),
       password,
       address: address.trim(),
-    };
-
-    try {
-      window.localStorage.setItem("registered-users", JSON.stringify([...users, newUser]));
-    } catch (storageError) {
-      console.error("Failed to save user", storageError);
-    }
-
-    setError("");
-    setInfo("Account created! Redirecting you to the login page...");
-    addToast("Account created, redirecting to login", "info");
-
-    setTimeout(() => {
-      if (typeof onSuccess === "function") {
-        onSuccess();
-      } else {
-        navigate("/login");
-      }
-    }, 1500);
+    })
+      .then(() => {
+        setError("");
+        setInfo("Account created! Redirecting you to the login page...");
+        addToast("Account created, redirecting to login", "info");
+        setTimeout(() => {
+          if (typeof onSuccess === "function") {
+            onSuccess();
+          } else {
+            navigate("/login");
+          }
+        }, 1200);
+      })
+      .catch((apiError) => {
+        const msg = apiError.message || "Registration failed";
+        setError(msg);
+        addToast(msg, "error");
+      });
   };
 
   return (
