@@ -29,18 +29,45 @@ function Invoice() {
     );
   }
 
-  const totalItems = order.items.reduce((sum, item) => sum + Number(item.qty || item.quantity || 1), 0);
+  const totalItems = order.items.reduce(
+    (sum, item) => sum + Number(item.qty || item.quantity || 1),
+    0
+  );
   const displayId = formatOrderId(order.id);
+
+  // 🔹 Backend URL (lokalde 3000, prod'da VITE_API_BASE_URL ile değiştirilebilir)
+  const API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+
+  // 🔹 PDF indirme / görüntüleme
+  const handleDownloadPdf = () => {
+    if (!order?.id) return;
+    const url = `${API_BASE_URL}/orders/${order.id}/invoice`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <section style={pageStyle}>
       <div style={{ ...cardStyle, maxWidth: 980 }}>
-        <header style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <header
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
           <div>
-            <p style={{ margin: 0, letterSpacing: 1, color: "#94a3b8" }}>PURCHASE COMPLETED</p>
-            <h1 style={{ margin: "4px 0 6px", color: "#0f172a" }}>Thank you for your order!</h1>
+            <p style={{ margin: 0, letterSpacing: 1, color: "#94a3b8" }}>
+              PURCHASE COMPLETED
+            </p>
+            <h1 style={{ margin: "4px 0 6px", color: "#0f172a" }}>
+              Thank you for your order!
+            </h1>
             <p style={{ margin: 0, color: "#475569" }}>
-              Your order is being processed for delivery. A receipt will be emailed shortly.
+              Your order is being processed for delivery. A receipt will be
+              emailed shortly.
             </p>
           </div>
           <div style={{ textAlign: "right" }}>
@@ -49,15 +76,38 @@ function Invoice() {
           </div>
         </header>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginTop: 14 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 12,
+            marginTop: 14,
+          }}
+        >
           <Info label="Date" value={order.date} />
           <Info label="Status" value={order.status} />
           <Info label="Items" value={`${totalItems} pcs`} />
           <Info label="Total Paid" value={formatPrice(order.total)} />
         </div>
 
-        <div style={{ marginTop: 18, border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 8, background: "#f8fafc", padding: "10px 12px", fontWeight: 700 }}>
+        <div
+          style={{
+            marginTop: 18,
+            border: "1px solid #e2e8f0",
+            borderRadius: 12,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "2fr 1fr 1fr",
+              gap: 8,
+              background: "#f8fafc",
+              padding: "10px 12px",
+              fontWeight: 700,
+            }}
+          >
             <span>Item</span>
             <span>Qty</span>
             <span>Total</span>
@@ -77,18 +127,39 @@ function Invoice() {
                   background: "#ffffff",
                 }}
               >
-                <span style={{ fontWeight: 700, color: "#0f172a" }}>{item.name}</span>
+                <span style={{ fontWeight: 700, color: "#0f172a" }}>
+                  {item.name}
+                </span>
                 <span style={{ color: "#475569" }}>{item.qty}</span>
-                <span style={{ fontWeight: 800, color: "#0f172a" }}>{formatPrice(item.price * item.qty)}</span>
+                <span style={{ fontWeight: 800, color: "#0f172a" }}>
+                  {formatPrice(item.price * item.qty)}
+                </span>
               </div>
             ))}
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14, marginTop: 18 }}>
-          <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12 }}>
-            <h3 style={{ margin: "0 0 8px", color: "#0f172a" }}>Billing & Shipping</h3>
-            <p style={{ margin: "4px 0", color: "#475569" }}>{order.address ?? "Saved default address"}</p>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gap: 14,
+            marginTop: 18,
+          }}
+        >
+          <div
+            style={{
+              border: "1px solid #e2e8f0",
+              borderRadius: 12,
+              padding: 12,
+            }}
+          >
+            <h3 style={{ margin: "0 0 8px", color: "#0f172a" }}>
+              Billing & Shipping
+            </h3>
+            <p style={{ margin: "4px 0", color: "#475569" }}>
+              {order.address ?? "Saved default address"}
+            </p>
             <p style={{ margin: "4px 0", color: "#475569" }}>
               Shipping Company: {order.shippingCompany ?? "SUExpress"}
             </p>
@@ -97,26 +168,43 @@ function Invoice() {
             </p>
           </div>
 
-          <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
+          <div
+            style={{
+              border: "1px solid #e2e8f0",
+              borderRadius: 12,
+              padding: 12,
+              display: "grid",
+              gap: 8,
+            }}
+          >
             <h3 style={{ margin: 0, color: "#0f172a" }}>Invoice Actions</h3>
             <button
               type="button"
               style={buttonPrimary}
-              onClick={() => alert("PDF download placeholder - integrate with backend later.")}
+              onClick={handleDownloadPdf}
             >
               Download PDF
             </button>
             <button
               type="button"
               style={buttonSecondary}
-              onClick={() => alert("Email sent placeholder - integrate with backend later.")}
+              onClick={() =>
+                alert("Email sent placeholder - backend not implemented yet.")
+              }
             >
               Email me the invoice
             </button>
           </div>
         </div>
 
-        <div style={{ marginTop: 18, display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <div
+          style={{
+            marginTop: 18,
+            display: "flex",
+            gap: 10,
+            flexWrap: "wrap",
+          }}
+        >
           <Link to="/orders" style={linkPrimary}>
             View Order Status
           </Link>
@@ -146,8 +234,18 @@ function Info({ label, value }) {
         background: "#f8fafc",
       }}
     >
-      <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.85rem" }}>{label}</p>
-      <p style={{ margin: "6px 0 0", color: "#0f172a", fontWeight: 800 }}>{value}</p>
+      <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.85rem" }}>
+        {label}
+      </p>
+      <p
+        style={{
+          margin: "6px 0 0",
+          color: "#0f172a",
+          fontWeight: 800,
+        }}
+      >
+        {value}
+      </p>
     </div>
   );
 }
