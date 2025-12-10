@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import db from "../db.js";
 import crypto from "node:crypto";
+import { sendMail } from "../utils/mailer.js";
 
 const demoUsers = {
   "test@suhome.com": { name: "Demo User", password: "1234", role: "customer" },
@@ -202,13 +203,33 @@ export function forgotPassword(req, res) {
         return res.status(500).json({ error: "Şifre sıfırlama oluşturulamadı" });
       }
 
-      // E-posta gönderimi yerine dev log + response ile token paylaşıyoruz.
-      console.log(`🔐 Password reset token for ${email}: ${rawToken}`);
+      const resetUrl =
+        process.env.FRONTEND_BASE_URL
+          ? `${process.env.FRONTEND_BASE_URL}/reset-password/${rawToken}`
+          : `/reset-password/${rawToken}`;
+
+      // SMTP varsa mail at, yoksa console + response dev token
       const payload = { success: true, message: "Reset link sent" };
       if (process.env.NODE_ENV !== "production") {
         payload.token = rawToken;
-        payload.reset_url = `/reset-password/${rawToken}`;
+        payload.reset_url = resetUrl;
       }
+
+      sendMail({
+        to: email,
+        subject: "SUHome Password Reset",
+        html: `
+          <p>Merhaba ${user.full_name || ""},</p>
+          <p>Şifreni sıfırlamak için aşağıdaki bağlantıyı kullan:</p>
+          <p><a href="${resetUrl}">${resetUrl}</a></p>
+          <p>Bağlantı 15 dakika geçerlidir.</p>
+        `,
+        text: `Şifreni sıfırlamak için: ${resetUrl}`,
+      }).catch((mailErr) => {
+        console.error("Reset email send failed:", mailErr);
+      });
+
+      console.log(`🔐 Password reset token for ${email}: ${rawToken}`);
       return res.json(payload);
     });
   });
