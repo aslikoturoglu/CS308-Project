@@ -24,7 +24,7 @@ function ChatBox() {
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isTyping]);
+  }, [messages, isSending, isLoading]);
 
   const handleSend = (text = draft) => {
     if (!text.trim()) return;
