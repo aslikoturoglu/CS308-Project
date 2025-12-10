@@ -1,3 +1,4 @@
+/*
 import { useMemo, useState } from "react";
 
 const shippingOptions = [
@@ -374,3 +375,402 @@ const inputStyle = {
 };
 
 export default CheckoutForm;
+*/
+
+import { useMemo, useState } from "react";
+
+function InputError({ message }) {
+  if (!message) return null;
+
+  return (
+    <div
+      style={{
+        background: "#fff7ed",
+        color: "#b45309",
+        border: "1px solid #fde68a",
+        padding: "6px 10px",
+        borderRadius: 8,
+        fontSize: "0.8rem",
+        marginTop: 4,
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+      }}
+    >
+      <span style={{ fontWeight: 900 }}>!</span>
+      <span>{message}</span>
+    </div>
+  );
+}
+
+const shippingOptions = [
+  { id: "standard", label: "Standard Delivery (2-4 days)", fee: 49.9 },
+  { id: "express", label: "Express Delivery (1 day)", fee: 129.9 },
+];
+
+function CheckoutForm({ cartTotal = 0, onSubmit }) {
+  const [formData, setFormData] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    address: "",
+    city: "",
+    postalCode: "",
+    notes: "",
+    shipping: "standard",
+    cardName: "",
+    cardNumber: "",
+    expiry: "",
+    cvc: "",
+  });
+
+  const [errors, setErrors] = useState({
+    fullName: "",
+    email: "",
+    cardName: "",
+    cardNumber: "",
+    expiry: "",
+    cvc: "",
+  });
+
+  // ------- VALIDATION RULES -------
+  const validateFullName = (v) => v.includes(" ");
+  const validateCardName = (v) => v.includes(" ");
+  const validateCardNumber = (v) => /^\d{14,16}$/.test(v.replace(/\s/g, ""));
+  const validateExpiry = (v) => /^(0[1-9]|1[0-2])\/\d{2}$/.test(v);
+  const validateCVC = (v) => /^\d{3,4}$/.test(v);
+
+  const shippingFee = useMemo(() => {
+    const option = shippingOptions.find((o) => o.id === formData.shipping);
+    return option ? option.fee : 0;
+  }, [formData.shipping]);
+
+  const grandTotal = useMemo(() => Number(cartTotal || 0) + shippingFee, [cartTotal, shippingFee]);
+
+  // ------- HANDLE CHANGE -------
+  const handleChange = (field) => (e) => {
+    const value = e.target.value;
+
+    setFormData((prev) => ({ ...prev, [field]: value }));
+
+    // realtime validation
+    switch (field) {
+      case "fullName":
+        setErrors((p) => ({
+          ...p,
+          fullName: validateFullName(value) ? "" : "It must be Full Name.",
+        }));
+        break;
+
+      case "email":
+        setErrors((p) => ({
+          ...p,
+          email: value.includes("@") ? "" : "Invalid Email",
+        }));
+        break;
+
+      case "cardName":
+        setErrors((p) => ({
+          ...p,
+          cardName: validateCardName(value) ? "" : "It must be Full Name.",
+        }));
+        break;
+
+      case "cardNumber":
+        setErrors((p) => ({
+          ...p,
+          cardNumber: validateCardNumber(value)
+            ? ""
+            : "Card number must be 14–16 digits.",
+        }));
+        break;
+
+      case "expiry":
+        setErrors((p) => ({
+          ...p,
+          expiry: validateExpiry(value) ? "" : "Format must be MM/YY",
+        }));
+        break;
+
+      case "cvc":
+        setErrors((p) => ({
+          ...p,
+          cvc: validateCVC(value) ? "" : "CVC must be 3–4 digits.",
+        }));
+        break;
+
+      default:
+        break;
+    }
+  };
+
+  // ------- SUBMIT -------
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    const valid =
+      validateFullName(formData.fullName) &&
+      formData.email.trim().includes("@") &&
+      validateCardName(formData.cardName) &&
+      validateCardNumber(formData.cardNumber) &&
+      validateExpiry(formData.expiry) &&
+      validateCVC(formData.cvc);
+
+    if (!valid) {
+      alert("Please fill the highlighted fields.");
+      return;
+    }
+
+    onSubmit({
+      ...formData,
+      grandTotal,
+      shippingFee,
+      cartTotal,
+    });
+  };
+
+  return (
+    <div className="checkout-card">
+      {/* HEADER */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 16,
+        }}
+      >
+        <div>
+          <h2 style={{ marginBottom: 4 }}>🛒 Secure Checkout</h2>
+          <p style={{ color: "#475569" }}>Review your details and place your order.</p>
+        </div>
+
+        <div
+          style={{
+            background: "#0f172a",
+            color: "white",
+            padding: "10px 14px",
+            borderRadius: 12,
+            textAlign: "right",
+          }}
+        >
+          <div style={{ color: "#cbd5e1", fontSize: "0.8rem" }}>Amount Due</div>
+          <div style={{ fontSize: "1.2rem", fontWeight: 700 }}>
+            ₺{grandTotal.toFixed(2)}
+          </div>
+        </div>
+      </div>
+
+      {/* FORM */}
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+          gap: 16,
+        }}
+      >
+        {/* LEFT SIDE — Shipping Details */}
+        <div style={cardBox}>
+          <h3>Shipping Details</h3>
+
+          <label>
+            Full Name*
+            <input
+              value={formData.fullName}
+              onChange={handleChange("fullName")}
+              style={inputStyle}
+              placeholder="e.g. Alex Morgan"
+            />
+            <InputError message={errors.fullName} />
+          </label>
+
+          <label>
+            Email*
+            <input
+              value={formData.email}
+              onChange={handleChange("email")}
+              style={inputStyle}
+              placeholder="you@suhome.com"
+            />
+            <InputError message={errors.email} />
+          </label>
+
+          <label>
+            Phone
+            <input
+              value={formData.phone}
+              onChange={handleChange("phone")}
+              style={inputStyle}
+              placeholder="+90 5xx xxx xx xx"
+            />
+          </label>
+
+          <label>
+            Address*
+            <textarea
+              value={formData.address}
+              onChange={handleChange("address")}
+              style={{ ...inputStyle, resize: "vertical" }}
+              rows={3}
+              placeholder="Street, number, district"
+            />
+          </label>
+
+          <div style={{ display: "flex", gap: 10 }}>
+            <label style={{ flex: 1 }}>
+              City
+              <input
+                value={formData.city}
+                onChange={handleChange("city")}
+                style={inputStyle}
+                placeholder="İstanbul"
+              />
+            </label>
+
+            <label style={{ width: 130 }}>
+              Postal Code
+              <input
+                value={formData.postalCode}
+                onChange={handleChange("postalCode")}
+                style={inputStyle}
+                placeholder="34000"
+              />
+            </label>
+          </div>
+
+          <label>
+            Notes
+            <input
+              value={formData.notes}
+              onChange={handleChange("notes")}
+              style={inputStyle}
+              placeholder="Add note for courier"
+            />
+          </label>
+        </div>
+
+        {/* RIGHT SIDE — Payment */}
+        <div style={cardBox}>
+          <h3>Payment Details</h3>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {shippingOptions.map((option) => (
+              <label
+              key={option.id}
+              style={{
+              flex: 1,
+              minWidth: 200,
+              border:
+              formData.shipping === option.id ? "2px solid #0f172a": "1px solid #e5e7eb",
+              borderRadius: 12,
+              padding: 12,
+              background: formData.shipping === option.id ? "#f8fafc" : "#ffffff",
+              cursor: "pointer",
+            }}
+           >
+            <input
+              type="radio"
+              name="shipping"
+              value={option.id}
+              checked={formData.shipping === option.id}
+              onChange={handleChange("shipping")}
+              style={{ marginRight: 8 }}
+              />
+              <span style={{ fontWeight: 700, color: "#0f172a" }}>
+                {option.label}
+                </span>
+                <div style={{ color: "#475569", fontSize: "0.9rem" }}>
+                  ₺{option.fee.toFixed(2)}
+                  </div>
+                  </label>
+                ))}
+                </div>
+
+          <label>
+            Name on Card*
+            <input
+              value={formData.cardName}
+              onChange={handleChange("cardName")}
+              style={inputStyle}
+              placeholder="e.g. ALEX MORGAN"
+            />
+            <InputError message={errors.cardName} />
+          </label>
+
+          <label>
+            Card Number*
+            <input
+              value={formData.cardNumber}
+              onChange={handleChange("cardNumber")}
+              style={inputStyle}
+              placeholder="**** **** **** ****"
+            />
+            <InputError message={errors.cardNumber} />
+          </label>
+
+          <label>
+            Expiry (MM/YY)*
+            <input
+              value={formData.expiry}
+              onChange={handleChange("expiry")}
+              style={inputStyle}
+            />
+            <InputError message={errors.expiry} />
+          </label>
+
+          <label>
+            CVC*
+            <input
+              value={formData.cvc}
+              onChange={handleChange("cvc")}
+              style={inputStyle}
+              placeholder="123"
+            />
+            <InputError message={errors.cvc} />
+          </label>
+
+          <button type="submit" style={submitBtn}>
+            Place Order
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+const cardBox = {
+  background: "white",
+  padding: 16,
+  borderRadius: 12,
+  border: "1px solid #e5e7eb",
+  display: "flex",
+  flexDirection: "column",
+  gap: 12,
+};
+
+const inputStyle = {
+  width: "100%",
+  padding: "10px 12px",
+  marginTop: 6,
+  borderRadius: 10,
+  border: "1px solid #e5e7eb",
+  fontSize: "0.95rem",
+  background: "#f8fafc",
+};
+
+const submitBtn = {
+  background: "#facc15",
+  color: "#0f172a",
+  border: "none",
+  borderRadius: 10,
+  padding: "12px 16px",
+  fontWeight: 800,
+  cursor: "pointer",
+  marginTop: 12,
+  width: "100%",
+  fontSize: "1rem",
+};
+
+
+export default CheckoutForm;
+
+

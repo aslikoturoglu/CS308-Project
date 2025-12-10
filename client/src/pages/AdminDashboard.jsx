@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { fetchProductsWithMeta } from "../services/productService";
+import { applyDiscount } from "../utils/applyDiscount";
+
 
 const rolesToSections = {
   admin: ["dashboard", "product", "sales", "support"],
@@ -112,7 +114,7 @@ function AdminDashboard() {
               hasDiscount: true,
               discountLabel: `-${discountForm.rate}%`,
               originalPrice: p.originalPrice || p.price,
-              price: Math.max(0, (p.price * (100 - discountForm.rate)) / 100),
+              price: applyDiscount(p.price, discountForm.rate, "percent"),
             }
           : p
       )

@@ -3,6 +3,8 @@ import CartItem from "../components/cart/CartItem";
 import CartSummary from "../components/cart/CartSummary";
 import { useCart } from "../context/CartContext";
 import { updateStock } from "../services/api.js";
+import { applyDiscount } from "../utils/applyDiscount";
+
 
 
 function Cart() {
@@ -76,7 +78,9 @@ const handleRemove = async (id) => {
 
   const shipping = items.length === 0 ? 0 : 89;
   const discount = subtotal > 4000 ? 250 : 0;
-  const total = Math.max(subtotal + shipping - discount, 0);
+  const discountedSubtotal = applyDiscount(subtotal, discount, "flat");
+  const total = discountedSubtotal + shipping;
+
 
   const handleCheckout = () => {
     if (!items.length) {

@@ -5,7 +5,7 @@ import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import Spinner from "../components/ui/Spinner";
 import { updateStock } from "../services/api.js";
-
+import filterProducts from "../utils/filterProducts";
 
 const categories = [
   { label: "All", keywords: [] },
@@ -32,14 +32,11 @@ function ProductList() {
 const { addItem, items: cartItems, increment, decrement, removeItem } = useCart();
   const { toggleItem, inWishlist } = useWishlist();
 
-// 🔹1) cartQty burada
 const cartQty = (id) => {
   const item = cartItems.find((i) => i.id === id);
   return item ? item.quantity : 0;
 };
 
-
-// 🔥 İlk kez sepete ekleme
 const handleAddFirst = async (p) => {
   if (p.availableStock <= 0) return;
 
@@ -53,7 +50,6 @@ const handleAddFirst = async (p) => {
   );
 };
 
-// 🔥 + butonu
 const handleIncrease = async (p) => {
   if (p.availableStock <= 0) return;
 
@@ -105,9 +101,6 @@ const handleDecrease = async (p) => {
   );
 };
 
-
-
-
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
@@ -132,34 +125,10 @@ const handleDecrease = async (p) => {
   }, [location.search]);
 
   const filtered = useMemo(() => {
-    let list = products;
-    if (searchTerm.trim()) {
-      const term = searchTerm.trim().toLowerCase();
-      
-      const searchableFields = [
-        "name",
-        "description",
-        "category",
-        "material",
-        "color",
-      ];
-      
-      list = list.filter((p) =>
-        searchableFields.some((field) =>
-          (p[field] || "").toString().toLowerCase().includes(term)
-        )
-      );
-  
-    }
-    if (category !== "All") {
-      const rule = categories.find((c) => c.label === category);
-      if (rule && rule.keywords.length > 0) {
-        const keywords = rule.keywords;
-        list = list.filter((p) =>
-          keywords.some((kw) => p.name.toLowerCase().includes(kw.toLowerCase()))
-        );
-      }
-    }
+    // Step 1 → search + category filtering
+    let list = filterProducts(products, searchTerm, category);
+
+    // Step 2 → sorting
     if (sort === "price-asc") {
       list = [...list].sort((a, b) => a.price - b.price);
     } else if (sort === "price-desc") {
@@ -167,8 +136,10 @@ const handleDecrease = async (p) => {
     } else if (sort === "popularity") {
       list = [...list].sort((a, b) => (b.ratingCount || 0) - (a.ratingCount || 0));
     }
+
     return list;
-  }, [category, products, searchTerm, sort]);
+  }, [products, searchTerm, category, sort]); // 🆕 Correct dependency list
+
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);

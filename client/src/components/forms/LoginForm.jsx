@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
+import { validateEmail } from "../../utils/validateEmail";
 
 function LoginForm({ onSuccess }) {
   const navigate = useNavigate();
@@ -14,10 +15,9 @@ function LoginForm({ onSuccess }) {
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(email.trim())) {
+    if (!validateEmail(email)) {
       setError("Enter a valid email address.");
-      addToast("Invalid email format", "error");
+      addToast("Invalid email format (@suhome.com)", "error");
       return;
     }
     if (!password.trim()) {
