@@ -10,6 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import productRoutes from "./routes/productRoutes.js";
 import cartRoutes from "./routes/cartRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js";
 import db from "./db.js"; // DB bağlantısı burada load ediliyor
 
 const __filename = fileURLToPath(import.meta.url);
@@ -23,6 +24,7 @@ app.use(express.json());
 // API ROUTES (keep under /api to avoid SPA clashes)
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
+app.use("/api/orders", orderRoutes);
 
 // Static serve for built client
 const publicDir = path.resolve(__dirname, "../public");
