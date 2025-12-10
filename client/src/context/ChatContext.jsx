@@ -1,7 +1,18 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { useAuth } from "./AuthContext";
+import {
+  fetchUserConversation,
+  sendUserMessage,
+} from "../services/supportService";
 
 const ChatContext = createContext(undefined);
-const STORAGE_KEY = "chat-thread";
 
 const seedMessages = [
   {
@@ -12,31 +23,6 @@ const seedMessages = [
   },
 ];
 
-const cannedReplies = [
-  {
-    match: /cargo|shipping|delivery|kargo|teslim/i,
-    text: "Orders ship in 1-3 business days. I can share your tracking code once it’s ready.",
-  },
-  {
-    match: /return|refund|exchange|iade|degisim|değişim/i,
-    text: "You can return items within 14 days for free. I can create a return code for you.",
-  },
-  {
-    match: /stock|size|color|ürün|beden/i,
-    text: "Share the product name and I’ll check available sizes and colors for you.",
-  },
-  {
-    match: /price|discount|sale|fiyat|indirim/i,
-    text: "We apply basket-only discounts automatically when you add items to cart.",
-  },
-];
-
-const fallbackReplies = [
-  "Got it—I'll get back to you with the details in a moment.",
-  "I’m putting together a couple of options for you.",
-  "Checking that now. Let me know if you have another question meanwhile.",
-];
-
 const buildMessage = (text, from) => ({
   id: `${from}-${Date.now()}-${Math.round(Math.random() * 1000)}`,
   from,
@@ -44,57 +30,117 @@ const buildMessage = (text, from) => ({
   timestamp: Date.now(),
 });
 
-function resolveReply(input) {
-  const found = cannedReplies.find((item) => item.match.test(input));
-  if (found) return found.text;
-  return fallbackReplies[Math.floor(Math.random() * fallbackReplies.length)];
-}
-
 export function ChatProvider({ children }) {
-  const [messages, setMessages] = useState(() => {
-    if (typeof window === "undefined") return seedMessages;
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : seedMessages;
-    } catch (error) {
-      console.error("Chat storage read failed", error);
-      return seedMessages;
-    }
-  });
+  const { user } = useAuth();
+  const [conversationId, setConversationId] = useState(null);
+  const [messages, setMessages] = useState(seedMessages);
+  const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [syncError, setSyncError] = useState(null);
+
+  const activeUserId = useMemo(
+    () => (Number(user?.id) && Number(user?.id) > 0 ? Number(user?.id) : 1),
+    [user]
+  );
+
+  const normalizeMessages = useCallback(
+    (incoming) =>
+      (incoming || []).map((msg) => ({
+        id: msg.id ?? msg.message_id ?? `${msg.from}-${msg.timestamp}`,
+        from: (msg.from === "support" ? "assistant" : msg.from) ??
+          (msg.sender_id === activeUserId ? "user" : "assistant"),
+        sender_id: msg.sender_id ?? activeUserId,
+        text: msg.text ?? msg.message_text ?? "",
+        timestamp: msg.timestamp ?? msg.created_at ?? Date.now(),
+      })),
+    [activeUserId]
+  );
+
+  const hydrateFromServer = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await fetchUserConversation(activeUserId);
+      setConversationId(data.conversation_id);
+      const nextMessages = normalizeMessages(data.messages);
+      setMessages((prev) => {
+        const existingIds = new Set(prev.map((m) => String(m.id)));
+        const incoming =
+          nextMessages.length > 0 ? nextMessages : seedMessages;
+        if (!isOpen) {
+          const newSupportMessages = incoming.filter(
+            (m) => m.from !== "user" && !existingIds.has(String(m.id))
+          ).length;
+          if (newSupportMessages > 0) {
+            setUnreadCount((val) => val + newSupportMessages);
+          }
+        }
+        return incoming;
+      });
+      setSyncError(null);
+    } catch (error) {
+      console.error("Chat sync failed", error);
+      setSyncError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeUserId, isOpen, normalizeMessages]);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
-    } catch (error) {
-      console.error("Chat storage write failed", error);
-    }
-  }, [messages]);
+    hydrateFromServer();
+  }, [hydrateFromServer]);
+
+  useEffect(() => {
+    if (!conversationId || !isOpen) return undefined;
+    const interval = setInterval(() => {
+      hydrateFromServer();
+    }, 4500);
+    return () => clearInterval(interval);
+  }, [conversationId, hydrateFromServer, isOpen]);
 
   useEffect(() => {
     if (isOpen) setUnreadCount(0);
   }, [isOpen]);
 
-  const appendMessage = (text, from) => {
-    const message = buildMessage(text, from);
-    setMessages((prev) => [...prev, message]);
-    if (from === "assistant" && !isOpen) {
-      setUnreadCount((prev) => prev + 1);
-    }
-    return message;
-  };
-
   const sendMessage = (text) => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    appendMessage(trimmed, "user");
-    setIsTyping(true);
-    setTimeout(() => {
-      appendMessage(resolveReply(trimmed), "assistant");
-      setIsTyping(false);
-    }, 450);
+
+    const optimistic = buildMessage(trimmed, "user");
+    setMessages((prev) => [...prev, optimistic]);
+    setIsSending(true);
+
+    sendUserMessage({ userId: activeUserId, text: trimmed })
+      .then((payload) => {
+        if (payload?.conversation_id) {
+          setConversationId(payload.conversation_id);
+        }
+        if (payload?.message) {
+          const [confirmed] = normalizeMessages([payload.message]);
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === optimistic.id ? confirmed : msg
+            )
+          );
+        }
+        setSyncError(null);
+      })
+      .catch((error) => {
+        console.error("Support message send failed", error);
+        setSyncError(error.message);
+        setMessages((prev) =>
+          prev
+            .filter((msg) => msg.id !== optimistic.id)
+            .concat(
+              buildMessage(
+                "Mesaj gönderilemedi, lütfen tekrar deneyin.",
+                "assistant"
+              )
+            )
+        );
+      })
+      .finally(() => setIsSending(false));
   };
 
   const openChat = () => setIsOpen(true);
@@ -105,15 +151,25 @@ export function ChatProvider({ children }) {
     () => ({
       messages,
       isOpen,
-      isTyping,
+      isSending,
+      isLoading,
       unreadCount,
+      conversationId,
+      syncError,
       sendMessage,
-      appendMessage,
       openChat,
       closeChat,
       toggleChat,
     }),
-    [messages, isOpen, isTyping, unreadCount]
+    [
+      messages,
+      isOpen,
+      isSending,
+      isLoading,
+      unreadCount,
+      conversationId,
+      syncError,
+    ]
   );
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

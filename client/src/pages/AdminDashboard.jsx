@@ -1,7 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { fetchProductsWithMeta } from "../services/productService";
+import {
+  fetchSupportInbox,
+  fetchSupportMessages,
+  sendSupportMessage,
+} from "../services/supportService";
+import { formatOrderId } from "../services/orderService";
 
 const rolesToSections = {
   admin: ["dashboard", "product", "sales", "support"],
@@ -30,18 +36,19 @@ const mockRevenue = [
   { label: "Sun", value: 18 },
 ];
 
-const mockChats = [
-  { id: "CH-1", customer: "Ayse Demir", status: "Open", preview: "Can I reschedule delivery?", claimed: false },
-  { id: "CH-2", customer: "Mehmet Kaya", status: "Waiting", preview: "Need invoice copy", claimed: true },
-];
-
 function AdminDashboard() {
   const { user } = useAuth();
   const { addToast } = useToast();
   const [activeSection, setActiveSection] = useState("dashboard");
   const [products, setProducts] = useState([]);
   const [deliveries, setDeliveries] = useState(mockDeliveries);
-  const [chats, setChats] = useState(mockChats);
+  const [chats, setChats] = useState([]);
+  const [activeConversationId, setActiveConversationId] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [replyDraft, setReplyDraft] = useState("");
+  const [isLoadingChats, setIsLoadingChats] = useState(false);
+  const [isLoadingThread, setIsLoadingThread] = useState(false);
+  const [isSendingReply, setIsSendingReply] = useState(false);
   const [filters, setFilters] = useState({ invoiceFrom: "", invoiceTo: "" });
   const [newProduct, setNewProduct] = useState({ name: "", price: "", stock: "", category: "" });
   const [discountForm, setDiscountForm] = useState({ productId: "", rate: 10 });
@@ -55,6 +62,40 @@ function AdminDashboard() {
       .catch(() => addToast("Failed to load products", "error"));
     return () => controller.abort();
   }, [addToast]);
+
+  const loadInbox = useCallback(async () => {
+    setIsLoadingChats(true);
+    try {
+      const list = await fetchSupportInbox();
+      setChats(list);
+      if (!activeConversationId && list.length > 0) {
+        setActiveConversationId(list[0].id);
+      }
+    } catch (error) {
+      console.error("Support inbox fetch failed", error);
+      addToast("Support queue yüklenemedi", "error");
+    } finally {
+      setIsLoadingChats(false);
+    }
+  }, [activeConversationId, addToast]);
+
+  useEffect(() => {
+    loadInbox();
+    const interval = setInterval(loadInbox, 7000);
+    return () => clearInterval(interval);
+  }, [loadInbox]);
+
+  useEffect(() => {
+    if (!activeConversationId) return;
+    setIsLoadingThread(true);
+    fetchSupportMessages(activeConversationId)
+      .then((data) => setChatMessages(data.messages || []))
+      .catch((error) => {
+        console.error("Support messages fetch failed", error);
+        addToast("Konuşma açılamadı", "error");
+      })
+      .finally(() => setIsLoadingThread(false));
+  }, [activeConversationId, addToast]);
 
   const permittedSections = rolesToSections[user?.role] || [];
   useEffect(() => {
@@ -131,9 +172,37 @@ function AdminDashboard() {
     addToast("Delivery status updated (mock)", "info");
   };
 
-  const handleClaimChat = (id) => {
-    setChats((prev) => prev.map((c) => (c.id === id ? { ...c, claimed: true, status: "In-progress" } : c)));
-    addToast(`Chat ${id} claimed`, "info");
+  const handleSelectConversation = (id) => {
+    setActiveConversationId(id);
+    setReplyDraft("");
+  };
+
+  const handleSendReply = async () => {
+    if (!replyDraft.trim() || !activeConversationId) {
+      addToast("Mesaj boş olamaz", "error");
+      return;
+    }
+
+    setIsSendingReply(true);
+    try {
+      const agentId = Number(user?.id);
+      const payload = await sendSupportMessage({
+        conversationId: activeConversationId,
+        agentId: Number.isFinite(agentId) && agentId > 0 ? agentId : undefined,
+        text: replyDraft,
+      });
+
+      if (payload?.message) {
+        setChatMessages((prev) => [...prev, payload.message]);
+      }
+      setReplyDraft("");
+      loadInbox();
+    } catch (error) {
+      console.error("Support reply failed", error);
+      addToast("Mesaj gönderilemedi", "error");
+    } finally {
+      setIsSendingReply(false);
+    }
   };
 
   const sections = [
@@ -230,7 +299,12 @@ function AdminDashboard() {
                 { label: "Revenue (7d)", value: "₺125,430", change: "+8.2%", tone: "#0058a3" },
                 { label: "Orders", value: "312", change: "+5.4%", tone: "#f59e0b" },
                 { label: "Low stock", value: totals.lowStock, change: "Restock soon", tone: "#ef4444" },
-                { label: "Active chats", value: chats.filter((c) => !c.claimed).length, change: "Support", tone: "#0ea5e9" },
+                {
+                  label: "Active chats",
+                  value: chats.filter((c) => c.status !== "closed").length,
+                  change: "Support",
+                  tone: "#0ea5e9",
+                },
               ].map((card) => (
                 <div
                   key={card.label}
@@ -529,42 +603,65 @@ function AdminDashboard() {
           )}
 
           {activeSection === "support" && (
-            <section style={{ display: "grid", gap: 14, gridTemplateColumns: "1.6fr 1fr" }}>
+            <section style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1.4fr" }}>
               <div style={{ background: "white", borderRadius: 14, padding: 14, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
-                <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Active chat queue</h3>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Active chat queue</h3>
+                  {isLoadingChats && <span style={{ color: "#0ea5e9", fontWeight: 700 }}>Syncing…</span>}
+                </div>
                 <div style={{ display: "grid", gap: 10 }}>
-                  {chats.map((chat) => (
-                    <div
-                      key={chat.id}
-                      style={{
-                        border: "1px solid #e5e7eb",
-                        borderRadius: 10,
-                        padding: 10,
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <div>
-                        <strong>{chat.customer}</strong>
-                        <p style={{ margin: "2px 0 0", color: "#475569" }}>{chat.preview}</p>
-                      </div>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <span style={{ color: chat.claimed ? "#059669" : "#b45309", fontWeight: 700 }}>
-                          {chat.claimed ? "In-progress" : "Waiting"}
-                        </span>
-                        {!chat.claimed && (
-                          <button type="button" onClick={() => handleClaimChat(chat.id)} style={primaryBtn}>
-                            Claim chat
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                  {chats.map((chat) => {
+                    const isActive = chat.id === activeConversationId;
+                    return (
+                      <button
+                        key={chat.id}
+                        type="button"
+                        onClick={() => handleSelectConversation(chat.id)}
+                        style={{
+                          textAlign: "left",
+                          border: isActive ? "2px solid #0ea5e9" : "1px solid #e5e7eb",
+                          background: isActive ? "rgba(14,165,233,0.08)" : "white",
+                          borderRadius: 12,
+                          padding: 12,
+                          cursor: "pointer",
+                          display: "grid",
+                          gap: 6,
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div>
+                            <strong>{chat.customer_name}</strong>
+                            <p style={{ margin: "2px 0 0", color: "#475569" }}>
+                              {chat.order_id ? formatOrderId(chat.order_id) : "No order linked"}
+                            </p>
+                          </div>
+                          <span
+                            style={{
+                              fontWeight: 700,
+                              color: chat.status === "closed" ? "#9ca3af" : "#0ea5e9",
+                              padding: "4px 10px",
+                              borderRadius: 999,
+                              background: "rgba(14,165,233,0.12)",
+                              border: "1px solid rgba(14,165,233,0.2)",
+                            }}
+                          >
+                            {chat.status}
+                          </span>
+                        </div>
+                        <p style={{ margin: 0, color: "#0f172a" }}>{chat.last_message}</p>
+                        <small style={{ color: "#6b7280" }}>
+                          Last update: {new Date(chat.last_message_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+                        </small>
+                      </button>
+                    );
+                  })}
+                  {!chats.length && !isLoadingChats && (
+                    <p style={{ margin: 0, color: "#6b7280" }}>No active chats yet.</p>
+                  )}
                 </div>
               </div>
 
-              <aside
+              <div
                 style={{
                   background: "white",
                   borderRadius: 14,
@@ -574,25 +671,70 @@ function AdminDashboard() {
                   gap: 10,
                 }}
               >
-                <h4 style={{ margin: 0 }}>Customer orders (mock)</h4>
-                <div style={{ display: "grid", gap: 8 }}>
-                  {mockInvoices.map((inv) => (
+                <h3 style={{ margin: "0 0 4px", color: "#0f172a" }}>Conversation</h3>
+                {activeConversationId ? (
+                  <>
                     <div
-                      key={inv.id}
                       style={{
                         border: "1px solid #e5e7eb",
-                        borderRadius: 10,
-                        padding: 10,
-                        display: "flex",
-                        justifyContent: "space-between",
+                        borderRadius: 12,
+                        padding: 12,
+                        maxHeight: 320,
+                        overflow: "auto",
+                        display: "grid",
+                        gap: 8,
                       }}
                     >
-                      <span>{inv.orderId}</span>
-                      <span>₺{inv.total.toLocaleString("tr-TR")}</span>
+                      {isLoadingThread && <p style={{ margin: 0, color: "#6b7280" }}>Loading messages...</p>}
+                      {!isLoadingThread &&
+                        chatMessages.map((msg) => (
+                          <div
+                            key={msg.id}
+                            style={{
+                              justifySelf: msg.from === "support" ? "flex-end" : "flex-start",
+                              background: msg.from === "support" ? "linear-gradient(135deg,#0ea5e9,#2563eb)" : "#f8fafc",
+                              color: msg.from === "support" ? "white" : "#0f172a",
+                              padding: "10px 12px",
+                              borderRadius: msg.from === "support" ? "12px 12px 4px 12px" : "12px 12px 12px 4px",
+                              maxWidth: "80%",
+                            }}
+                          >
+                            <p style={{ margin: 0 }}>{msg.text}</p>
+                            <small style={{ opacity: 0.8 }}>
+                              {new Date(msg.timestamp).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+                            </small>
+                          </div>
+                        ))}
+                      {!isLoadingThread && chatMessages.length === 0 && (
+                        <p style={{ margin: 0, color: "#6b7280" }}>No messages yet. Say hi to the customer.</p>
+                      )}
                     </div>
-                  ))}
-                </div>
-              </aside>
+                    <div style={{ display: "grid", gap: 8 }}>
+                      <textarea
+                        value={replyDraft}
+                        onChange={(e) => setReplyDraft(e.target.value)}
+                        rows={3}
+                        placeholder="Write a reply..."
+                        style={{ ...inputStyle, minHeight: 90 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSendReply}
+                        disabled={isSendingReply}
+                        style={{
+                          ...primaryBtn,
+                          opacity: isSendingReply ? 0.7 : 1,
+                          cursor: isSendingReply ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {isSendingReply ? "Sending..." : "Send reply"}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <p style={{ margin: 0, color: "#6b7280" }}>Select a chat from the left to start messaging.</p>
+                )}
+              </div>
             </section>
           )}
 

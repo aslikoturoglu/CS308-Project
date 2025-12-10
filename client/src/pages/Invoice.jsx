@@ -1,5 +1,5 @@
 import { Link, useParams, useLocation } from "react-router-dom";
-import { getOrderById } from "../services/orderService";
+import { formatOrderId, getOrderById } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
 
 function Invoice() {
@@ -30,6 +30,7 @@ function Invoice() {
   }
 
   const totalItems = order.items.reduce((sum, item) => sum + Number(item.qty || item.quantity || 1), 0);
+  const displayId = formatOrderId(order.id);
 
   return (
     <section style={pageStyle}>
@@ -44,7 +45,7 @@ function Invoice() {
           </div>
           <div style={{ textAlign: "right" }}>
             <p style={{ margin: 0, color: "#94a3b8" }}>Order ID</p>
-            <h2 style={{ margin: 0, color: "#0f172a" }}>{order.id}</h2>
+            <h2 style={{ margin: 0, color: "#0f172a" }}>{displayId}</h2>
           </div>
         </header>
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { addReview, getReviewMap } from "../services/localStorageHelpers";
-import { advanceOrderStatus, getOrders } from "../services/orderService";
+import { advanceOrderStatus, formatOrderId, getOrders } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
 import { useAuth } from "../context/AuthContext";
 
@@ -159,10 +159,11 @@ function OrderHistory() {
           {filteredOrders.map((order) => {
             const pill = statusPills[order.status];
             const progressIndex = order.progressIndex ?? timelineSteps.indexOf(order.status) ?? 0;
+            const formattedId = formatOrderId(order.id);
 
             return (
               <article
-                key={order.id}
+                key={formattedId}
                 style={{
                   backgroundColor: "#ffffff",
                   borderRadius: 24,
@@ -184,7 +185,7 @@ function OrderHistory() {
                 >
                   <div>
                     <p style={{ margin: 0, color: "#94a3b8", letterSpacing: 1 }}>ORDER</p>
-                    <h3 style={{ margin: "4px 0", color: "#0f172a" }}>{order.id}</h3>
+                    <h3 style={{ margin: "4px 0", color: "#0f172a" }}>{formattedId}</h3>
                     <p style={{ margin: 0, color: "#475569" }}>{order.date}</p>
                   </div>
 
@@ -309,7 +310,7 @@ function OrderHistory() {
                     </button>
                   )}
                   <Link
-                    to={`/invoice/${encodeURIComponent(order.id)}`}
+                    to={`/invoice/${encodeURIComponent(formattedId)}`}
                     style={{
                       border: "1px solid #0058a3",
                       color: "#0058a3",

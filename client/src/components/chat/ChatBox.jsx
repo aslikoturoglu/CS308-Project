@@ -16,7 +16,7 @@ const formatTime = (value) =>
   });
 
 function ChatBox() {
-  const { messages, sendMessage, isTyping, closeChat } = useChat();
+  const { messages, sendMessage, isSending, isLoading, syncError, closeChat } = useChat();
   const [draft, setDraft] = useState("");
   const endRef = useRef(null);
 
@@ -53,7 +53,8 @@ function ChatBox() {
       </div>
 
       <div className="chat-messages">
-        {!hasMessages ? (
+        {isLoading && <p className="placeholder">Connecting you to support...</p>}
+        {!isLoading && !hasMessages ? (
           <p className="placeholder">Type your question and we’ll jump in to help.</p>
         ) : (
           messages.map((msg) => (
@@ -67,7 +68,7 @@ function ChatBox() {
           ))
         )}
 
-        {isTyping && (
+        {isSending && (
           <div className="message-row assistant">
             <div className="avatar">🤖</div>
             <div className="bubble typing">
@@ -79,6 +80,12 @@ function ChatBox() {
         )}
         <div ref={endRef} />
       </div>
+
+      {syncError && (
+        <div style={{ padding: "8px 12px", color: "#b91c1c", fontSize: "0.9rem" }}>
+          {syncError}
+        </div>
+      )}
 
       <div className="chat-quick">
         {quickPrompts.map((prompt) => (
@@ -94,8 +101,11 @@ function ChatBox() {
           placeholder="Write a message..."
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          disabled={isSending}
         />
-        <button type="submit">Send</button>
+        <button type="submit" disabled={isSending}>
+          {isSending ? "Sending..." : "Send"}
+        </button>
       </form>
     </div>
   );
