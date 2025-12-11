@@ -7,7 +7,7 @@ import {
   fetchSupportMessages,
   sendSupportMessage,
 } from "../services/supportService";
-import { formatOrderId } from "../services/orderService";
+import { advanceOrderStatus, formatOrderId, getOrders } from "../services/orderService";
 
 const rolesToSections = {
   admin: ["dashboard", "product", "sales", "support"],
@@ -41,6 +41,7 @@ function AdminDashboard() {
   const { addToast } = useToast();
   const [activeSection, setActiveSection] = useState("dashboard");
   const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [deliveries, setDeliveries] = useState(mockDeliveries);
   const [chats, setChats] = useState([]);
   const [activeConversationId, setActiveConversationId] = useState(null);
@@ -62,6 +63,11 @@ function AdminDashboard() {
       .catch(() => addToast("Failed to load products", "error"));
     return () => controller.abort();
   }, [addToast]);
+
+  useEffect(() => {
+    // simple local read for sales manager view
+    setOrders(getOrders());
+  }, []);
 
   const loadInbox = useCallback(async () => {
     setIsLoadingChats(true);
@@ -183,6 +189,16 @@ function AdminDashboard() {
   const handleSelectConversation = (id) => {
     setActiveConversationId(id);
     setReplyDraft("");
+  };
+
+  const handleAdvanceOrder = (orderId) => {
+    const result = advanceOrderStatus(orderId, user);
+    if (result.error) {
+      addToast(result.error, "error");
+      return;
+    }
+    setOrders(result.orders);
+    addToast("Order advanced to next status", "info");
   };
 
   const handleSendReply = async () => {
@@ -497,6 +513,47 @@ function AdminDashboard() {
 
           {activeSection === "sales" && (
             <section style={{ display: "grid", gap: 14 }}>
+              <div style={{ background: "white", borderRadius: 14, padding: 14, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
+                <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Orders (sales manager)</h3>
+                <div style={{ display: "grid", gap: 10 }}>
+                  {orders.map((order) => (
+                    <div
+                      key={order.id}
+                      style={{
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 10,
+                        padding: 12,
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
+                        gap: 8,
+                        alignItems: "center",
+                      }}
+                    >
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>{formatOrderId(order.id)}</p>
+                        <p style={{ margin: "2px 0 0", color: "#475569" }}>{order.address}</p>
+                      </div>
+                      <div>
+                        <p style={{ margin: 0, color: "#0f172a", fontWeight: 700 }}>{order.status}</p>
+                        <p style={{ margin: "2px 0 0", color: "#64748b" }}>{order.shippingCompany}</p>
+                      </div>
+                      <p style={{ margin: 0, color: "#0f172a", fontWeight: 700 }}>₺{order.total?.toLocaleString("tr-TR")}</p>
+                      {order.status !== "Delivered" ? (
+                        user?.role === "sales_manager" ? (
+                          <button type="button" onClick={() => handleAdvanceOrder(order.id)} style={primaryBtn}>
+                            Advance status
+                          </button>
+                        ) : (
+                          <span style={{ color: "#94a3b8", fontWeight: 700 }}>Only sales manager can advance</span>
+                        )
+                      ) : (
+                        <span style={{ color: "#22c55e", fontWeight: 700 }}>Delivered</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div style={{ background: "white", borderRadius: 14, padding: 14, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
                 <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Price & Discount</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>

@@ -161,11 +161,18 @@ export function addOrder({ items, total, id: providedId }) {
   return newOrder;
 }
 
-export function advanceOrderStatus(id) {
+export function advanceOrderStatus(id, actor) {
   const orders = readOrders();
+  const actorRole = typeof actor === "string" ? actor : actor?.role;
+  const actorName = typeof actor === "object" ? actor?.name : undefined;
+
+  if (actorRole !== "sales_manager") {
+    return { orders, error: "Only the sales manager can update order statuses." };
+  }
+
   const targetId = formatOrderId(id);
   const idx = orders.findIndex((o) => formatOrderId(o.id) === targetId);
-  if (idx === -1) return orders;
+  if (idx === -1) return { orders, error: "Order not found." };
   const order = orders[idx];
   const steps = ["Processing", "In-transit", "Delivered"];
   const nextIndex = Math.min(
@@ -181,7 +188,9 @@ export function advanceOrderStatus(id) {
       nextStatus === "Delivered"
         ? new Date().toLocaleDateString("en-US")
         : order.deliveredAt,
+    statusUpdatedBy: actorName || "Sales Manager",
+    statusUpdatedAt: new Date().toISOString(),
   };
   writeOrders(orders);
-  return orders;
+  return { orders, updatedOrder: orders[idx] };
 }
