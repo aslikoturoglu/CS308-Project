@@ -255,6 +255,8 @@ function ProductDetail() {
             <Info label="Material" value={product.material ?? "N/A"} />
             <Info label="Color" value={product.color ?? "N/A"} />
             <Info label="Category" value={product.category ?? "N/A"} />
+            <Info label="Warranty" value={product.warranty ?? "Not specified"} />
+            <Info label="Distributor" value={product.distributor ?? "Not specified"} />
           </section>
           
           <div
@@ -270,7 +272,7 @@ function ProductDetail() {
             >
             <Info label="Model" value={`SU-${String(product.id).padStart(4, "0")}`} />
             <Info label="Serial" value={`SN-${product.id * 9876}`} />
-            <Info label="Distributor" value="SUHome Logistics" />
+            <Info label="Distributor" value={product.distributor ?? "SUHome Logistics"} />
             </div>
 
             <div style={buttonRow}>
