@@ -54,22 +54,38 @@ export function generateInvoice(req, res) {
 
     const sqlItems = `
       SELECT 
+        oi.order_item_id,
         oi.order_id,
         oi.product_id,
         oi.quantity,
         oi.unit_price,
-        p.product_name
+        COALESCE(p.product_name, CONCAT('Product #', oi.product_id)) AS product_name
       FROM order_items oi
-      JOIN Products p ON p.product_id = oi.product_id
+      LEFT JOIN products p ON p.product_id = oi.product_id
       WHERE oi.order_id = ?
     `;
 
     db.query(sqlItems, [realOrderId], (err, items) => {
-      if (err || !items.length) {
-        return res.status(404).json({ error: "Order items not found" });
+      if (err) {
+        console.error("Invoice items query failed:", err);
+        return res.status(500).json({ error: "Order items could not be loaded" });
       }
 
-      return createPdf(order, items, res);
+      const safeItems =
+        items.length > 0
+          ? items
+          : [
+              {
+                order_item_id: `fallback-${realOrderId}`,
+                order_id: realOrderId,
+                product_id: null,
+                quantity: 1,
+                unit_price: Number(order.total_amount ?? 0),
+                product_name: "Order summary",
+              },
+            ];
+
+      return createPdf(order, safeItems, res);
     });
   });
 }
