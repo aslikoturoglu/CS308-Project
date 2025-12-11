@@ -1,5 +1,6 @@
 const ORDER_KEY = "orders";
 const timelineSteps = ["Processing", "In-transit", "Delivered"];
+const API_BASE = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) || "";
 
 export function formatOrderId(id) {
   if (!id && id !== 0) return "#ORD-00000";
@@ -138,7 +139,7 @@ const frontendToBackendStatus = {
 };
 
 export async function fetchAllOrders(signal) {
-  const res = await fetch("/api/orders", { signal });
+  const res = await fetch(`${API_BASE}/api/orders`, { signal });
   const data = await res.json().catch(() => []);
   if (!res.ok) {
     const msg = data?.error || "Orders could not be loaded";
@@ -181,12 +182,15 @@ export async function fetchAllOrders(signal) {
 
 export async function updateBackendOrderStatus(orderId, nextStatus, signal) {
   const backendStatus = frontendToBackendStatus[nextStatus] || "preparing";
-  const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}/status`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status: backendStatus }),
-    signal,
-  });
+  const res = await fetch(
+    `${API_BASE}/api/orders/${encodeURIComponent(orderId)}/status`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: backendStatus }),
+      signal,
+    }
+  );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const msg = data?.error || "Status could not be updated";

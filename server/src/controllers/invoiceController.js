@@ -57,7 +57,7 @@ export function generateInvoice(req, res) {
         oi.unit_price,
         p.product_name
       FROM order_items oi
-      JOIN products p ON p.product_id = oi.product_id
+      JOIN Products p ON p.product_id = oi.product_id
       WHERE oi.order_id = ?
     `;
 

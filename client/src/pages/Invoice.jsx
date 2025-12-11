@@ -34,17 +34,19 @@ function Invoice() {
     0
   );
   const realOrderId = order.order_id ?? order.id;
-  
+
   const displayId = formatOrderId(order.id);
 
-  // 🔹 Backend URL (lokalde 3000, prod'da VITE_API_BASE_URL ile değiştirilebilir)
-  const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+  // 🔹 Backend URL (relative to current origin by default)
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
   // 🔹 PDF indirme / görüntüleme
   const handleDownloadPdf = () => {
-    if (!order?.id) return;
-    const url = `${API_BASE_URL}/orders/${order.id}/invoice`;
+    const rawId = realOrderId ?? order.id;
+    if (!rawId) return;
+    const numeric = String(rawId).match(/\d+/);
+    const cleanId = numeric ? numeric[0] : rawId;
+    const url = `${API_BASE_URL}/api/orders/${encodeURIComponent(cleanId)}/invoice`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
