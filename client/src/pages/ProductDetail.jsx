@@ -222,9 +222,18 @@ function ProductDetail() {
       <div style={contentGrid}>
         {/* IMAGE */}
         <div style={imageCard}>
-          <img src={activeImage} alt="" style={mainImage} />
+          <div style={zoomWrapper}>
+            <img
+              src={activeImage}
+              alt=""
+              style={mainImage}
+              onMouseMove={handleZoom}
+              onMouseLeave={resetZoom}
+            />
+          </div>
+
           <div style={thumbRow} />
-        </div>
+      </div>
 
         {/* PRODUCT INFO */}
         <div style={infoCard}>
@@ -432,10 +441,17 @@ const imageCard = {
   padding: 16,
   borderRadius: 12,
   border: "1px solid #e5e7eb",
+  height: 450,
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  overflow: "hidden",
 };
 
 const mainImage = {
   width: "100%",
+  height: "100%",
+  objectFit: "contain",
   borderRadius: 12,
 };
 
