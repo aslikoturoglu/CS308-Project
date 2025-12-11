@@ -5,15 +5,15 @@ import db from "../db.js";
  * POST /orders/checkout
  * Body: { user_id, shipping_address, billing_address }
  *
- * Basit versiyon: cart_items tablosundaki TÜM kayıtları tek bir sipariş sayıyoruz.
+ * Basit versiyon: cart_items tablosundaki TÃœM kayÄ±tlarÄ± tek bir sipariÅŸ sayÄ±yoruz.
  */
 export function checkout(req, res) {
   let { user_id, shipping_address, billing_address, items } = req.body;
 
-  // 🔹 user_id güvenli hale getir (email vs gelirse 1'e düş)
+  // ğŸ”¹ user_id gÃ¼venli hale getir (email vs gelirse 1'e dÃ¼ÅŸ)
   const safeUserId = Number(user_id);
   if (!safeUserId || Number.isNaN(safeUserId)) {
-    user_id = 1; // şimdilik her sipariş tek kullanıcı üzerinden
+    user_id = 1; // ÅŸimdilik her sipariÅŸ tek kullanÄ±cÄ± Ã¼zerinden
   } else {
     user_id = safeUserId;
   }
@@ -22,7 +22,7 @@ export function checkout(req, res) {
     return res.status(400).json({ error: "user_id zorunludur" });
   }
 
-  // Eğer body'den items geliyorsa (SPA'den) onu kullan; yoksa cart_items tablosundan oku.
+  // EÄŸer body'den items geliyorsa (SPA'den) onu kullan; yoksa cart_items tablosundan oku.
   const providedItems = Array.isArray(items)
     ? items
         .map((it) => ({
@@ -41,10 +41,10 @@ export function checkout(req, res) {
 
   const handleCheckout = (cartItems) => {
     if (!cartItems.length) {
-      return res.status(400).json({ error: "Sepet boş" });
+      return res.status(400).json({ error: "Sepet boÅŸ" });
     }
 
-    // 2) Toplam tutarı hesapla
+    // 2) Toplam tutarÄ± hesapla
     let totalAmount = 0;
     cartItems.forEach((it) => {
       totalAmount += Number(it.unit_price) * Number(it.quantity);
@@ -61,13 +61,13 @@ export function checkout(req, res) {
       [user_id, totalAmount, shipping_address || null, billing_address || null],
       (err, orderResult) => {
         if (err) {
-          console.error("Order oluşturulamadı:", err);
-          return res.status(500).json({ error: "Order oluşturulamadı" });
+          console.error("Order oluÅŸturulamadÄ±:", err);
+          return res.status(500).json({ error: "Order oluÅŸturulamadÄ±" });
         }
 
         const order_id = orderResult.insertId;
 
-        // 4) order_items satırlarını hazırla
+        // 4) order_items satÄ±rlarÄ±nÄ± hazÄ±rla
         const orderItemValues = cartItems.map((it) => [
           order_id,
           it.product_id,
@@ -85,7 +85,7 @@ export function checkout(req, res) {
             console.error("Order items eklenemedi:", err);
             return res
               .status(500)
-              .json({ error: "Order item ekleme sırasında hata" });
+              .json({ error: "Order item ekleme sÄ±rasÄ±nda hata" });
           }
 
           // 5) Stok azalt
@@ -97,12 +97,12 @@ export function checkout(req, res) {
           cartItems.forEach((it) => {
             db.query(sqlStock, [it.quantity, it.product_id], (err) => {
               if (err) {
-                console.error("Stok güncellenirken hata:", err);
-                // hata olsa bile diğerlerini deniyoruz
+                console.error("Stok gÃ¼ncellenirken hata:", err);
+                // hata olsa bile diÄŸerlerini deniyoruz
               }
 
               if (--pending === 0) {
-                // 6) deliveries tablosuna kayıt (delivery_status = 'preparing')
+                // 6) deliveries tablosuna kayÄ±t (delivery_status = 'preparing')
                 const sqlDelivery = `
                   INSERT INTO deliveries (order_id, customer_id, delivery_status)
                   VALUES (?, ?, 'preparing')
@@ -110,8 +110,8 @@ export function checkout(req, res) {
 
                 db.query(sqlDelivery, [order_id, user_id], (err) => {
                   if (err) {
-                    console.error("Delivery kaydı oluşturulamadı:", err);
-                    // devam ediyoruz, kritik değil
+                    console.error("Delivery kaydÄ± oluÅŸturulamadÄ±:", err);
+                    // devam ediyoruz, kritik deÄŸil
                   }
 
                   // 7) Sepeti temizle
@@ -142,7 +142,7 @@ export function checkout(req, res) {
     return handleCheckout(providedItems);
   }
 
-  // 1) Cart item'ları ürün fiyatıyla beraber al (fallback)
+  // 1) Cart item'larÄ± Ã¼rÃ¼n fiyatÄ±yla beraber al (fallback)
   const sqlCart = `
     SELECT 
       ci.cart_item_id AS id,
@@ -155,8 +155,8 @@ export function checkout(req, res) {
 
   db.query(sqlCart, (err, cartItems) => {
     if (err) {
-      console.error("Cart okunamadı:", err);
-      return res.status(500).json({ error: "Sepet okunamadı" });
+      console.error("Cart okunamadÄ±:", err);
+      return res.status(500).json({ error: "Sepet okunamadÄ±" });
     }
 
     handleCheckout(cartItems);
@@ -169,7 +169,6 @@ export function checkout(req, res) {
 export function getOrderHistory(req, res) {
   let { user_id } = req.query;
 
-  // query'den email vs gelirse yine INT'e zorla
   const safeUserId = Number(user_id);
   if (!safeUserId || Number.isNaN(safeUserId)) {
     user_id = 1;
@@ -196,10 +195,54 @@ export function getOrderHistory(req, res) {
       return res.status(500).json({ error: "Sipariş geçmişi alınamadı" });
     }
 
-    res.json(rows);
+    const orderIds = rows.map((r) => r.order_id);
+    if (!orderIds.length) return res.json([]);
+
+    const itemSql = `
+      SELECT 
+        oi.order_id,
+        oi.product_id,
+        oi.quantity,
+        oi.unit_price,
+        p.product_name,
+        p.product_image
+      FROM order_items oi
+      LEFT JOIN Products p ON p.product_id = oi.product_id
+      WHERE oi.order_id IN (?)
+    `;
+
+    db.query(itemSql, [orderIds], (itemErr, itemRows = []) => {
+      if (itemErr) {
+        console.error("Order items fetch failed:", itemErr);
+        itemRows = [];
+      }
+
+      const itemMap = new Map();
+      itemRows.forEach((row) => {
+        const list = itemMap.get(row.order_id) || [];
+        list.push({
+          product_id: row.product_id,
+          name: row.product_name,
+          quantity: row.quantity,
+          price: Number(row.unit_price) || 0,
+          image: row.product_image,
+        });
+        itemMap.set(row.order_id, list);
+      });
+
+      const normalized = rows.map((row) => ({
+        order_id: row.order_id,
+        order_date: row.order_date,
+        total_amount: Number(row.total_amount) || 0,
+        status: row.delivery_status || row.order_status || "processing",
+        delivery_status: row.delivery_status,
+        items: itemMap.get(row.order_id) || [],
+      }));
+
+      res.json(normalized);
+    });
   });
 }
-
 /**
  * GET /orders
  * Returns all orders with basic item details for managerial views.
@@ -289,7 +332,7 @@ export function getAllOrders(req, res) {
 
 /**
  * PUT /orders/:order_id/status
- * Body: { status } → örn: "preparing" | "shipped" | "in_transit" | "delivered"
+ * Body: { status } â†’ Ã¶rn: "preparing" | "shipped" | "in_transit" | "delivered"
  */
 
 export function updateDeliveryStatus(req, res) {
@@ -316,8 +359,8 @@ export function updateDeliveryStatus(req, res) {
 
   db.query(sql, [nextDeliveryStatus, order_id], (err) => {
     if (err) {
-      console.error("Status update hatas�:", err);
-      return res.status(500).json({ error: "Durum g�ncellenemedi" });
+      console.error("Status update hatası:", err);
+      return res.status(500).json({ error: "Durum güncellenemedi" });
     }
 
     db.query("UPDATE orders SET status = ? WHERE order_id = ?", [nextOrderStatus, order_id], (orderErr) => {

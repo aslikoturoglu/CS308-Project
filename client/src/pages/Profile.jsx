@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { formatOrderId, getOrders } from "../services/orderService";
+import { formatOrderId, getOrders, fetchUserOrders } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
 
 const mockPreferences = [
@@ -31,12 +31,23 @@ function Profile() {
   );
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(profile || {});
-  const [orders, setOrders] = useState(() => getOrders());
+  const [orders, setOrders] = useState([]);
 
   useEffect(() => {
-    // in case orders change elsewhere (checkout), re-read on mount
-    setOrders(getOrders());
-  }, []);
+    if (!user) {
+      setOrders([]);
+      return;
+    }
+    const controller = new AbortController();
+    fetchUserOrders(user.id, controller.signal)
+      .then((data) => setOrders(data))
+      .catch((err) => {
+        console.error("Order history load failed", err);
+        setOrders(getOrders());
+      });
+
+    return () => controller.abort();
+  }, [user]);
 
   const completedOrders = useMemo(
     () => orders.filter((o) => o.status === "Delivered").length,

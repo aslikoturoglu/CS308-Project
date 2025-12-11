@@ -37,6 +37,40 @@ export function getOrders() {
   return readOrders();
 }
 
+export async function fetchUserOrders(userId, signal) {
+  if (!userId) return [];
+  const res = await fetch(`${API_BASE}/api/orders/history?user_id=${encodeURIComponent(userId)}`, { signal });
+  const data = await res.json().catch(() => []);
+  if (!res.ok) {
+    const msg = data?.error || "Orders could not be loaded";
+    throw new Error(msg);
+  }
+
+  return (data || []).map((row) => {
+    const status = backendToFrontendStatus(row.delivery_status || row.status);
+    const items = Array.isArray(row.items)
+      ? row.items.map((it, idx) => ({
+          id: it.product_id ?? idx,
+          productId: it.product_id ?? idx,
+          name: it.name ?? it.product_name ?? "Item",
+          qty: it.quantity ?? it.qty ?? 1,
+          quantity: it.quantity ?? it.qty ?? 1,
+          price: Number(it.price ?? it.unit_price ?? 0),
+          image: it.image,
+        }))
+      : [];
+
+    return {
+      id: row.order_id ?? row.id,
+      formattedId: formatOrderId(row.order_id ?? row.id),
+      date: row.order_date || row.date,
+      status,
+      total: Number(row.total_amount ?? row.total ?? 0),
+      items,
+    };
+  });
+}
+
 export function getOrderById(id) {
   if (!id) return null;
   const orders = readOrders();
@@ -141,12 +175,12 @@ export function advanceOrderStatus(id, actor) {
   return { orders, updatedOrder: orders[idx] };
 }
 
-const backendToFrontendStatus = (value) => {
+function backendToFrontendStatus(value) {
   const normalized = String(value || "").toLowerCase();
   if (normalized.includes("transit") || normalized === "shipped") return "In-transit";
   if (normalized === "delivered") return "Delivered";
   return "Processing";
-};
+}
 
 const frontendToBackendStatus = {
   Processing: "preparing",

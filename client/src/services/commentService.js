@@ -1,5 +1,5 @@
 import { addReview, getReviewMap } from "./localStorageHelpers";
-import { getOrders } from "./orderService";
+import { getOrders, fetchUserOrders } from "./orderService";
 
 const fallbackName = "Verified buyer";
 
@@ -25,8 +25,20 @@ export async function addComment({ userId, productId, rating, text, name }) {
   return { success: true };
 }
 
-export async function hasDelivered(_userId, productId) {
-  const orders = getOrders();
+export async function hasDelivered(userId, productId) {
+  let orders = [];
+  try {
+    if (userId) {
+      orders = await fetchUserOrders(userId);
+    }
+  } catch {
+    orders = [];
+  }
+
+  if (!orders.length) {
+    orders = getOrders();
+  }
+
   const delivered = orders.some(
     (order) =>
       order.status === "Delivered" &&
