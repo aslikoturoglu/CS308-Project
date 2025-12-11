@@ -37,8 +37,7 @@ export function generateInvoice(req, res) {
       o.billing_address,
       u.full_name AS customer_name,
       u.email AS customer_email,
-      u.home_address AS customer_address,
-      u.tax_id AS customer_tax_id
+      u.home_address AS customer_address
     FROM orders o
     LEFT JOIN users u ON u.user_id = o.user_id
     WHERE o.order_id = ?
@@ -148,7 +147,6 @@ function createPdf(order, items, res) {
     order.customer_address || order.billing_address || "Address not provided"
   );
   const shipping = normalizeTR(order.shipping_address || "Address not provided");
-  const taxId = normalizeTR(order.customer_tax_id || "TAX N/A");
 
   doc
     .fillColor("black")
@@ -158,8 +156,7 @@ function createPdf(order, items, res) {
     .text(email, 50, y + 15)
     .text(billingAddress, 50, y + 30)
     .text(shipping, 50, y + 45)
-    .text(`TAX: ${taxId}`, 50, y + 60)
-    .text("Türkiye", 50, y + 75);
+    .text("Türkiye", 50, y + 60);
 
   // ============================
   // PRODUCT TABLE HEADER
