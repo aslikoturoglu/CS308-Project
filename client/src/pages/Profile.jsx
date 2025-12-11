@@ -43,7 +43,7 @@ function Profile() {
       .then((data) => setOrders(data))
       .catch((err) => {
         console.error("Order history load failed", err);
-        setOrders(getOrders());
+        setOrders([]);
       });
 
     return () => controller.abort();

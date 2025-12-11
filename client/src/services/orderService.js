@@ -38,8 +38,12 @@ export function getOrders() {
 }
 
 export async function fetchUserOrders(userId, signal) {
-  if (!userId) return [];
-  const res = await fetch(`${API_BASE}/api/orders/history?user_id=${encodeURIComponent(userId)}`, { signal });
+  const numericId = Number(userId);
+  if (!Number.isFinite(numericId)) return [];
+
+  const res = await fetch(`${API_BASE}/api/orders/history?user_id=${encodeURIComponent(numericId)}`, {
+    signal,
+  });
   const data = await res.json().catch(() => []);
   if (!res.ok) {
     const msg = data?.error || "Orders could not be loaded";
@@ -177,7 +181,8 @@ export function advanceOrderStatus(id, actor) {
 
 function backendToFrontendStatus(value) {
   const normalized = String(value || "").toLowerCase();
-  if (normalized.includes("transit") || normalized === "shipped") return "In-transit";
+  if (normalized.includes("transit") || normalized === "shipped" || normalized === "in_transit")
+    return "In-transit";
   if (normalized === "delivered") return "Delivered";
   return "Processing";
 }

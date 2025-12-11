@@ -28,7 +28,7 @@ export async function addComment({ userId, productId, rating, text, name }) {
 export async function hasDelivered(userId, productId) {
   let orders = [];
   try {
-    if (userId) {
+    if (Number.isFinite(Number(userId))) {
       orders = await fetchUserOrders(userId);
     }
   } catch {
