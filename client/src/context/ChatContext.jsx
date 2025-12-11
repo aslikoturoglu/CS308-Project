@@ -44,6 +44,7 @@ export function ChatProvider({ children }) {
   const [syncError, setSyncError] = useState(null);
   const [lastError, setLastError] = useState(null);
   const [hasHydrated, setHasHydrated] = useState(false);
+  const [chatUnavailable, setChatUnavailable] = useState(false);
 
   const activeUserId = useMemo(
     () => serverUserId ?? user?.id ?? clientToken,
@@ -70,6 +71,7 @@ export function ChatProvider({ children }) {
   );
 
   const hydrateFromServer = useCallback(async () => {
+    if (chatUnavailable) return;
     setIsLoading((prev) => prev || !hasHydrated);
     try {
       const data = await fetchUserConversation({
@@ -97,7 +99,13 @@ export function ChatProvider({ children }) {
       setLastError(null);
       setHasHydrated(true);
     } catch (error) {
-      console.error("Chat sync failed", error);
+      const isNetworkLike =
+        error?.message?.toLowerCase().includes("failed to fetch") ||
+        error?.message?.toLowerCase().includes("load failed") ||
+        error?.name === "TypeError";
+      if (isNetworkLike) {
+        setChatUnavailable(true);
+      }
       setSyncError(error.message);
       setLastError(error.message);
       setMessages([]);
@@ -105,19 +113,19 @@ export function ChatProvider({ children }) {
     } finally {
       setIsLoading(false);
     }
-  }, [activeUserId, isOpen, normalizeMessages, messages]);
+  }, [activeUserId, isOpen, normalizeMessages, messages, chatUnavailable]);
 
   useEffect(() => {
     hydrateFromServer();
   }, [hydrateFromServer]);
 
   useEffect(() => {
-    if (!conversationId || !isOpen) return undefined;
+    if (!conversationId || !isOpen || chatUnavailable) return undefined;
     const interval = setInterval(() => {
       hydrateFromServer();
     }, 4500);
     return () => clearInterval(interval);
-  }, [conversationId, hydrateFromServer, isOpen]);
+  }, [conversationId, hydrateFromServer, isOpen, chatUnavailable]);
 
   useEffect(() => {
     if (isOpen) setUnreadCount(0);
