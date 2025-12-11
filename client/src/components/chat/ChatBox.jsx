@@ -49,20 +49,22 @@ function ChatBox() {
   return (
     <div className="chat-box">
       <div className="chat-header">
-        <div className="chat-title">
-          <div className="chat-status-dot" />
-          <div>
-            <p className="chat-label">Live Support</p>
-            <p className="chat-subtitle">We usually reply within a few minutes</p>
+        <div className="chat-header-main">
+          <div className="chat-title">
+            <div className="chat-status-dot" />
+            <div>
+              <p className="chat-label">Live Support</p>
+              <p className="chat-subtitle">We usually reply within a few minutes</p>
+            </div>
           </div>
+          <button className="close-btn" onClick={closeChat} aria-label="Close chat">
+            ✕
+          </button>
         </div>
         <div className="chat-badges">
           <span className="chat-badge-pill">Human agent</span>
           <span className="chat-badge-pill">Avg. reply 3m</span>
         </div>
-        <button className="close-btn" onClick={closeChat} aria-label="Close chat">
-          ✕
-        </button>
       </div>
 
       <div className="chat-hero">
