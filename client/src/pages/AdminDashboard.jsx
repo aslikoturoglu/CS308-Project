@@ -7,7 +7,14 @@ import {
   fetchSupportMessages,
   sendSupportMessage,
 } from "../services/supportService";
-import { advanceOrderStatus, formatOrderId, getOrders } from "../services/orderService";
+import {
+  advanceOrderStatus,
+  fetchAllOrders,
+  formatOrderId,
+  getNextStatus,
+  getOrders,
+  updateBackendOrderStatus,
+} from "../services/orderService";
 
 const rolesToSections = {
   admin: ["dashboard", "product", "sales", "support"],
@@ -45,9 +52,28 @@ function AdminDashboard() {
   }, [addToast]);
 
   useEffect(() => {
-    // simple local read for sales manager view
-    setOrders(getOrders());
-  }, []);
+    let isMounted = true;
+    const controller = new AbortController();
+
+    const load = async () => {
+      try {
+        const remote = await fetchAllOrders(controller.signal);
+        if (isMounted) setOrders(remote);
+      } catch (error) {
+        console.error("Orders load failed, fallback to local:", error);
+        if (isMounted) {
+          setOrders(getOrders());
+          addToast("Orders could not be loaded from server, showing local data", "error");
+        }
+      }
+    };
+
+    load();
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [addToast]);
 
   useEffect(() => {
     setDeliveries(
@@ -204,7 +230,45 @@ function AdminDashboard() {
     setReplyDraft("");
   };
 
-  const handleAdvanceOrder = (orderId) => {
+  const handleAdvanceOrder = async (orderId) => {
+    const current = orders.find(
+      (o) =>
+        String(o.id) === String(orderId) ||
+        formatOrderId(o.id) === formatOrderId(orderId) ||
+        o.formattedId === orderId
+    );
+
+    if (!current) {
+      addToast("Order not found", "error");
+      return;
+    }
+
+    const { nextStatus, nextIndex } = getNextStatus(current);
+    if (current.status === "Delivered" || nextStatus === current.status) {
+      addToast("Order already delivered", "info");
+      return;
+    }
+
+    const isBackendOrder = Number.isFinite(Number(current.id));
+
+    if (isBackendOrder) {
+      try {
+        await updateBackendOrderStatus(current.id, nextStatus);
+        setOrders((prev) =>
+          prev.map((o) =>
+            String(o.id) === String(current.id)
+              ? { ...o, status: nextStatus, progressIndex: nextIndex }
+              : o
+          )
+        );
+        addToast("Order advanced to next status", "info");
+        return;
+      } catch (error) {
+        console.error("Backend status update failed, falling back:", error);
+        addToast(error.message || "Backend update failed", "error");
+      }
+    }
+
     const result = advanceOrderStatus(orderId, user);
     if (result.error) {
       addToast(result.error, "error");

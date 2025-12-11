@@ -201,6 +201,93 @@ export function getOrderHistory(req, res) {
 }
 
 /**
+ * GET /orders
+ * Returns all orders with basic item details for managerial views.
+ */
+export function getAllOrders(req, res) {
+  const orderSql = `
+    SELECT
+      o.order_id,
+      o.user_id,
+      o.order_date,
+      o.total_amount,
+      o.status        AS order_status,
+      o.shipping_address,
+      o.billing_address,
+      d.delivery_status,
+      d.updated_at    AS delivery_updated_at,
+      u.full_name     AS user_name,
+      u.email         AS user_email
+    FROM orders o
+    LEFT JOIN deliveries d ON d.order_id = o.order_id
+    LEFT JOIN users u ON u.user_id = o.user_id
+    ORDER BY o.order_date DESC
+  `;
+
+  const itemSql = `
+    SELECT 
+      oi.order_id,
+      oi.product_id,
+      oi.quantity,
+      oi.unit_price,
+      p.product_name,
+      p.product_image
+    FROM order_items oi
+    LEFT JOIN products p ON p.product_id = oi.product_id
+  `;
+
+  db.query(orderSql, (orderErr, orderRows) => {
+    if (orderErr) {
+      console.error("All orders fetch failed:", orderErr);
+      return res.status(500).json({ error: "Orders could not be loaded" });
+    }
+
+    db.query(itemSql, (itemErr, itemRows) => {
+      if (itemErr) {
+        console.error("Order items fetch failed:", itemErr);
+        return res.status(500).json({ error: "Order items could not be loaded" });
+      }
+
+      const itemMap = new Map();
+      itemRows.forEach((row) => {
+        const list = itemMap.get(row.order_id) || [];
+        list.push({
+          product_id: row.product_id,
+          name: row.product_name,
+          quantity: row.quantity,
+          price: Number(row.unit_price) || 0,
+          image: row.product_image,
+        });
+        itemMap.set(row.order_id, list);
+      });
+
+      const normalized = orderRows.map((row) => {
+        const status =
+          row.delivery_status ||
+          row.order_status ||
+          "Processing";
+        return {
+          order_id: row.order_id,
+          user_id: row.user_id,
+          user_name: row.user_name || `User ${row.user_id}`,
+          user_email: row.user_email || null,
+          date: row.order_date,
+          total: Number(row.total_amount) || 0,
+          status,
+          delivery_status: row.delivery_status,
+          shipping_address: row.shipping_address,
+          billing_address: row.billing_address,
+          updated_at: row.delivery_updated_at,
+          items: itemMap.get(row.order_id) || [],
+        };
+      });
+
+      res.json(normalized);
+    });
+  });
+}
+
+/**
  * PUT /orders/:order_id/status
  * Body: { status } → örn: "preparing" | "shipped" | "in_transit" | "delivered"
  */
