@@ -42,9 +42,11 @@ function Invoice() {
 
   // 🔹 PDF indirme / görüntüleme
   const handleDownloadPdf = () => {
-    const targetId = realOrderId ?? order.id;
-    if (!targetId) return;
-    const url = `${API_BASE_URL}/api/orders/${encodeURIComponent(targetId)}/invoice`;
+    const rawId = realOrderId ?? order.id;
+    if (!rawId) return;
+    const numeric = String(rawId).match(/\d+/);
+    const cleanId = numeric ? numeric[0] : rawId;
+    const url = `${API_BASE_URL}/api/orders/${encodeURIComponent(cleanId)}/invoice`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
