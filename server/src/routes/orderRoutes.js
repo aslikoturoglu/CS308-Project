@@ -7,7 +7,7 @@ import {
   updateDeliveryStatus,
 } from "../controllers/orderController.js";
 
-import { generateInvoice, emailInvoice } from "../controllers/invoiceController.js";
+import { generateInvoice } from "../controllers/invoiceController.js";
 
 const router = Router();
 
@@ -17,6 +17,5 @@ router.get("/history", getOrderHistory);
 router.put("/:order_id/status", updateDeliveryStatus);
 
 router.get("/:order_id/invoice", generateInvoice);
-router.post("/:order_id/invoice/email", emailInvoice);
 
 export default router;
