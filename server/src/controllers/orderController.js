@@ -9,6 +9,8 @@ import db from "../db.js";
  */
 export function checkout(req, res) {
   let { user_id, shipping_address, billing_address, items } = req.body;
+  const shippingAddressText = normalizeAddressInput(shipping_address);
+  const billingAddressText = normalizeAddressInput(billing_address);
 
   // ğŸ”¹ user_id gÃ¼venli hale getir (email vs gelirse 1'e dÃ¼ÅŸ)
   const safeUserId = Number(user_id);
@@ -58,7 +60,7 @@ export function checkout(req, res) {
 
     db.query(
       sqlOrder,
-      [user_id, totalAmount, shipping_address || null, billing_address || null],
+      [user_id, totalAmount, shippingAddressText, billingAddressText],
       (err, orderResult) => {
         if (err) {
           console.error("Order oluÅŸturulamadÄ±:", err);
@@ -161,6 +163,38 @@ export function checkout(req, res) {
 
     handleCheckout(cartItems);
   });
+}
+ 
+function normalizeAddressInput(value) {
+  if (!value) return null;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return formatAddress(parsed);
+    } catch {
+      return value;
+    }
+  }
+  if (typeof value === "object") {
+    return formatAddress(value);
+  }
+  return String(value);
+}
+
+function formatAddress(addr) {
+  if (!addr || typeof addr !== "object") return null;
+  const parts = [
+    addr.address,
+    addr.city,
+    addr.state,
+    addr.country,
+    addr.postalCode,
+  ]
+    .filter(Boolean)
+    .map((p) => String(p).trim())
+    .filter((p) => p.length > 0);
+  const line = parts.join(", ");
+  return line || null;
 }
 
 /**
