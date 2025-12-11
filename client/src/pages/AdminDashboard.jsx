@@ -342,7 +342,13 @@ function AdminDashboard() {
   ].filter((s) => permittedSections.includes(s.id));
 
   return (
-    <div style={{ background: "#f3f4f6", minHeight: "calc(100vh - 160px)", padding: "24px 12px" }}>
+    <div
+      style={{
+        background: "#f3f4f6",
+        minHeight: "calc(100vh - 160px)",
+        padding: "28px 16px 72px",
+      }}
+    >
       <div
         style={{
           width: "100%",
@@ -350,7 +356,7 @@ function AdminDashboard() {
           margin: "0 auto",
           display: "grid",
           gridTemplateColumns: "240px 1fr",
-          gap: 16,
+          gap: 18,
           alignItems: "flex-start",
         }}
       >
@@ -358,10 +364,10 @@ function AdminDashboard() {
           style={{
             background: "white",
             borderRadius: 14,
-            padding: 12,
+            padding: 16,
             boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
             display: "grid",
-            gap: 8,
+            gap: 10,
           }}
         >
           <h3 style={{ margin: "0 0 8px", color: "#0f172a" }}>Admin Panel</h3>
@@ -390,7 +396,7 @@ function AdminDashboard() {
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: 16,
+            gap: 20,
           }}
         >
           <header
@@ -443,7 +449,7 @@ function AdminDashboard() {
                   style={{
                     background: "white",
                     borderRadius: 14,
-                    padding: 14,
+                    padding: 16,
                     boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
                     borderLeft: `6px solid ${card.tone}`,
                   }}
@@ -459,17 +465,19 @@ function AdminDashboard() {
           )}
 
           {activeSection === "product" && (
-            <section style={{ display: "grid", gap: 14 }}>
+            <section style={{ display: "grid", gap: 18 }}>
               <div
                 style={{
                   background: "white",
                   borderRadius: 14,
-                  padding: 14,
+                  padding: 18,
                   boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
+                  display: "grid",
+                  gap: 12,
                 }}
               >
                 <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Product Manager Panel</h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
                   <input
                     placeholder="Name"
                     value={newProduct.name}
@@ -506,10 +514,10 @@ function AdminDashboard() {
                 style={{
                   background: "white",
                   borderRadius: 14,
-                  padding: 14,
+                  padding: 18,
                   boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
                   display: "grid",
-                  gap: 10,
+                  gap: 12,
                 }}
               >
                 <h4 style={{ margin: 0 }}>Product list</h4>
@@ -554,7 +562,7 @@ function AdminDashboard() {
                 style={{
                   background: "white",
                   borderRadius: 14,
-                  padding: 14,
+                  padding: 18,
                   boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
                 }}
               >
@@ -620,8 +628,8 @@ function AdminDashboard() {
           )}
 
           {activeSection === "sales" && (
-            <section style={{ display: "grid", gap: 14 }}>
-              <div style={{ background: "white", borderRadius: 14, padding: 14, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
+            <section style={{ display: "grid", gap: 18 }}>
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
                 <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Orders (sales manager)</h3>
                 <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
                   {["Processing", "In-transit", "Delivered"].map((status) => {
@@ -652,7 +660,7 @@ function AdminDashboard() {
                 </div>
 
                 <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
                     <thead>
                       <tr>
                         {["Order No", "Customer / Address", "Shipping", "Amount", "Status", "Action"].map((heading) => (
@@ -660,7 +668,7 @@ function AdminDashboard() {
                             key={heading}
                             style={{
                               textAlign: "left",
-                              padding: "10px 8px",
+                              padding: "12px 10px",
                               borderBottom: "1px solid #e5e7eb",
                               color: "#475569",
                               fontWeight: 700,
@@ -675,15 +683,15 @@ function AdminDashboard() {
                     <tbody>
                       {(groupedOrders[orderTab] || []).map((order) => (
                         <tr key={order.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                          <td style={{ padding: "10px 8px", fontWeight: 700, color: "#0f172a" }}>{formatOrderId(order.id)}</td>
-                          <td style={{ padding: "10px 8px", color: "#1f2937" }}>
+                          <td style={{ padding: "12px 10px", fontWeight: 700, color: "#0f172a" }}>{formatOrderId(order.id)}</td>
+                          <td style={{ padding: "12px 10px", color: "#1f2937" }}>
                             <div style={{ fontWeight: 700 }}>{order.customerName || "Customer"}</div>
                             <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>{order.address}</div>
                           </td>
-                          <td style={{ padding: "10px 8px", color: "#334155" }}>{order.shippingCompany}</td>
-                          <td style={{ padding: "10px 8px", fontWeight: 700, color: "#0f172a" }}>₺{order.total?.toLocaleString("tr-TR")}</td>
-                          <td style={{ padding: "10px 8px", color: order.status === "Delivered" ? "#22c55e" : "#0f172a", fontWeight: 700 }}>{order.status}</td>
-                          <td style={{ padding: "10px 8px" }}>
+                          <td style={{ padding: "12px 10px", color: "#334155" }}>{order.shippingCompany}</td>
+                          <td style={{ padding: "12px 10px", fontWeight: 700, color: "#0f172a" }}>₺{order.total?.toLocaleString("tr-TR")}</td>
+                          <td style={{ padding: "12px 10px", color: order.status === "Delivered" ? "#22c55e" : "#0f172a", fontWeight: 700 }}>{order.status}</td>
+                          <td style={{ padding: "12px 10px" }}>
                             {order.status === "Delivered" ? (
                               <button type="button" style={{ ...primaryBtn, background: "#e5e7eb", color: "#9ca3af", border: "none", cursor: "not-allowed" }} disabled>
                                 Delivered
@@ -700,7 +708,7 @@ function AdminDashboard() {
                       ))}
                       {(groupedOrders[orderTab] || []).length === 0 && (
                         <tr>
-                          <td colSpan={6} style={{ padding: 14, textAlign: "center", color: "#94a3b8" }}>
+                          <td colSpan={6} style={{ padding: 16, textAlign: "center", color: "#94a3b8" }}>
                             No orders in this status.
                           </td>
                         </tr>
@@ -710,9 +718,9 @@ function AdminDashboard() {
                 </div>
               </div>
 
-              <div style={{ background: "white", borderRadius: 14, padding: 14, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
                 <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Price & Discount</h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
                   <select
                     value={priceUpdate.productId}
                     onChange={(e) => setPriceUpdate((p) => ({ ...p, productId: e.target.value }))}
@@ -737,7 +745,7 @@ function AdminDashboard() {
                   </button>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10, marginTop: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12, marginTop: 12 }}>
                   <select
                     value={discountForm.productId}
                     onChange={(e) => setDiscountForm((p) => ({ ...p, productId: e.target.value }))}
@@ -763,9 +771,9 @@ function AdminDashboard() {
                 </div>
               </div>
 
-              <div style={{ background: "white", borderRadius: 14, padding: 14, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
-                <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Invoices (filter)</h3>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
+                <h3 style={{ margin: "0 0 6px", color: "#0f172a" }}>Invoices (filter)</h3>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                   <input
                     type="date"
                     value={filters.invoiceFrom}
@@ -779,7 +787,7 @@ function AdminDashboard() {
                     style={inputStyle}
                   />
                 </div>
-                <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+                <div style={{ display: "grid", gap: 10, marginTop: 6 }}>
                   {invoiceList
                     .filter((inv) => {
                       const ts = Date.parse(inv.date);
@@ -808,7 +816,7 @@ function AdminDashboard() {
                 </div>
               </div>
 
-              <div style={{ background: "white", borderRadius: 14, padding: 14, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
                 <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Revenue</h3>
                 <div
                   style={{
@@ -845,13 +853,13 @@ function AdminDashboard() {
           )}
 
           {activeSection === "support" && (
-            <section style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1.4fr" }}>
-              <div style={{ background: "white", borderRadius: 14, padding: 14, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
+            <section style={{ display: "grid", gap: 18, gridTemplateColumns: "1fr 1.4fr" }}>
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Active chat queue</h3>
                   {isLoadingChats && <span style={{ color: "#0ea5e9", fontWeight: 700 }}>Syncing…</span>}
                 </div>
-                <div style={{ display: "grid", gap: 10 }}>
+                <div style={{ display: "grid", gap: 12 }}>
                   {chats.map((chat) => {
                     const isActive = chat.id === activeConversationId;
                     return (
@@ -907,13 +915,13 @@ function AdminDashboard() {
                 style={{
                   background: "white",
                   borderRadius: 14,
-                  padding: 14,
+                  padding: 18,
                   boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
                   display: "grid",
-                  gap: 10,
+                  gap: 12,
                 }}
               >
-                <h3 style={{ margin: "0 0 4px", color: "#0f172a" }}>Conversation</h3>
+                <h3 style={{ margin: "0 0 8px", color: "#0f172a" }}>Conversation</h3>
                 {activeConversationId ? (
                   <>
                     <div
@@ -924,7 +932,7 @@ function AdminDashboard() {
                         maxHeight: 320,
                         overflow: "auto",
                         display: "grid",
-                        gap: 8,
+                        gap: 10,
                       }}
                     >
                       {chatMessages.map((msg) => (
