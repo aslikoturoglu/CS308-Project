@@ -52,17 +52,15 @@ export async function fetchUserOrders(userId, signal) {
 
   return (data || []).map((row) => {
     const status = backendToFrontendStatus(row.delivery_status || row.status);
-    const items = Array.isArray(row.items)
-      ? row.items.map((it, idx) => ({
-          id: it.product_id ?? idx,
-          productId: it.product_id ?? idx,
-          name: it.name ?? it.product_name ?? "Item",
-          qty: it.quantity ?? it.qty ?? 1,
-          quantity: it.quantity ?? it.qty ?? 1,
-          price: Number(it.price ?? it.unit_price ?? 0),
-          image: it.image,
-        }))
-      : [];
+    const items = normalizeItems(row).map((it, idx) => ({
+      id: it.product_id ?? it.id ?? idx,
+      productId: it.product_id ?? it.id ?? idx,
+      name: it.name ?? it.product_name ?? "Item",
+      qty: it.quantity ?? it.qty ?? it.amount ?? 1,
+      quantity: it.quantity ?? it.qty ?? it.amount ?? 1,
+      price: Number(it.price ?? it.unit_price ?? it.total_price ?? 0),
+      image: it.image,
+    }));
 
     return {
       id: row.order_id ?? row.id,
@@ -131,6 +129,33 @@ function formatAddressObject(obj) {
   const parts = [mainAddress, city, postal].filter(Boolean);
   const line = parts.join(", ");
   return line || "Not provided";
+}
+
+function normalizeItems(row) {
+  const candidates = [
+    row?.items,
+    row?.order_items,
+    row?.orderItems,
+    row?.order_products,
+    row?.orderProducts,
+    row?.products,
+    row?.product_list,
+    row?.orderProduct,
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate;
+    if (typeof candidate === "string") {
+      try {
+        const parsed = JSON.parse(candidate);
+        if (Array.isArray(parsed)) return parsed;
+        if (parsed?.items && Array.isArray(parsed.items)) return parsed.items;
+      } catch {
+        // ignore parse errors
+      }
+    }
+  }
+  return [];
 }
 
 export function getOrderById(id) {
