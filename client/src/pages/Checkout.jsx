@@ -63,23 +63,29 @@ function Checkout() {
         quantity: item.quantity ?? item.qty ?? 1,
       }));
 
+      const shippingDetails = {
+        firstName: payload.firstName?.trim() || "",
+        lastName: payload.lastName?.trim() || "",
+        phone: payload.phone?.trim() || "",
+        address: payload.address?.trim() || "",
+        city: payload.city?.trim() || "",
+        postalCode: payload.postalCode?.trim() || "",
+        notes: payload.notes?.trim() || "",
+        email: user?.email || "",
+      };
+
+      const serializedAddress = JSON.stringify(shippingDetails);
+
       // Sipariş oluştur
       const orderRes = await fetch("/api/orders/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: user?.id || 1, // şimdilik 1
-          shipping_address:
-            payload.shippingAddress ||
-            payload.address ||
-            payload.fullAddress ||
-            "",
-          billing_address:
-            payload.billingAddress ||
-            payload.address ||
-            payload.fullAddress ||
-            "",
+          shipping_address: serializedAddress,
+          billing_address: serializedAddress,
           items: normalizedItems,
+          order_note: shippingDetails.notes,
         }),
       });
 
@@ -100,6 +106,7 @@ function Checkout() {
         id: backendOrderId, // frontend ID = backend order_id
         items: normalizedItems,
         total: merchandiseTotal,
+        contact: shippingDetails,
       });
 
       clearCart();

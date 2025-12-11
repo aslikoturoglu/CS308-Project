@@ -13,6 +13,16 @@ function normalizeTR(text) {
     .replace(/ı/g, "i").replace(/İ/g, "I");
 }
 
+function parseAddressPayload(raw) {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed === "object" ? parsed : null;
+  } catch (error) {
+    return null;
+  }
+}
+
 export function generateInvoice(req, res) {
   let { order_id } = req.params;
 
@@ -84,12 +94,27 @@ export function generateInvoice(req, res) {
               },
             ];
 
-      return createPdf(order, safeItems, res);
+      const shippingDetails = parseAddressPayload(order.shipping_address);
+      const billingDetails = parseAddressPayload(order.billing_address);
+
+      return createPdf(order, safeItems, res, {
+        shippingDetails,
+        billingDetails,
+      });
     });
   });
 }
 
-function createPdf(order, items, res) {
+function formatAddressLines(details) {
+  if (!details) return [];
+  const cityLine = [details.city, details.postalCode].filter(Boolean).join(" ").trim();
+  return [
+    details.address || "",
+    cityLine,
+  ].filter(Boolean);
+}
+
+function createPdf(order, items, res, detailPayload = {}) {
   const doc = new PDFDocument({ margin: 40 });
 
   res.setHeader("Content-Type", "application/pdf");
@@ -141,62 +166,92 @@ function createPdf(order, items, res) {
 
   y += 40;
 
-  const email = normalizeTR(order.customer_email || "customer@suhome.com");
-  const customerName = normalizeTR(order.customer_name || "SUHome Customer");
-  const billingAddress = normalizeTR(
-    order.customer_address || order.billing_address || "Address not provided"
+  const { shippingDetails, billingDetails } = detailPayload;
+  const email = normalizeTR(
+    (shippingDetails?.email || order.customer_email || "customer@suhome.com")
   );
-  const shipping = normalizeTR(order.shipping_address || "Address not provided");
+  const customerName = normalizeTR(
+    (
+      [shippingDetails?.firstName, shippingDetails?.lastName].filter(Boolean).join(" ") ||
+      order.customer_name ||
+      "SUHome Customer"
+    ).trim()
+  );
+  const billingSource =
+    (billingDetails && formatAddressLines(billingDetails)) ||
+    (shippingDetails && formatAddressLines(shippingDetails)) ||
+    [];
+  if (billingSource.length === 0) {
+    billingSource.push(order.customer_address || order.billing_address || "Address not provided");
+  }
+  const shippingLines =
+    (shippingDetails && formatAddressLines(shippingDetails)) || [];
+  if (shippingLines.length === 0) {
+    shippingLines.push(order.shipping_address || "Address not provided");
+  }
+  const noteLine = shippingDetails?.notes
+    ? `Note: ${shippingDetails.notes}`
+    : "";
+  const phoneLine = shippingDetails?.phone ? `Phone: ${shippingDetails.phone}` : "";
 
-  doc
-    .fillColor("black")
-    .font("Helvetica")
-    .fontSize(12)
-    .text(customerName, 50, y)
-    .text(email, 50, y + 15)
-    .text(billingAddress, 50, y + 30)
-    .text(shipping, 50, y + 45)
-    .text("Türkiye", 50, y + 60);
+  const infoLines = [
+    customerName,
+    email,
+    ...billingSource.map((line) => normalizeTR(line)),
+    ...shippingLines.map((line) => normalizeTR(line)),
+    normalizeTR(phoneLine),
+    normalizeTR(noteLine),
+    "Türkiye",
+  ].filter((line) => Boolean(line));
+
+  let textY = y;
+  infoLines.forEach((line) => {
+    doc
+      .fillColor("black")
+      .font("Helvetica")
+      .fontSize(12)
+      .text(line, 50, textY);
+    textY += 15;
+  });
 
   // ============================
   // PRODUCT TABLE HEADER
   // ============================
-  y += 110;
-
-  doc.rect(50, y, 500, 25).fill(blue);
+  const tableHeaderY = textY + 40;
+  doc.rect(50, tableHeaderY, 500, 25).fill(blue);
   doc
     .fillColor("white")
     .font("Helvetica-Bold")
-    .text("DESCRIPTION", 55, y + 7)
-    .text("QTY", 300, y + 7)
-    .text("UNIT PRICE", 360, y + 7)
-    .text("AMOUNT", 450, y + 7);
+    .text("DESCRIPTION", 55, tableHeaderY + 7)
+    .text("QTY", 300, tableHeaderY + 7)
+    .text("UNIT PRICE", 360, tableHeaderY + 7)
+    .text("AMOUNT", 450, tableHeaderY + 7);
 
-  y += 30;
+  let rowY = tableHeaderY + 30;
 
   doc.lineWidth(0.8).strokeColor(greyBorder);
 
   items.forEach((i) => {
     const amount = Number(i.quantity) * Number(i.unit_price);
 
-    doc.rect(50, y - 2, 500, 28).fill(greyLight).stroke();
+    doc.rect(50, rowY - 2, 500, 28).fill(greyLight).stroke();
 
     doc
       .fillColor("black")
       .font("Helvetica")
       .fontSize(12)
-      .text(normalizeTR(i.product_name), 55, y + 5)
-      .text(i.quantity, 300, y + 5)
-      .text(`${Number(i.unit_price).toLocaleString("tr-TR")} TL`, 360, y + 5)
-      .text(`${amount.toLocaleString("tr-TR")} TL`, 450, y + 5);
+      .text(normalizeTR(i.product_name), 55, rowY + 5)
+      .text(i.quantity, 300, rowY + 5)
+      .text(`${Number(i.unit_price).toLocaleString("tr-TR")} TL`, 360, rowY + 5)
+      .text(`${amount.toLocaleString("tr-TR")} TL`, 450, rowY + 5);
 
-    y += 30;
+    rowY += 30;
   });
 
   // ============================
   // TOTAL
   // ============================
-  const totalY = y + 30;
+  const totalY = rowY + 30;
 
   doc.font("Helvetica-Bold").fontSize(16).fillColor(blue).text("TOTAL:", 360, totalY);
 

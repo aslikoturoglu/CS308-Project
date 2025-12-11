@@ -7,8 +7,8 @@ const shippingOptions = [
 
 function CheckoutForm({ cartTotal = 0, onSubmit }) {
   const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
+    firstName: "",
+    lastName: "",
     phone: "",
     address: "",
     city: "",
@@ -41,8 +41,20 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
     setError("");
     setInfo("");
 
-    if (!formData.fullName.trim() || !formData.email.trim() || !formData.address.trim()) {
-      setError("Please fill out the required fields.");
+    const requiredFields = [
+      "firstName",
+      "lastName",
+      "phone",
+      "address",
+      "city",
+      "postalCode",
+      "notes",
+    ];
+    const hasMissing = requiredFields.some(
+      (field) => !String(formData[field] ?? "").trim()
+    );
+    if (hasMissing) {
+      setError("Please fill out all required shipping fields.");
       return;
     }
 
@@ -158,35 +170,38 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
         >
           <h3 style={{ marginTop: 0, marginBottom: 12, color: "#0f172a" }}>Shipping Details</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", gap: 10 }}>
+              <label style={{ flex: 1, fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
+                First Name*
+                <input
+                  type="text"
+                  value={formData.firstName}
+                  onChange={handleChange("firstName")}
+                  placeholder="e.g. Alex"
+                  required
+                  style={inputStyle}
+                />
+              </label>
+              <label style={{ flex: 1, fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
+                Last Name*
+                <input
+                  type="text"
+                  value={formData.lastName}
+                  onChange={handleChange("lastName")}
+                  placeholder="e.g. Morgan"
+                  required
+                  style={inputStyle}
+                />
+              </label>
+            </div>
             <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
-              Full Name*
-              <input
-                type="text"
-                value={formData.fullName}
-                onChange={handleChange("fullName")}
-                placeholder="e.g. Alex Morgan"
-                required
-                style={inputStyle}
-              />
-            </label>
-            <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
-              Email*
-              <input
-                type="email"
-                value={formData.email}
-                onChange={handleChange("email")}
-                placeholder="you@example.com"
-                required
-                style={inputStyle}
-              />
-            </label>
-            <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
-              Phone
+              Phone*
               <input
                 type="tel"
                 value={formData.phone}
                 onChange={handleChange("phone")}
                 placeholder="+90 5xx xxx xx xx"
+                required
                 style={inputStyle}
               />
             </label>
@@ -203,33 +218,36 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
             </label>
             <div style={{ display: "flex", gap: 10 }}>
               <label style={{ flex: 1, fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
-                City
+                City*
                 <input
                   type="text"
                   value={formData.city}
                   onChange={handleChange("city")}
                   placeholder="City"
+                  required
                   style={inputStyle}
                 />
               </label>
               <label style={{ width: 130, fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
-                Postal Code
+                Postal Code*
                 <input
                   type="text"
                   value={formData.postalCode}
                   onChange={handleChange("postalCode")}
                   placeholder="34000"
+                  required
                   style={inputStyle}
                 />
               </label>
             </div>
             <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
-              Notes
+              Notes*
               <input
                 type="text"
                 value={formData.notes}
                 onChange={handleChange("notes")}
                 placeholder="Add a note for the courier"
+                required
                 style={inputStyle}
               />
             </label>

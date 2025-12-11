@@ -44,13 +44,25 @@ export function getOrderById(id) {
   return orders.find((order) => formatOrderId(order.id) === normalized);
 }
 
-export function addOrder({ items, total, id: providedId }) {
+export function addOrder({ items, total, id: providedId, contact }) {
   const now = new Date();
   const orders = readOrders();
   const formattedId = formatOrderId(
     providedId ?? Math.floor(Math.random() * 9000 + 1000)
   );
   const numericId = Number(providedId);
+  const contactName = contact
+    ? `${contact.firstName ?? ""} ${contact.lastName ?? ""}`.trim()
+    : undefined;
+  const formattedAddress = contact
+    ? [
+        contact.address,
+        `${contact.city || ""} ${contact.postalCode || ""}`.trim(),
+        contact.phone ? `Phone: ${contact.phone}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n")
+    : "Saved default address";
   const newOrder = {
     order_id: Number.isFinite(numericId) ? numericId : undefined,
     // Backend order_id ile aynı olsun diye gelen ID'yi kullan.
@@ -70,8 +82,10 @@ export function addOrder({ items, total, id: providedId }) {
       month: "long",
       year: "numeric",
     }),
-    address: "Saved default address",
-    note: "We will notify you when the shipment is picked up.",
+    address: formattedAddress || "Saved default address",
+    note: contact?.notes || "We will notify you when the shipment is picked up.",
+    contact,
+    customerName: contactName || "Customer",
     progressIndex: 0,
     items: items.map((item) => ({
       id: item.id,
