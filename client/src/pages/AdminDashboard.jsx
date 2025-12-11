@@ -75,29 +75,20 @@ function AdminDashboard() {
     setPendingReviews(list);
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
-    const controller = new AbortController();
-
-    const load = async () => {
-      try {
-        const remote = await fetchAllOrders(controller.signal);
-        if (isMounted) setOrders(remote);
-      } catch (error) {
-        console.error("Orders load failed, fallback to local:", error);
-        if (isMounted) {
-          setOrders(getOrders());
-          addToast("Orders could not be loaded from server, showing local data", "error");
-        }
-      }
-    };
-
-    load();
-    return () => {
-      isMounted = false;
-      controller.abort();
-    };
+  const loadOrders = useCallback(async () => {
+    try {
+      const remote = await fetchAllOrders();
+      setOrders(remote);
+    } catch (error) {
+      console.error("Orders load failed, fallback to local:", error);
+      setOrders(getOrders());
+      addToast("Orders could not be loaded from server, showing local data", "error");
+    }
   }, [addToast]);
+
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
 
   useEffect(() => {
     setDeliveries(
@@ -306,13 +297,7 @@ function AdminDashboard() {
     if (isBackendOrder) {
       try {
         await updateBackendOrderStatus(current.id, nextStatus);
-        setOrders((prev) =>
-          prev.map((o) =>
-            String(o.id) === String(current.id)
-              ? { ...o, status: nextStatus, progressIndex: nextIndex }
-              : o
-          )
-        );
+        await loadOrders();
         addToast("Order advanced to next status", "info");
         return;
       } catch (error) {
@@ -389,8 +374,8 @@ function AdminDashboard() {
           maxWidth: 1180,
           boxSizing: "border-box",
           margin: "0 auto",
-          display: "grid",
-          gridTemplateColumns: "240px minmax(0, 1fr)",
+          display: "flex",
+          flexWrap: "wrap",
           gap: 18,
           alignItems: "flex-start",
         }}
@@ -403,6 +388,8 @@ function AdminDashboard() {
             boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
             display: "grid",
             gap: 10,
+            flex: "0 0 260px",
+            minWidth: 220,
           }}
         >
           <h3 style={{ margin: "0 0 8px", color: "#0f172a" }}>Admin Panel</h3>
@@ -432,6 +419,8 @@ function AdminDashboard() {
             display: "flex",
             flexDirection: "column",
             gap: 20,
+            flex: "1 1 0",
+            minWidth: 0,
           }}
         >
           <header
@@ -744,8 +733,8 @@ function AdminDashboard() {
                   })}
                 </div>
 
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
+                <div style={{ overflowX: "auto", width: "100%" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760, whiteSpace: "nowrap" }}>
                     <thead>
                       <tr>
                         {["Order No", "Customer / Address", "Shipping", "Amount", "Status", "Action"].map((heading) => (
@@ -938,7 +927,15 @@ function AdminDashboard() {
           )}
 
           {activeSection === "support" && (
-            <section style={{ display: "grid", gap: 18, gridTemplateColumns: "1fr 1.4fr" }}>
+            <section
+              style={{
+                display: "grid",
+                gap: 18,
+                gridTemplateColumns: "1fr 1.4fr",
+                width: "100%",
+                minWidth: 0,
+              }}
+            >
               <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Active chat queue</h3>
