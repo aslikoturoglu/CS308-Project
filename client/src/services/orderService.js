@@ -50,7 +50,9 @@ export function addOrder({ items, total, id: providedId }) {
   const formattedId = formatOrderId(
     providedId ?? Math.floor(Math.random() * 9000 + 1000)
   );
+  const numericId = Number(providedId);
   const newOrder = {
+    order_id: Number.isFinite(numericId) ? numericId : undefined,
     // Backend order_id ile aynı olsun diye gelen ID'yi kullan.
     id: formattedId,
     date: now.toLocaleDateString("en-US", {

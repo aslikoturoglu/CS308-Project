@@ -34,9 +34,11 @@ export function generateInvoice(req, res) {
       o.order_date,
       o.total_amount,
       o.shipping_address,
+      o.billing_address,
+      u.full_name AS customer_name,
       u.email AS customer_email,
-      u.address AS customer_address,
-      u.phone AS customer_phone
+      u.home_address AS customer_address,
+      u.tax_id AS customer_tax_id
     FROM orders o
     LEFT JOIN users u ON u.user_id = o.user_id
     WHERE o.order_id = ?
@@ -124,20 +126,24 @@ function createPdf(order, items, res) {
 
   y += 40;
 
-  const email = normalizeTR(order.customer_email);
-  const customerAddress = normalizeTR(order.customer_address || "Address not provided");
+  const email = normalizeTR(order.customer_email || "customer@suhome.com");
+  const customerName = normalizeTR(order.customer_name || "SUHome Customer");
+  const billingAddress = normalizeTR(
+    order.customer_address || order.billing_address || "Address not provided"
+  );
   const shipping = normalizeTR(order.shipping_address || "Address not provided");
-  const phone = normalizeTR(order.customer_phone || "Phone not provided");
+  const taxId = normalizeTR(order.customer_tax_id || "TAX N/A");
 
   doc
     .fillColor("black")
     .font("Helvetica")
     .fontSize(12)
-    .text(email, 50, y)
-    .text(customerAddress, 50, y + 15)
-    .text(shipping, 50, y + 30)
-    .text(phone, 50, y + 45)
-    .text("Türkiye", 50, y + 60);
+    .text(customerName, 50, y)
+    .text(email, 50, y + 15)
+    .text(billingAddress, 50, y + 30)
+    .text(shipping, 50, y + 45)
+    .text(`TAX: ${taxId}`, 50, y + 60)
+    .text("Türkiye", 50, y + 75);
 
   // ============================
   // PRODUCT TABLE HEADER
