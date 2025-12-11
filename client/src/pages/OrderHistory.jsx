@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { addReview, getReviewMap } from "../services/localStorageHelpers";
-import { advanceOrderStatus, formatOrderId, getOrders } from "../services/orderService";
+import { formatOrderId, getOrders } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
 import { useAuth } from "../context/AuthContext";
-import { useToast } from "../context/ToastContext";
 
 const timelineSteps = ["Processing", "In-transit", "Delivered"];
 const filterOptions = ["All", ...timelineSteps];
@@ -17,8 +16,6 @@ const statusPills = {
 
 function OrderHistory() {
   const { user } = useAuth();
-  const { addToast } = useToast();
-  const isSalesManager = user?.role === "sales_manager";
   const [filter, setFilter] = useState("All");
   const [orders, setOrders] = useState([]);
   const [reviews, setReviews] = useState({});
@@ -41,16 +38,6 @@ function OrderHistory() {
     }),
     [orders]
   );
-
-  const handleStatusAdvance = (orderId) => {
-    const result = advanceOrderStatus(orderId, user);
-    if (result.error) {
-      addToast(result.error, "error");
-      return;
-    }
-    setOrders(result.orders);
-    addToast("Order status advanced to the next step.", "info");
-  };
 
   const handleReviewSubmit = (productId, rating, comment) => {
     const displayName = user?.name?.split(" ")[0] || "User";
@@ -306,30 +293,12 @@ function OrderHistory() {
                         Last status update by {order.statusUpdatedBy}
                       </span>
                     )}
-                  </div>
-
-                  {order.status !== "Delivered" &&
-                    (isSalesManager ? (
-                      <button
-                        type="button"
-                        onClick={() => handleStatusAdvance(order.id)}
-                        style={{
-                          border: "1px solid #0058a3",
-                          color: "#0058a3",
-                          background: "white",
-                          padding: "8px 12px",
-                          borderRadius: 10,
-                          cursor: "pointer",
-                          fontWeight: 700,
-                        }}
-                      >
-                        Advance status (sales manager)
-                      </button>
-                    ) : (
+                    {order.status !== "Delivered" && (
                       <span style={{ color: "#94a3b8", fontWeight: 700 }}>
                         Status changes are handled by the sales manager.
                       </span>
-                    ))}
+                    )}
+                  </div>
                   <Link
                     to={`/invoice/${encodeURIComponent(formattedId)}`}
                     style={{

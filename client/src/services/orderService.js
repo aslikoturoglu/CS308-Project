@@ -102,6 +102,13 @@ export function advanceOrderStatus(id, actor) {
     timelineSteps.length - 1
   );
   const nextStatus = timelineSteps[nextIndex];
+
+  // Best-effort backend sync when this is a numeric backend order id.
+  const numericId = Number(id);
+  if (Number.isFinite(numericId)) {
+    updateBackendOrderStatus(numericId, nextStatus).catch(() => {});
+  }
+
   orders[idx] = {
     ...order,
     progressIndex: nextIndex,
