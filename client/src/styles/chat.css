@@ -62,7 +62,7 @@
   color: #ffffff;
   padding: 10px 12px 8px;
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 8px;
 }
@@ -95,25 +95,6 @@
   font-weight: 500;
 }
 
-.chat-badges {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.chat-badge-pill {
-  background: rgba(255, 255, 255, 0.16);
-  color: #e0edff;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.2px;
-}
-
 .close-btn {
   background: rgba(255, 255, 255, 0.16);
   border: 1px solid rgba(255, 255, 255, 0.25);
@@ -131,55 +112,9 @@
   transform: translateY(-1px);
 }
 
-.chat-hero {
-  padding: 10px 12px 8px;
-  background: linear-gradient(180deg, rgba(15, 111, 255, 0.04), rgba(15, 111, 255, 0));
-  border-bottom: 1px dashed #dbe8ff;
-  display: grid;
-  gap: 8px;
-}
-
-.chat-hero-eyebrow {
-  margin: 0;
-  font-size: 0.78rem;
-  letter-spacing: 0.4px;
-  color: #0d49a3;
-  font-weight: 800;
-}
-
-.chat-hero-title {
-  margin: 3px 0 4px;
-  font-size: 1.02rem;
-  line-height: 1.4;
-  color: #0f172a;
-}
-
-.chat-hero-text {
-  margin: 0 0 4px;
-  color: #475569;
-  line-height: 1.5;
-}
-
-.chat-hero-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 0;
-}
-
-.chat-hero-badges span {
-  background: #0f6fff0f;
-  color: #0f6fff;
-  border: 1px solid #d8e6ff;
-  padding: 6px 10px;
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 0.8rem;
-}
-
 .chat-messages {
   flex: 1;
-  padding: 14px 14px 4px;
+  padding: 12px 12px 6px;
   overflow-y: auto;
   background: linear-gradient(180deg, rgba(15, 111, 255, 0.04), rgba(255, 255, 255, 0));
 }
@@ -295,30 +230,6 @@
     opacity: 1;
     transform: translateY(-2px);
   }
-}
-
-.chat-quick {
-  padding: 8px 12px 6px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.chat-quick button {
-  background: #0f6fff0d;
-  color: #0d2149;
-  border: 1px solid #d9e5ff;
-  border-radius: 12px;
-  padding: 8px 12px;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
-}
-
-.chat-quick button:hover {
-  transform: translateY(-1px);
-  background: #e6f2ff;
-  box-shadow: 0 10px 22px rgba(13, 73, 163, 0.08);
 }
 
 .chat-input {

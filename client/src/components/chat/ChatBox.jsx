@@ -2,13 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import "../../styles/chat.css";
 import { useChat } from "../../context/ChatContext";
 
-const quickPrompts = [
-  "Where is my order?",
-  "How do returns work?",
-  "Can I get a product recommendation?",
-  "How much is shipping?",
-];
-
 const formatTime = (value) =>
   new Date(value).toLocaleTimeString("en-US", {
     hour: "2-digit",
@@ -56,28 +49,9 @@ function ChatBox() {
             <p className="chat-subtitle">We usually reply within a few minutes</p>
           </div>
         </div>
-        <div className="chat-badges">
-          <span className="chat-badge-pill">Human agent</span>
-          <span className="chat-badge-pill">Avg. reply 3m</span>
-        </div>
         <button className="close-btn" onClick={closeChat} aria-label="Close chat">
           ✕
         </button>
-      </div>
-
-      <div className="chat-hero">
-        <div>
-          <p className="chat-hero-eyebrow">Need a hand?</p>
-          <h3 className="chat-hero-title">Ask us anything about your order, delivery, or returns.</h3>
-          <p className="chat-hero-text">
-            A real teammate will pick this up shortly. Share details like order ID or product link to speed things up.
-          </p>
-        </div>
-        <div className="chat-hero-badges">
-          <span>⏱️ Live now</span>
-          <span>💬 Typing indicators</span>
-          <span>🔒 Secure</span>
-        </div>
       </div>
 
       <div className="chat-messages">
@@ -114,14 +88,6 @@ function ChatBox() {
           {syncError || lastError}
         </div>
       )}
-
-      <div className="chat-quick">
-        {quickPrompts.map((prompt) => (
-          <button key={prompt} onClick={() => handleSend(prompt)}>
-            {prompt}
-          </button>
-        ))}
-      </div>
 
       <form className="chat-input" onSubmit={handleSubmit}>
         <input
