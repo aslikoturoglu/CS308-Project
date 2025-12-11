@@ -182,6 +182,8 @@ export function getOrderHistory(req, res) {
       o.order_date,
       o.total_amount,
       o.status        AS order_status,
+      o.shipping_address,
+      o.billing_address,
       d.delivery_status
     FROM orders o
     LEFT JOIN deliveries d ON d.order_id = o.order_id
@@ -236,6 +238,8 @@ export function getOrderHistory(req, res) {
         total_amount: Number(row.total_amount) || 0,
         status: row.delivery_status || row.order_status || "processing",
         delivery_status: row.delivery_status,
+        shipping_address: row.shipping_address,
+        billing_address: row.billing_address,
         items: itemMap.get(row.order_id) || [],
       }));
 

@@ -70,9 +70,19 @@ export async function fetchUserOrders(userId, signal) {
       date: row.order_date || row.date,
       status,
       total: Number(row.total_amount ?? row.total ?? 0),
+      address: row.shipping_address || row.billing_address || "Not provided",
+      shippingCompany: row.shipping_company || "SUExpress",
+      estimate: row.estimate,
+      progressIndex: timelineIndex(status),
       items,
     };
   });
+}
+
+function timelineIndex(status) {
+  const steps = ["Processing", "In-transit", "Delivered"];
+  const idx = steps.indexOf(status);
+  return idx >= 0 ? idx : 0;
 }
 
 export function getOrderById(id) {

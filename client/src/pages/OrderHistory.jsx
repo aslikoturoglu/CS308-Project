@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { addReview, getReviewMap } from "../services/localStorageHelpers";
-import { formatOrderId, getOrders } from "../services/orderService";
+import { formatOrderId, fetchUserOrders } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
 import { useAuth } from "../context/AuthContext";
 
@@ -21,9 +21,20 @@ function OrderHistory() {
   const [reviews, setReviews] = useState({});
 
   useEffect(() => {
-    setOrders(getOrders());
+    const controller = new AbortController();
+    if (user?.id && Number.isFinite(Number(user.id))) {
+      fetchUserOrders(user.id, controller.signal)
+        .then((data) => setOrders(data))
+        .catch((err) => {
+          console.error("Order history load failed", err);
+          setOrders([]);
+        });
+    } else {
+      setOrders([]);
+    }
     setReviews(getReviewMap());
-  }, []);
+    return () => controller.abort();
+  }, [user]);
 
   const filteredOrders = useMemo(() => {
     if (filter === "All") return orders;
@@ -154,7 +165,7 @@ function OrderHistory() {
           {filteredOrders.map((order) => {
             const pill = statusPills[order.status];
             const progressIndex = order.progressIndex ?? timelineSteps.indexOf(order.status) ?? 0;
-            const formattedId = formatOrderId(order.id);
+            const formattedId = order.formattedId || formatOrderId(order.id);
 
             return (
               <article
@@ -201,9 +212,9 @@ function OrderHistory() {
                 </header>
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-                  <Info label="Shipping" value={order.shippingCompany} />
-                  <Info label="Address" value={order.address} />
-                  <Info label="Estimate" value={order.estimate} />
+                  <Info label="Shipping" value={order.shippingCompany || "SUExpress"} />
+                  <Info label="Address" value={order.address || "Not provided"} />
+                  <Info label="Estimate" value={order.estimate || "TBD"} />
                   {order.deliveredAt && <Info label="Delivered" value={order.deliveredAt} />}
                 </div>
 
