@@ -215,7 +215,6 @@ export function getAllOrders(req, res) {
       o.shipping_address,
       o.billing_address,
       d.delivery_status,
-      d.updated_at    AS delivery_updated_at,
       u.full_name     AS user_name,
       u.email         AS user_email
     FROM orders o
@@ -277,7 +276,7 @@ export function getAllOrders(req, res) {
           delivery_status: row.delivery_status,
           shipping_address: row.shipping_address,
           billing_address: row.billing_address,
-          updated_at: row.delivery_updated_at,
+          updated_at: row.delivery_updated_at || null,
           items: itemMap.get(row.order_id) || [],
         };
       });
