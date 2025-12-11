@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { fetchProductsWithMeta } from "../services/productService";
@@ -29,6 +29,7 @@ function AdminDashboard() {
   const { addToast } = useToast();
   const [activeSection, setActiveSection] = useState("dashboard");
   const [products, setProducts] = useState([]);
+  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [orders, setOrders] = useState([]);
   const [deliveries, setDeliveries] = useState([]);
   const [pendingReviews, setPendingReviews] = useState([]);
@@ -44,6 +45,7 @@ function AdminDashboard() {
   const [discountForm, setDiscountForm] = useState({ productId: "", rate: 10 });
   const [priceUpdate, setPriceUpdate] = useState({ productId: "", price: "" });
   const [deliveryUpdate, setDeliveryUpdate] = useState({ id: "", status: "" });
+  const productListRef = useRef(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -129,6 +131,14 @@ function AdminDashboard() {
     refreshPendingReviews();
   }, [refreshPendingReviews]);
 
+  const handleViewLowStock = () => {
+    setShowLowStockOnly(true);
+    setActiveSection("product");
+    setTimeout(() => {
+      productListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  };
+
   useEffect(() => {
     if (!activeConversationId) return undefined;
     const fetchThread = (options = { showSpinner: false }) => {
@@ -160,6 +170,11 @@ function AdminDashboard() {
     const lowStock = products.filter((p) => p.availableStock < 5).length;
     return { revenue, lowStock };
   }, [orders, products]);
+
+  const visibleProducts = useMemo(
+    () => (showLowStockOnly ? products.filter((p) => p.availableStock < 5) : products),
+    [products, showLowStockOnly]
+  );
 
   const invoiceList = useMemo(
     () =>
@@ -538,28 +553,40 @@ function AdminDashboard() {
                 style={{
                   background: "white",
                   borderRadius: 14,
-                  padding: 18,
-                  boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
-                  display: "grid",
-                  gap: 12,
-                }}
-              >
-                <h4 style={{ margin: 0 }}>Product list</h4>
-                <div style={{ maxHeight: 320, overflow: "auto", border: "1px solid #e5e7eb", borderRadius: 12 }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.95rem" }}>
-                    <thead>
-                      <tr style={{ background: "#f8fafc", textAlign: "left" }}>
-                        <th style={th}>Name</th>
+              padding: 18,
+              boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
+              display: "grid",
+              gap: 12,
+            }}
+            ref={productListRef}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <h4 style={{ margin: 0 }}>Product list</h4>
+              {showLowStockOnly ? (
+                <button type="button" style={linkBtn} onClick={() => setShowLowStockOnly(false)}>
+                  Clear low-stock filter
+                </button>
+              ) : (
+                <button type="button" style={linkBtn} onClick={() => setShowLowStockOnly(true)}>
+                  Show low stock
+                </button>
+              )}
+            </div>
+            <div style={{ maxHeight: 320, overflow: "auto", border: "1px solid #e5e7eb", borderRadius: 12 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.95rem" }}>
+                <thead>
+                  <tr style={{ background: "#f8fafc", textAlign: "left" }}>
+                    <th style={th}>Name</th>
                         <th style={th}>Price</th>
                         <th style={th}>Stock</th>
-                        <th style={th}>Category</th>
-                        <th style={th}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {products.map((p) => (
-                        <tr key={p.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                          <td style={td}>{p.name}</td>
+                    <th style={th}>Category</th>
+                    <th style={th}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleProducts.map((p) => (
+                    <tr key={p.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                      <td style={td}>{p.name}</td>
                           <td style={td}>₺{p.price.toLocaleString("tr-TR")}</td>
                           <td style={td}>{p.availableStock}</td>
                           <td style={td}>{p.category || "General"}</td>
@@ -1086,7 +1113,7 @@ function AdminDashboard() {
                   {totals.lowStock} products are low on stock. Prioritize restock before weekend campaigns.
                 </p>
               </div>
-              <button type="button" style={primaryBtn}>
+              <button type="button" style={primaryBtn} onClick={handleViewLowStock}>
                 View details
               </button>
             </div>
