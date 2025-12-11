@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { fetchProductsWithMeta } from "../services/productService";
@@ -29,6 +29,7 @@ function AdminDashboard() {
   const { addToast } = useToast();
   const [activeSection, setActiveSection] = useState("dashboard");
   const [products, setProducts] = useState([]);
+  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [orders, setOrders] = useState([]);
   const [deliveries, setDeliveries] = useState([]);
   const [pendingReviews, setPendingReviews] = useState([]);
@@ -44,6 +45,7 @@ function AdminDashboard() {
   const [discountForm, setDiscountForm] = useState({ productId: "", rate: 10 });
   const [priceUpdate, setPriceUpdate] = useState({ productId: "", price: "" });
   const [deliveryUpdate, setDeliveryUpdate] = useState({ id: "", status: "" });
+  const productListRef = useRef(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -155,11 +157,24 @@ function AdminDashboard() {
     }
   }, [activeSection, permittedSections]);
 
+  const handleViewLowStock = () => {
+    setShowLowStockOnly(true);
+    setActiveSection("product");
+    setTimeout(() => {
+      productListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  };
+
   const totals = useMemo(() => {
     const revenue = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
     const lowStock = products.filter((p) => p.availableStock < 5).length;
     return { revenue, lowStock };
   }, [orders, products]);
+
+  const visibleProducts = useMemo(
+    () => (showLowStockOnly ? products.filter((p) => p.availableStock < 5) : products),
+    [products, showLowStockOnly]
+  );
 
   const invoiceList = useMemo(
     () =>
@@ -535,6 +550,7 @@ function AdminDashboard() {
               </div>
 
               <div
+                ref={productListRef}
                 style={{
                   background: "white",
                   borderRadius: 14,
@@ -544,7 +560,18 @@ function AdminDashboard() {
                   gap: 12,
                 }}
               >
-                <h4 style={{ margin: 0 }}>Product list</h4>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <h4 style={{ margin: 0 }}>Product list</h4>
+                  {showLowStockOnly ? (
+                    <button type="button" style={linkBtn} onClick={() => setShowLowStockOnly(false)}>
+                      Clear low-stock filter
+                    </button>
+                  ) : (
+                    <button type="button" style={linkBtn} onClick={() => setShowLowStockOnly(true)}>
+                      Show low stock
+                    </button>
+                  )}
+                </div>
                 <div style={{ maxHeight: 320, overflow: "auto", border: "1px solid #e5e7eb", borderRadius: 12 }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.95rem" }}>
                     <thead>
@@ -557,7 +584,7 @@ function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {products.map((p) => (
+                      {visibleProducts.map((p) => (
                         <tr key={p.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
                           <td style={td}>{p.name}</td>
                           <td style={td}>₺{p.price.toLocaleString("tr-TR")}</td>
@@ -1086,7 +1113,7 @@ function AdminDashboard() {
                   {totals.lowStock} products are low on stock. Prioritize restock before weekend campaigns.
                 </p>
               </div>
-              <button type="button" style={primaryBtn}>
+              <button type="button" style={primaryBtn} onClick={handleViewLowStock}>
                 View details
               </button>
             </div>
