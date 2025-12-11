@@ -1,7 +1,5 @@
 import bcrypt from "bcryptjs";
 import db from "../db.js";
-import crypto from "node:crypto";
-import { sendMail } from "../utils/mailer.js";
 
 const demoUsers = {
   "test@suhome.com": { name: "Demo User", password: "1234", role: "customer" },
@@ -9,25 +7,6 @@ const demoUsers = {
   "demo2@suhome.com": { name: "Sales Manager", password: "demo2pass", role: "sales_manager" },
   "support@suhome.com": { name: "Support Agent", password: "support", role: "support" },
 };
-
-const RESET_TABLE_SQL = `
-  CREATE TABLE IF NOT EXISTS password_resets (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    user_id INT NOT NULL,
-    token_hash VARCHAR(255) NOT NULL,
-    expires_at DATETIME NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_reset_token (token_hash),
-    FOREIGN KEY (user_id) REFERENCES users(user_id)
-      ON UPDATE CASCADE ON DELETE CASCADE
-  )
-`;
-
-db.query(RESET_TABLE_SQL, (err) => {
-  if (err) {
-    console.error("password_resets table init failed:", err);
-  }
-});
 
 function normalizeUser(row) {
   return {
@@ -54,10 +33,6 @@ async function upsertDemoUser(email) {
       resolve({ id: result.insertId || null, role: demo.role, name: demo.name });
     });
   });
-}
-
-function hashToken(rawToken) {
-  return crypto.createHash("sha256").update(rawToken).digest("hex");
 }
 
 export function register(req, res) {
@@ -162,124 +137,5 @@ export function login(req, res) {
     }
 
     return res.json({ success: true, user: normalizeUser(user) });
-  });
-}
-
-export function forgotPassword(req, res) {
-  const { email } = req.body;
-  if (!email) {
-    return res.status(400).json({ error: "Email zorunlu" });
-  }
-
-  const sql = `
-    SELECT user_id, full_name, email
-    FROM users
-    WHERE email = ?
-    LIMIT 1
-  `;
-
-  db.query(sql, [email], (err, rows) => {
-    if (err) {
-      console.error("Forgot password lookup failed:", err);
-      return res.status(500).json({ error: "İşlem sırasında hata oluştu" });
-    }
-    if (rows.length === 0) {
-      return res.status(200).json({ success: true, message: "If the email exists, a reset link was sent." });
-    }
-
-    const user = rows[0];
-    const rawToken = crypto.randomBytes(20).toString("hex");
-    const tokenHash = hashToken(rawToken);
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 dk
-
-    const insertSql = `
-      INSERT INTO password_resets (user_id, token_hash, expires_at)
-      VALUES (?, ?, ?)
-    `;
-
-    db.query(insertSql, [user.user_id, tokenHash, expiresAt], (insErr) => {
-      if (insErr) {
-        console.error("Reset token insert failed:", insErr);
-        return res.status(500).json({ error: "Şifre sıfırlama oluşturulamadı" });
-      }
-
-      const resetUrl =
-        process.env.FRONTEND_BASE_URL
-          ? `${process.env.FRONTEND_BASE_URL}/reset-password/${rawToken}`
-          : `/reset-password/${rawToken}`;
-
-      // SMTP varsa mail at, yoksa console + response dev token
-      const payload = { success: true, message: "Reset link sent" };
-      if (process.env.NODE_ENV !== "production") {
-        payload.token = rawToken;
-        payload.reset_url = resetUrl;
-      }
-
-      sendMail({
-        to: email,
-        subject: "SUHome Password Reset",
-        html: `
-          <p>Merhaba ${user.full_name || ""},</p>
-          <p>Şifreni sıfırlamak için aşağıdaki bağlantıyı kullan:</p>
-          <p><a href="${resetUrl}">${resetUrl}</a></p>
-          <p>Bağlantı 15 dakika geçerlidir.</p>
-        `,
-        text: `Şifreni sıfırlamak için: ${resetUrl}`,
-      }).catch((mailErr) => {
-        console.error("Reset email send failed:", mailErr);
-      });
-
-      console.log(`🔐 Password reset token for ${email}: ${rawToken}`);
-      return res.json(payload);
-    });
-  });
-}
-
-export function resetPassword(req, res) {
-  const { token, password } = req.body;
-  if (!token || !password) {
-    return res.status(400).json({ error: "token ve password zorunlu" });
-  }
-
-  const tokenHash = hashToken(token);
-  const sql = `
-    SELECT pr.id, pr.user_id, pr.expires_at, u.email
-    FROM password_resets pr
-    JOIN users u ON u.user_id = pr.user_id
-    WHERE pr.token_hash = ?
-    ORDER BY pr.created_at DESC
-    LIMIT 1
-  `;
-
-  db.query(sql, [tokenHash], async (err, rows) => {
-    if (err) {
-      console.error("Reset token lookup failed:", err);
-      return res.status(500).json({ error: "İşlem sırasında hata oluştu" });
-    }
-    if (rows.length === 0) {
-      return res.status(400).json({ error: "Geçersiz veya süresi dolmuş bağlantı" });
-    }
-
-    const entry = rows[0];
-    if (new Date(entry.expires_at).getTime() < Date.now()) {
-      return res.status(400).json({ error: "Geçersiz veya süresi dolmuş bağlantı" });
-    }
-
-    try {
-      const hashed = await bcrypt.hash(password, 10);
-      const updateSql = "UPDATE users SET password_hash = ? WHERE user_id = ?";
-      db.query(updateSql, [hashed, entry.user_id], (updErr) => {
-        if (updErr) {
-          console.error("Password update failed:", updErr);
-          return res.status(500).json({ error: "Şifre güncellenemedi" });
-        }
-
-        db.query("DELETE FROM password_resets WHERE id = ?", [entry.id], () => {});
-        return res.json({ success: true });
-      });
-    } catch (hashErr) {
-      console.error("Password hash failed:", hashErr);
-      return res.status(500).json({ error: "Şifre güncellenemedi" });
-    }
   });
 }

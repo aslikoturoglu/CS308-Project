@@ -56,28 +56,9 @@ function ChatBox() {
             <p className="chat-subtitle">We usually reply within a few minutes</p>
           </div>
         </div>
-        <div className="chat-badges">
-          <span className="chat-badge-pill">Human agent</span>
-          <span className="chat-badge-pill">Avg. reply 3m</span>
-        </div>
         <button className="close-btn" onClick={closeChat} aria-label="Close chat">
           ✕
         </button>
-      </div>
-
-      <div className="chat-hero">
-        <div>
-          <p className="chat-hero-eyebrow">Need a hand?</p>
-          <h3 className="chat-hero-title">Ask us anything about your order, delivery, or returns.</h3>
-          <p className="chat-hero-text">
-            A real teammate will pick this up shortly. Share details like order ID or product link to speed things up.
-          </p>
-        </div>
-        <div className="chat-hero-badges">
-          <span>⏱️ Live now</span>
-          <span>💬 Typing indicators</span>
-          <span>🔒 Secure</span>
-        </div>
       </div>
 
       <div className="chat-messages">
