@@ -302,7 +302,11 @@ function ProductDetail() {
           <button
             onClick={handleAddToCart}
             disabled={product.availableStock === 0}
-            style={addCartBtn}
+            style={{
+              ...addCartBtn,
+              cursor: product.availableStock === 0 ? "not-allowed" : "pointer",
+              opacity: product.availableStock === 0 ? 0.6 : 1,
+            }}
           >
             {product.availableStock ? "Add to Cart" : "Out of stock"}
           </button>
