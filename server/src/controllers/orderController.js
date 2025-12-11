@@ -291,13 +291,22 @@ export function getAllOrders(req, res) {
  * PUT /orders/:order_id/status
  * Body: { status } → örn: "preparing" | "shipped" | "in_transit" | "delivered"
  */
+
 export function updateDeliveryStatus(req, res) {
   const { order_id } = req.params;
   const { status } = req.body;
 
-  // İstersen burada allowed list tutabilirsin:
-  // const allowed = ["preparing", "shipped", "in_transit", "delivered"];
-  // if (!allowed.includes(status)) { ... }
+  const normalized = String(status || "").toLowerCase();
+  const allowed = ["preparing", "shipped", "in_transit", "delivered"];
+  const nextDeliveryStatus = allowed.includes(normalized) ? normalized : "preparing";
+
+  const orderStatusMap = {
+    preparing: "preparing",
+    shipped: "shipped",
+    in_transit: "shipped",
+    delivered: "delivered",
+  };
+  const nextOrderStatus = orderStatusMap[nextDeliveryStatus] || "preparing";
 
   const sql = `
     UPDATE deliveries
@@ -305,12 +314,37 @@ export function updateDeliveryStatus(req, res) {
     WHERE order_id = ?
   `;
 
-  db.query(sql, [status, order_id], (err) => {
+  db.query(sql, [nextDeliveryStatus, order_id], (err) => {
     if (err) {
-      console.error("Status update hatası:", err);
-      return res.status(500).json({ error: "Durum güncellenemedi" });
+      console.error("Status update hatas�:", err);
+      return res.status(500).json({ error: "Durum g�ncellenemedi" });
     }
 
-    res.json({ success: true });
+    db.query("UPDATE orders SET status = ? WHERE order_id = ?", [nextOrderStatus, order_id], (orderErr) => {
+      if (orderErr) {
+        console.error("Order status sync failed:", orderErr);
+      }
+
+      db.query(
+        `
+        SELECT 
+          o.order_id,
+          o.status AS order_status,
+          d.delivery_status
+        FROM orders o
+        LEFT JOIN deliveries d ON d.order_id = o.order_id
+        WHERE o.order_id = ?
+      `,
+        [order_id],
+        (fetchErr, rows) => {
+          if (fetchErr) {
+            console.error("Status fetch failed:", fetchErr);
+            return res.json({ success: true, delivery_status: nextDeliveryStatus });
+          }
+          const row = Array.isArray(rows) && rows.length ? rows[0] : {};
+          return res.json({ success: true, ...row, delivery_status: nextDeliveryStatus });
+        }
+      );
+    });
   });
 }
