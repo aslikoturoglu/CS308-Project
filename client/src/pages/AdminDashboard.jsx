@@ -15,6 +15,7 @@ import {
   getOrders,
   updateBackendOrderStatus,
 } from "../services/orderService";
+import { approveReview, getReviewMap } from "../services/localStorageHelpers";
 
 const rolesToSections = {
   admin: ["dashboard", "product", "sales", "support"],
@@ -30,6 +31,7 @@ function AdminDashboard() {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [deliveries, setDeliveries] = useState([]);
+  const [pendingReviews, setPendingReviews] = useState([]);
   const [chats, setChats] = useState([]);
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
@@ -50,6 +52,28 @@ function AdminDashboard() {
       .catch(() => addToast("Failed to load products", "error"));
     return () => controller.abort();
   }, [addToast]);
+
+  const refreshPendingReviews = useCallback(() => {
+    const map = getReviewMap();
+    const list = [];
+    Object.entries(map).forEach(([pid, reviews]) => {
+      if (!Array.isArray(reviews)) return;
+      reviews.forEach((rev) => {
+        if (rev.approved === false) {
+          list.push({
+            productId: Number(pid),
+            id: rev.id,
+            rating: rev.rating,
+            comment: rev.comment,
+            displayName: rev.displayName,
+            date: rev.date,
+          });
+        }
+      });
+    });
+    list.sort((a, b) => Date.parse(b.date || 0) - Date.parse(a.date || 0));
+    setPendingReviews(list);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -109,6 +133,10 @@ function AdminDashboard() {
     const interval = setInterval(loadInbox, 4000);
     return () => clearInterval(interval);
   }, [loadInbox]);
+
+  useEffect(() => {
+    refreshPendingReviews();
+  }, [refreshPendingReviews]);
 
   useEffect(() => {
     if (!activeConversationId) return undefined;
@@ -300,6 +328,12 @@ function AdminDashboard() {
     }
     setOrders(result.orders);
     addToast("Order advanced to next status", "info");
+  };
+
+  const handleApproveReview = (productId, reviewId) => {
+    approveReview(productId, reviewId, true);
+    refreshPendingReviews();
+    addToast("Review approved", "info");
   };
 
   const handleSendReply = async () => {
@@ -556,6 +590,56 @@ function AdminDashboard() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+
+              <div
+                style={{
+                  background: "white",
+                  borderRadius: 14,
+                  padding: 18,
+                  boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
+                  display: "grid",
+                  gap: 10,
+                }}
+              >
+                <h4 style={{ margin: 0 }}>Review approvals</h4>
+                {pendingReviews.length === 0 ? (
+                  <p style={{ margin: 0, color: "#6b7280" }}>No pending reviews.</p>
+                ) : (
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {pendingReviews.map((rev) => {
+                      const productName = products.find((p) => Number(p.id) === Number(rev.productId))?.name || `Product #${rev.productId}`;
+                      return (
+                        <div
+                          key={rev.id}
+                          style={{
+                            border: "1px solid #e5e7eb",
+                            borderRadius: 12,
+                            padding: 10,
+                            display: "grid",
+                            gap: 6,
+                            background: "#f8fafc",
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div>
+                              <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>{productName}</p>
+                              <small style={{ color: "#64748b" }}>{rev.displayName || "User"}</small>
+                            </div>
+                            <div style={{ color: "#f59e0b", fontWeight: 800 }}>
+                              {"★".repeat(Number(rev.rating) || 0)}
+                              {"☆".repeat(Math.max(0, 5 - (Number(rev.rating) || 0)))}
+                            </div>
+                          </div>
+                          <p style={{ margin: 0, color: "#0f172a" }}>{rev.comment}</p>
+                          <button type="button" onClick={() => handleApproveReview(rev.productId, rev.id)} style={primaryBtn}>
+                            Approve
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div

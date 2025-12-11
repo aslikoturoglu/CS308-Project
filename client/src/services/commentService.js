@@ -7,13 +7,15 @@ export async function fetchApprovedComments(productId) {
   const reviewMap = getReviewMap();
   const list = reviewMap?.[productId] ?? [];
 
-  return list.map((entry, index) => ({
-    comment_id: `${productId}-${index}`,
-    rating: Number(entry.rating) || 0,
-    comment_text: entry.comment ?? entry.text ?? "",
-    created_at: entry.date ?? new Date().toISOString(),
-    display_name: entry.displayName ?? fallbackName,
-  }));
+  return list
+    .filter((entry) => entry.approved !== false) // default to approved when undefined
+    .map((entry, index) => ({
+      comment_id: entry.id ?? `${productId}-${index}`,
+      rating: Number(entry.rating) || 0,
+      comment_text: entry.comment ?? entry.text ?? "",
+      created_at: entry.date ?? new Date().toISOString(),
+      display_name: entry.displayName ?? fallbackName,
+    }));
 }
 
 export async function addComment({ userId, productId, rating, text }) {
