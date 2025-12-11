@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { formatOrderId, getOrders } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
@@ -12,6 +12,12 @@ const mockPreferences = [
 
 function Profile() {
   const { user } = useAuth();
+
+  // Product managers should stay on the admin dashboard
+  if (user?.role === "product_manager") {
+    return <Navigate to="/admin" replace />;
+  }
+
   const storageKey = user ? `profile:${user.email}` : null;
   const [profile, setProfile] = useState(() =>
     storageKey
