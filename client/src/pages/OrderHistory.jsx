@@ -9,9 +9,9 @@ const timelineSteps = ["Processing", "In-transit", "Delivered"];
 const filterOptions = ["All", ...timelineSteps];
 
 const statusPills = {
-  Processing: { bg: "rgba(234,179,8,0.2)", color: "#b45309" },
-  "In-transit": { bg: "rgba(59,130,246,0.15)", color: "#1d4ed8" },
-  Delivered: { bg: "rgba(34,197,94,0.15)", color: "#15803d" },
+  Processing: { bg: "rgba(234,179,8,0.2)", color: "#b45309", border: "#eab308" },
+  "In-transit": { bg: "rgba(59,130,246,0.15)", color: "#1d4ed8", border: "#60a5fa" },
+  Delivered: { bg: "rgba(34,197,94,0.15)", color: "#15803d", border: "#22c55e" },
 };
 
 function OrderHistory() {
@@ -219,22 +219,28 @@ function OrderHistory() {
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: `repeat(${timelineSteps.length}, minmax(0, 1fr))`, gap: 12 }}>
-                  {timelineSteps.map((step, index) => (
-                    <div
-                      key={step}
-                      style={{
-                        padding: 12,
-                        borderRadius: 14,
-                        border: `1px solid ${index <= progressIndex ? "#0058a3" : "#e2e8f0"}`,
-                        backgroundColor: index <= progressIndex ? "rgba(0,88,163,0.08)" : "#f8fafc",
-                        color: index <= progressIndex ? "#0f172a" : "#94a3b8",
-                        fontWeight: 700,
-                        textAlign: "center",
-                      }}
-                    >
-                      {step}
-                    </div>
-                  ))}
+                  {timelineSteps.map((step, index) => {
+                    const isActive = step === order.status;
+                    const pill = statusPills[step];
+                    return (
+                      <div
+                        key={step}
+                        style={{
+                          padding: 12,
+                          borderRadius: 14,
+                          border: `2px solid ${isActive ? pill?.border ?? "#22c55e" : "#e2e8f0"}`,
+                          backgroundColor: isActive ? pill?.bg ?? "rgba(34,197,94,0.12)" : "#f8fafc",
+                          color: isActive ? pill?.color ?? "#15803d" : "#94a3b8",
+                          fontWeight: 800,
+                          textAlign: "center",
+                          boxShadow: isActive ? "0 6px 16px rgba(34,197,94,0.18)" : "none",
+                          transition: "all 0.2s ease",
+                        }}
+                      >
+                        {step}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
