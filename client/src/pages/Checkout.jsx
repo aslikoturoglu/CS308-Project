@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import CheckoutForm from "../components/forms/CheckoutForm";
 import { useCart } from "../context/CartContext";
-import { addOrder } from "../services/orderService";
 import { useAuth } from "../context/AuthContext";
 
 const fallbackItems = [
@@ -13,9 +12,10 @@ const fallbackItems = [
 function Checkout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth(); // login varsa gerçek user_id’ye geçebilirsin
+  const { user } = useAuth();
   const { items: cartItems, clearCart, subtotal: cartSubtotal } = useCart();
 
+  // ITEMS
   const items = useMemo(() => {
     if (location.state?.items?.length) return location.state.items;
     if (cartItems.length) return cartItems;
@@ -26,8 +26,7 @@ function Checkout() {
     () =>
       items.reduce(
         (sum, item) =>
-          sum +
-          Number(item.price) * Number(item.quantity ?? item.qty ?? 1),
+          sum + Number(item.price) * Number(item.quantity ?? item.qty ?? 1),
         0
       ),
     [items]
@@ -37,79 +36,62 @@ function Checkout() {
     typeof location.state?.discount === "number"
       ? location.state.discount
       : cartItems.length
-      ? Math.max(cartSubtotal > 4000 ? 250 : 0, 0)
+      ? cartSubtotal > 4000
+        ? 250
+        : 0
       : subtotal > 4000
       ? 250
       : 0;
 
-  const merchandiseTotal =
-    typeof location.state?.merchandiseTotal === "number"
-      ? location.state.merchandiseTotal
-      : Math.max(subtotal - discount, 0);
+  const merchandiseTotal = Math.max(subtotal - discount, 0);
 
-  // 🔥 Gerçek checkout akışı: önce /cart/sync sonra /orders/checkout
+  /* =========================================================
+      CHECKOUT — BACKEND'E GERÇEK ORDER GÖNDERME
+  ========================================================= */
   const handleSubmit = async (payload) => {
     try {
       if (!items.length) {
-        alert("Your cart is empty. Please add items before checking out.");
+        alert("Your cart is empty.");
+        console.log("USER ID USED IN CHECKOUT:", user?.id);
+
         return;
       }
 
       const normalizedItems = items.map((item) => ({
         product_id: item.id,
-        id: item.id,
-        name: item.name,
-        price: Number(item.price),
         quantity: item.quantity ?? item.qty ?? 1,
+        unit_price: Number(item.price),
       }));
 
-      // Sipariş oluştur
-      const orderRes = await fetch("/api/orders/checkout", {
+      const res = await fetch("/api/orders/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: user?.id || 1, // şimdilik 1
-          shipping_address:
-            payload.shippingAddress ||
-            payload.address ||
-            payload.fullAddress ||
-            "",
-          billing_address:
-            payload.billingAddress ||
-            payload.address ||
-            payload.fullAddress ||
-            "",
+          user_id: user?.id,
+          shipping_address: payload.shippingAddress || payload.address || "",
+          billing_address: payload.billingAddress || payload.address || "",
           items: normalizedItems,
         }),
+        
       });
 
-      if (!orderRes.ok) {
-        const errData = await orderRes.json().catch(() => ({}));
-        console.error("Order checkout failed:", errData);
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        console.error("Checkout failed:", data);
         alert("Checkout failed. Please try again.");
         return;
       }
 
-      const data = await orderRes.json(); // { success, order_id, total_amount, ... }
-      const backendOrderId = data.order_id;
-      console.log("Backend order created:", backendOrderId);
-
-      // 3) Invoice & order history için localStorage’a da order yaz
-
-      const newOrder = addOrder({
-        id: backendOrderId, // frontend ID = backend order_id
-        items: normalizedItems,
-        total: merchandiseTotal,
-      });
-
+      const orderId = data.order_id;
       clearCart();
+
       alert("Your order has been placed!");
 
-      const invoiceId = encodeURIComponent(newOrder.id);
-      navigate(`/invoice/${invoiceId}`, { state: { orderId: newOrder.id } });
+      navigate(`/invoice/${orderId}`);
     } catch (err) {
       console.error("Checkout error:", err);
-      alert("An unexpected error occurred during checkout.");
+      alert("Unexpected checkout error.");
     }
   };
 

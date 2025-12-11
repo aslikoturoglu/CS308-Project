@@ -1,15 +1,14 @@
-import { getProducts, getProductById, updateStock } from "./api.js";
+// src/services/productService.js
+
+import { getProducts, getProductById } from "./api.js";
 import { calculateAverageRating } from "../utils/ratingUtils.js";
-import { getInventoryAdjustments, getReviewMap } from "./localStorageHelpers";
 
-// Ürünü zenginleştirme
-function enrichProduct(product, adjustments, reviewMap) {
-  const consumed = adjustments[product.id] ?? 0;
-  const baseStock = Number(product.stock || 0);
-
-  const availableStock = Math.max(0, baseStock - consumed);
-
-  const userReviews = reviewMap[product.id] ?? [];
+/* =========================================================
+   ÜRÜNÜ FRONTEND İÇİN ZENGİNLEŞTİR
+   (STOK SİMÜLASYONU KALDIRILDI — BACKEND STOKU ESASTIR)
+========================================================= */
+function enrichProduct(product) {
+  const userReviews = product.reviews || [];
   const averageRating =
     userReviews.length > 0
       ? calculateAverageRating(userReviews).toFixed(1)
@@ -17,63 +16,104 @@ function enrichProduct(product, adjustments, reviewMap) {
 
   return {
     ...product,
-    availableStock,
+    availableStock: Number(product.stock || 0), // artık stok backend’den geliyor
     averageRating,
     ratingCount: userReviews.length,
-    reviews: userReviews,
   };
 }
 
-// ---- Tüm ürünleri getir + meta ekle ----
+/* =========================================================
+   TÜM ÜRÜNLERİ GETİR + META EKLE
+========================================================= */
 export async function fetchProductsWithMeta() {
-  const rawProducts = await getProducts();
+  const raw = await getProducts(); // BACKEND → /api/products
 
-  const adjustments = getInventoryAdjustments();
-  const reviewMap = getReviewMap();
-
-  return rawProducts.map((p) =>
-    enrichProduct(
-      {
-        id: p.id,
-        name: p.name,
-        description: p.description,
-        price: p.price,
-        originalPrice: p.originalPrice,
-        stock: p.stock,
-        image: p.image,
-        category: p.category,
-        material: p.material,
-        color: p.color,
-        mainCategory: p.mainCategory,
-      },
-      adjustments,
-      reviewMap
-    )
-  );
-}
-
-// ---- ID ile ürün getir ----
-export async function fetchProductById(id) {
-  const p = await getProductById(id);
-
-  const adjustments = getInventoryAdjustments();
-  const reviewMap = getReviewMap();
-
-  return enrichProduct(
-    {
+  return raw.map((p) =>
+    enrichProduct({
       id: p.id,
       name: p.name,
-      description: p.description,
-      price: p.price,
-      originalPrice: p.originalPrice,
-      stock: p.stock,
-      image: p.image,
+      mainCategory: p.mainCategory,
       category: p.category,
       material: p.material,
       color: p.color,
-      mainCategory: p.mainCategory,
-    },
-    adjustments,
-    reviewMap
+      features: p.features,
+      stock: p.stock,
+      price: p.price,
+      image: p.image,
+      comment: p.comment,
+      rating: p.rating,
+      reviews: p.reviews,
+      commentApproved: p.commentApproved,
+    })
   );
+}
+
+/* =========================================================
+   ID İLE ÜRÜN GETİR + META
+========================================================= */
+export async function fetchProductById(id) {
+  const p = await getProductById(id);
+
+  return enrichProduct({
+    id: p.id,
+    name: p.name,
+    mainCategory: p.mainCategory,
+    category: p.category,
+    material: p.material,
+    color: p.color,
+    features: p.features,
+    stock: p.stock,
+    price: p.price,
+    image: p.image,
+    comment: p.comment,
+    rating: p.rating,
+    reviews: p.reviews,
+    commentApproved: p.commentApproved,
+  });
+}
+
+/* =========================================================
+   ÜRÜN EKLE — POST /api/products
+========================================================= */
+export async function saveProduct(body) {
+  const res = await fetch("/api/products", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Product insert failed");
+
+  return data;
+}
+
+/* =========================================================
+   ÜRÜN GÜNCELLE — PUT /api/products/:id
+========================================================= */
+export async function updateProduct(id, body) {
+  const res = await fetch(`/api/products/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Product update failed");
+
+  return data;
+}
+
+/* =========================================================
+   ÜRÜN SİL — DELETE /api/products/:id
+========================================================= */
+export async function deleteProduct(id) {
+  const res = await fetch(`/api/products/${id}`, {
+    method: "DELETE",
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Product delete failed");
+
+  return data;
 }

@@ -1,229 +1,190 @@
 // server/src/controllers/orderController.js
 import db from "../db.js";
 
-/**
- * POST /orders/checkout
- * Body: { user_id, shipping_address, billing_address }
- *
- * Basit versiyon: cart_items tablosundaki TÜM kayıtları tek bir sipariş sayıyoruz.
- */
+/* ============================================================
+   POST /api/orders/checkout
+   → Yeni sipariş oluştur
+============================================================ */
 export function checkout(req, res) {
   let { user_id, shipping_address, billing_address, items } = req.body;
 
-  // 🔹 user_id güvenli hale getir (email vs gelirse 1'e düş)
-  const safeUserId = Number(user_id);
-  if (!safeUserId || Number.isNaN(safeUserId)) {
-    user_id = 1; // şimdilik her sipariş tek kullanıcı üzerinden
-  } else {
-    user_id = safeUserId;
+  user_id = Number(user_id) || 1;
+
+  if (!items || !items.length) {
+    return res.status(400).json({ error: "Items are required" });
   }
 
-  if (!user_id) {
-    return res.status(400).json({ error: "user_id zorunludur" });
-  }
+  const orderItems = items.map(it => ({
+    product_id: it.product_id ?? it.id,
+    quantity: Number(it.quantity ?? 1),
+    unit_price: Number(it.unit_price ?? it.price)
+  }));
 
-  // Eğer body'den items geliyorsa (SPA'den) onu kullan; yoksa cart_items tablosundan oku.
-  const providedItems = Array.isArray(items)
-    ? items
-        .map((it) => ({
-          product_id: it.product_id ?? it.id,
-          quantity: Number(it.quantity ?? it.qty ?? 1),
-          unit_price: Number(it.price ?? it.unit_price ?? it.product_price),
-        }))
-        .filter(
-          (it) =>
-            it.product_id &&
-            Number.isFinite(it.quantity) &&
-            it.quantity > 0 &&
-            Number.isFinite(it.unit_price)
-        )
-    : [];
+  const total = orderItems.reduce((s, it) => s + it.unit_price * it.quantity, 0);
 
-  const handleCheckout = (cartItems) => {
-    if (!cartItems.length) {
-      return res.status(400).json({ error: "Sepet boş" });
-    }
-
-    // 2) Toplam tutarı hesapla
-    let totalAmount = 0;
-    cartItems.forEach((it) => {
-      totalAmount += Number(it.unit_price) * Number(it.quantity);
-    });
-
-    // 3) orders tablosuna kaydet (status = 'placed')
-    const sqlOrder = `
-      INSERT INTO orders (user_id, order_date, status, total_amount, shipping_address, billing_address)
-      VALUES (?, NOW(), 'placed', ?, ?, ?)
-    `;
-
-    db.query(
-      sqlOrder,
-      [user_id, totalAmount, shipping_address || null, billing_address || null],
-      (err, orderResult) => {
-        if (err) {
-          console.error("Order oluşturulamadı:", err);
-          return res.status(500).json({ error: "Order oluşturulamadı" });
-        }
-
-        const order_id = orderResult.insertId;
-
-        // 4) order_items satırlarını hazırla
-        const orderItemValues = cartItems.map((it) => [
-          order_id,
-          it.product_id,
-          it.quantity,
-          Number(it.unit_price),
-        ]);
-
-        const sqlOrderItems = `
-          INSERT INTO order_items (order_id, product_id, quantity, unit_price)
-          VALUES ?
-        `;
-
-        db.query(sqlOrderItems, [orderItemValues], (err) => {
-          if (err) {
-            console.error("Order items eklenemedi:", err);
-            return res
-              .status(500)
-              .json({ error: "Order item ekleme sırasında hata" });
-          }
-
-          // 5) Stok azalt
-          const sqlStock =
-            "UPDATE products SET product_stock = product_stock - ? WHERE product_id = ?";
-
-          let pending = cartItems.length;
-
-          cartItems.forEach((it) => {
-            db.query(sqlStock, [it.quantity, it.product_id], (err) => {
-              if (err) {
-                console.error("Stok güncellenirken hata:", err);
-                // hata olsa bile diğerlerini deniyoruz
-              }
-
-              if (--pending === 0) {
-                // 6) deliveries tablosuna kayıt (delivery_status = 'preparing')
-                const sqlDelivery = `
-                  INSERT INTO deliveries (order_id, customer_id, delivery_status)
-                  VALUES (?, ?, 'preparing')
-                `;
-
-                db.query(sqlDelivery, [order_id, user_id], (err) => {
-                  if (err) {
-                    console.error("Delivery kaydı oluşturulamadı:", err);
-                    // devam ediyoruz, kritik değil
-                  }
-
-                  // 7) Sepeti temizle
-                  db.query("DELETE FROM cart_items", (err) => {
-                    if (err) {
-                      console.error("Sepet temizlenemedi:", err);
-                    }
-
-                    return res.json({
-                      success: true,
-                      order_id,
-                      total_amount: totalAmount,
-                      order_status: "placed",
-                      delivery_status: "preparing",
-                    });
-                  });
-                });
-              }
-            });
-          });
-        });
-      }
-    );
-  };
-
-  // Body'de items varsa direkt kullan.
-  if (providedItems.length > 0) {
-    return handleCheckout(providedItems);
-  }
-
-  // 1) Cart item'ları ürün fiyatıyla beraber al (fallback)
-  const sqlCart = `
-    SELECT 
-      ci.cart_item_id AS id,
-      ci.product_id,
-      ci.quantity,
-      p.product_price AS unit_price
-    FROM cart_items ci
-    JOIN products p ON ci.product_id = p.product_id
+  const sqlOrder = `
+    INSERT INTO orders (user_id, order_date, status, total_amount, shipping_address, billing_address)
+    VALUES (?, NOW(), 'Processing', ?, ?, ?)
   `;
 
-  db.query(sqlCart, (err, cartItems) => {
-    if (err) {
-      console.error("Cart okunamadı:", err);
-      return res.status(500).json({ error: "Sepet okunamadı" });
-    }
+  db.query(sqlOrder, [user_id, total, shipping_address, billing_address], (err, result) => {
+    if (err) return res.status(500).json({ error: "Order creation failed" });
 
-    handleCheckout(cartItems);
+    const order_id = result.insertId;
+
+    const orderItemRows = orderItems.map(it => [
+      order_id,
+      it.product_id,
+      it.quantity,
+      it.unit_price
+    ]);
+
+    const sqlItems = `
+      INSERT INTO order_items (order_id, product_id, quantity, unit_price)
+      VALUES ?
+    `;
+
+    db.query(sqlItems, [orderItemRows], (err2) => {
+      if (err2) return res.status(500).json({ error: "Order items creation failed" });
+
+      /** ✔ GERÇEK order_item_id DEĞERLERİNİ BURADA ALIYORUZ */
+      db.query(
+        "SELECT order_item_id, product_id, quantity, unit_price FROM order_items WHERE order_id = ?",
+        [order_id],
+        (err3, rows) => {
+          if (err3) return res.status(500).json({ error: "Order items fetch failed" });
+
+          const deliveryRows = rows.map(r => [
+            order_id,
+            r.order_item_id,
+            user_id,
+            r.product_id,
+            r.quantity,
+            r.unit_price * r.quantity,
+            shipping_address || "",
+            "Processing"
+          ]);
+
+          const sqlDelivery = `
+            INSERT INTO deliveries 
+              (order_id, order_item_id, customer_id, product_id, quantity, total_price, delivery_address, delivery_status)
+            VALUES ?
+          `;
+
+          db.query(sqlDelivery, [deliveryRows], err4 => {
+            if (err4) return res.status(500).json({ error: "Delivery creation failed" });
+
+            return res.json({
+              success: true,
+              order_id,
+              total_amount: total,
+              message: "Order placed successfully"
+            });
+          });
+        }
+      );
+    });
   });
 }
 
-/**
- * GET /orders/history?user_id=...
- */
-export function getOrderHistory(req, res) {
-  let { user_id } = req.query;
 
-  // query'den email vs gelirse yine INT'e zorla
-  const safeUserId = Number(user_id);
-  if (!safeUserId || Number.isNaN(safeUserId)) {
-    user_id = 1;
-  } else {
-    user_id = safeUserId;
-  }
+
+/* ============================================================
+   GET /api/orders/user/:userId
+   → Kullanıcının tüm siparişlerini getir
+============================================================ */
+export function getOrdersByUser(req, res) {
+  const { userId } = req.params;
 
   const sql = `
-    SELECT
+    SELECT 
       o.order_id,
       o.order_date,
       o.total_amount,
-      o.status        AS order_status,
-      d.delivery_status
+      o.status,
+      COALESCE(d.delivery_status, 'processing') AS delivery_status
     FROM orders o
-    LEFT JOIN deliveries d ON d.order_id = o.order_id
+    LEFT JOIN deliveries d ON o.order_id = d.order_id
     WHERE o.user_id = ?
     ORDER BY o.order_date DESC
   `;
 
-  db.query(sql, [user_id], (err, rows) => {
+  db.query(sql, [userId], (err, rows) => {
     if (err) {
-      console.error("Order history hatası:", err);
-      return res.status(500).json({ error: "Sipariş geçmişi alınamadı" });
+      console.error("SQL ERROR:", err); // 🔥 Eklenmeli
+      return res.status(500).json({ error: "Could not fetch orders" });
     }
-
     res.json(rows);
   });
 }
 
-/**
- * PUT /orders/:order_id/status
- * Body: { status } → örn: "preparing" | "shipped" | "in_transit" | "delivered"
- */
-export function updateDeliveryStatus(req, res) {
-  const { order_id } = req.params;
-  const { status } = req.body;
 
-  // İstersen burada allowed list tutabilirsin:
-  // const allowed = ["preparing", "shipped", "in_transit", "delivered"];
-  // if (!allowed.includes(status)) { ... }
+/* ============================================================
+   GET /api/orders/:orderId/items
+   → Sipariş içindeki tüm ürünleri getir
+============================================================ */
+export function getOrderItems(req, res) {
+  const { orderId } = req.params;
+
+  const sql = `
+    SELECT 
+      oi.order_item_id,
+      oi.product_id,
+      p.product_name AS product_name,
+      oi.quantity,
+      oi.unit_price
+    FROM order_items oi
+    JOIN products p ON p.product_id = oi.product_id
+    WHERE oi.order_id = ?
+  `;
+
+  db.query(sql, [orderId], (err, rows) => {
+    if (err) return res.status(500).json({ error: "Could not fetch order items" });
+    res.json(rows);
+  });
+}
+
+
+
+/* ============================================================
+   GET /api/deliveries/:orderId
+   → Sipariş teslimat durumunu getir (User tarafı bunu istiyor!)
+============================================================ */
+export function getDeliveryStatus(req, res) {
+  const { orderId } = req.params;
+
+  const sql = `
+    SELECT 
+      delivery_status,
+      delivery_address,
+      updated_at
+    FROM deliveries
+    WHERE order_id = ?
+    LIMIT 1
+  `;
+
+  db.query(sql, [orderId], (err, rows) => {
+    if (err) return res.status(500).json({ error: "Could not fetch delivery status" });
+    res.json(rows[0] || null);
+  });
+}
+
+/* ============================================================
+   PUT /api/orders/:orderId/status
+   → Admin teslimat durumunu günceller
+============================================================ */
+export function updateDeliveryStatus(req, res) {
+  const { orderId } = req.params;
+  const { status } = req.body;
 
   const sql = `
     UPDATE deliveries
-    SET delivery_status = ?
+    SET delivery_status = ?, updated_at = NOW()
     WHERE order_id = ?
   `;
 
-  db.query(sql, [status, order_id], (err) => {
-    if (err) {
-      console.error("Status update hatası:", err);
-      return res.status(500).json({ error: "Durum güncellenemedi" });
-    }
-
+  db.query(sql, [status, orderId], err => {
+    if (err) return res.status(500).json({ error: "Failed to update delivery status" });
     res.json({ success: true });
   });
 }

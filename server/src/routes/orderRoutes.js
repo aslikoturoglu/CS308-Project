@@ -2,14 +2,27 @@
 import { Router } from "express";
 import {
   checkout,
-  getOrderHistory,
-  updateDeliveryStatus,
+  getOrdersByUser,
+  getOrderItems,
 } from "../controllers/orderController.js";
 
 const router = Router();
 
+/* =============================
+   USER ORDER ENDPOINTS
+============================= */
+
+// Kullanıcının tüm siparişleri
+router.get("/user/:userId", getOrdersByUser);
+
+// Sipariş içindeki ürünleri getir
+router.get("/:orderId/items", getOrderItems);
+
+/* =============================
+   ORDER PROCESS
+============================= */
+
+// Checkout
 router.post("/checkout", checkout);
-router.get("/history", getOrderHistory);
-router.put("/:order_id/status", updateDeliveryStatus);
 
 export default router;

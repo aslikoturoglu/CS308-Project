@@ -1,187 +1,79 @@
-const ORDER_KEY = "orders";
+// src/services/orderService.js
 
-export function formatOrderId(id) {
-  if (!id && id !== 0) return "#ORD-00000";
-  const numeric = Number(id);
-  if (Number.isFinite(numeric)) {
-    return `#ORD-${String(numeric).padStart(5, "0")}`;
+/* ============================================================
+   ORDER SERVICE — BACKEND CONNECTED
+   LocalStorage olan eski sistem TAMAMEN kaldırıldı.
+============================================================ */
+
+// ✔ Kullanıcının tüm siparişlerini getir
+export async function fetchUserOrders(userId) {
+  const res = await fetch(`/api/orders/user/${userId}`);
+  if (!res.ok) throw new Error("Failed to load user orders");
+  return await res.json();
+}
+
+// ✔ Sipariş içindeki ürünleri getir
+export async function fetchOrderItems(orderId) {
+  const res = await fetch(`/api/orders/${orderId}/items`);
+  if (!res.ok) throw new Error("Failed to load order items");
+  return await res.json();
+}
+
+// ✔ Siparişin teslimat durumunu getir
+export async function fetchDeliveryStatus(orderId) {
+  const res = await fetch(`/api/orders/delivery/${orderId}`);
+  if (!res.ok) throw new Error("Failed to load delivery status");
+  return await res.json();
+}
+
+// ✔ Yeni sipariş oluştur (checkout)
+export async function checkoutOrder(body) {
+  const res = await fetch(`/api/orders/checkout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Checkout failed");
+
+  return data; // { order_id, total_amount, message }
+}
+
+// ✔ OrderId biçimlendir (#ORD-00001)
+export function formatOrderId(orderId) {
+  const num = Number(orderId);
+  if (Number.isNaN(num)) return `#ORD-${orderId}`;
+  return `#ORD-${String(num).padStart(5, "0")}`;
+}
+
+/* ============================================================
+   (OPSİYONEL) UI Kullanımı için yardımcı fonksiyonlar
+============================================================ */
+
+// ✔ Backend statülerini Frontend UI statülerine çevir
+export function mapDeliveryStatusToUI(status) {
+  switch (status) {
+    case "preparing":
+    case "Processing":
+      return "Processing";
+
+    case "shipped":
+    case "in_transit":
+    case "In-transit":
+      return "In-transit";
+
+    case "delivered":
+    case "Delivered":
+      return "Delivered";
+
+    default:
+      return "Processing";
   }
-  const asString = String(id);
-  return asString.startsWith("#ORD-") ? asString : `#ORD-${asString}`;
 }
 
-const seedOrders = [
-  {
-    id: "#ORD-9821",
-    date: "12 February 2025",
-    status: "In-transit",
-    total: 2899,
-    shippingCompany: "Aras Kargo",
-    estimate: "15 February 2025",
-    address: "Bagdat Street No:25, Kadikoy / Istanbul",
-    note: "Assembly service selected. Please call before delivery.",
-    progressIndex: 1,
-    items: [
-      {
-        id: 13,
-        productId: 13,
-        name: "Velvet Armchair",
-        variant: "Midnight blue",
-        qty: 1,
-        price: 1899,
-      },
-      {
-        id: 14,
-        productId: 14,
-        name: "Round Side Table",
-        variant: "Walnut",
-        qty: 1,
-        price: 999,
-      },
-    ],
-  },
-  {
-    id: "#ORD-9534",
-    date: "27 January 2025",
-    status: "Delivered",
-    total: 1699,
-    shippingCompany: "MNG Kargo",
-    estimate: "31 January 2025",
-    deliveredAt: "28 January 2025",
-    address: "Bagdat Street No:25, Kadikoy / Istanbul",
-    note: "Delivered. Leave a review if you like.",
-    progressIndex: 2,
-    items: [
-      {
-        id: 21,
-        productId: 21,
-        name: "Leather Office Chair",
-        variant: "Black",
-        qty: 1,
-        price: 1699,
-      },
-    ],
-  },
-  {
-    id: "#ORD-9418",
-    date: "15 January 2025",
-    status: "Processing",
-    total: 1098,
-    shippingCompany: "SUExpress",
-    estimate: "20 January 2025",
-    address: "Bagdat Street No:25, Kadikoy / Istanbul",
-    note: "Free store pickup selected.",
-    progressIndex: 0,
-    items: [
-      {
-        id: 8,
-        productId: 8,
-        name: "Bamboo Storage Box (Set/3)",
-        variant: "Natural",
-        qty: 2,
-        price: 549,
-      },
-    ],
-  },
-];
-
-const readOrders = () => {
-  if (typeof window === "undefined") return seedOrders;
-  try {
-    const raw = window.localStorage.getItem(ORDER_KEY);
-    if (!raw) {
-      window.localStorage.setItem(ORDER_KEY, JSON.stringify(seedOrders));
-      return seedOrders;
-    }
-    return JSON.parse(raw);
-  } catch (error) {
-    console.error("Failed to read orders", error);
-    return seedOrders;
-  }
-};
-
-const writeOrders = (orders) => {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(ORDER_KEY, JSON.stringify(orders));
-  } catch (error) {
-    console.error("Failed to save orders", error);
-  }
-};
-
-export function getOrders() {
-  return readOrders();
-}
-
-export function getOrderById(id) {
-  if (!id) return null;
-  const orders = readOrders();
-  const normalized = formatOrderId(id);
-  return orders.find((order) => formatOrderId(order.id) === normalized);
-}
-
-export function addOrder({ items, total, id: providedId }) {
-  const now = new Date();
-  const orders = readOrders();
-  const formattedId = formatOrderId(
-    providedId ?? Math.floor(Math.random() * 9000 + 1000)
-  );
-  const newOrder = {
-    // Backend order_id ile aynı olsun diye gelen ID'yi kullan.
-    id: formattedId,
-    date: now.toLocaleDateString("en-US", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    }),
-    status: "Processing",
-    total,
-    shippingCompany: "SUExpress",
-    estimate: new Date(
-      now.getTime() + 4 * 24 * 60 * 60 * 1000
-    ).toLocaleDateString("en-US", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    }),
-    address: "Saved default address",
-    note: "We will notify you when the shipment is picked up.",
-    progressIndex: 0,
-    items: items.map((item) => ({
-      id: item.id,
-      productId: item.id,
-      name: item.name,
-      variant: item.variant ?? "",
-      qty: item.quantity ?? item.qty ?? 1,
-      price: item.price,
-    })),
-  };
-  const next = [newOrder, ...orders];
-  writeOrders(next);
-  return newOrder;
-}
-
-export function advanceOrderStatus(id) {
-  const orders = readOrders();
-  const targetId = formatOrderId(id);
-  const idx = orders.findIndex((o) => formatOrderId(o.id) === targetId);
-  if (idx === -1) return orders;
-  const order = orders[idx];
-  const steps = ["Processing", "In-transit", "Delivered"];
-  const nextIndex = Math.min(
-    (order.progressIndex ?? steps.indexOf(order.status) ?? 0) + 1,
-    steps.length - 1
-  );
-  const nextStatus = steps[nextIndex];
-  orders[idx] = {
-    ...order,
-    progressIndex: nextIndex,
-    status: nextStatus,
-    deliveredAt:
-      nextStatus === "Delivered"
-        ? new Date().toLocaleDateString("en-US")
-        : order.deliveredAt,
-  };
-  writeOrders(orders);
-  return orders;
+// ✔ Timeline index hesapla
+export function getTimelineIndex(status) {
+  const s = mapDeliveryStatusToUI(status);
+  return ["Processing", "In-transit", "Delivered"].indexOf(s);
 }
