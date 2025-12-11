@@ -472,7 +472,81 @@ const addCartBtn = {
   background: "#0058a3",
   color: "white",
   textDecoration: "none",
-  padding: "14px 28px", 
+  padding: "14px 28px",
   borderRadius: 10,
-  fontWeight
-}
+  fontWeight: 700,
+  border: "none",
+  cursor: "pointer",
+};
+
+const buyNowBtn = {
+  background: "#0ea5e9",
+  color: "white",
+  textDecoration: "none",
+  padding: "14px 22px",
+  borderRadius: 10,
+  fontWeight: 700,
+  border: "none",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const buttonRow = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  marginTop: 8,
+  flexWrap: "wrap",
+};
+
+const reviewCard = {
+  marginTop: 30,
+  background: "white",
+  padding: 20,
+  borderRadius: 12,
+  border: "1px solid #e5e7eb",
+};
+
+const reviewBlock = {
+  padding: 12,
+  borderRadius: 10,
+  border: "1px solid #e2e8f0",
+  marginBottom: 12,
+  background: "#f8fafc",
+};
+
+const stars = {
+  color: "#f59e0b",
+  fontSize: "1rem",
+};
+
+const select = {
+  display: "block",
+  marginBottom: 10,
+  padding: 10,
+  borderRadius: 8,
+  border: "1px solid #cbd5e1",
+};
+
+const textarea = {
+  width: "100%",
+  minHeight: 90,
+  padding: 12,
+  borderRadius: 10,
+  border: "1px solid #cbd5e1",
+  resize: "vertical",
+  marginBottom: 12,
+};
+
+const submitBtn = {
+  background: "#0058a3",
+  color: "white",
+  padding: "12px 16px",
+  border: "none",
+  borderRadius: 10,
+  cursor: "pointer",
+  fontWeight: 700,
+};
+
+export default ProductDetail;
