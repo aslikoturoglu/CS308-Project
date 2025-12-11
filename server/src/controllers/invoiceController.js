@@ -38,8 +38,9 @@ export function generateInvoice(req, res) {
       u.address AS customer_address,
       u.phone AS customer_phone
     FROM orders o
-    JOIN users u ON u.user_id = o.user_id
+    LEFT JOIN users u ON u.user_id = o.user_id
     WHERE o.order_id = ?
+    LIMIT 1
   `;
 
   db.query(sqlOrder, [realOrderId], (err, orderRows) => {
