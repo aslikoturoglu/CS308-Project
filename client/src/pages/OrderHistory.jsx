@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { addReview, getReviewMap } from "../services/localStorageHelpers";
-import { advanceOrderStatus, formatOrderId, getOrders } from "../services/orderService";
+import { formatOrderId, getOrders } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
 import { useAuth } from "../context/AuthContext";
 
@@ -38,11 +38,6 @@ function OrderHistory() {
     }),
     [orders]
   );
-
-  const handleStatusAdvance = (orderId) => {
-    const next = advanceOrderStatus(orderId);
-    setOrders(next);
-  };
 
   const handleReviewSubmit = (productId, rating, comment) => {
     const displayName = user?.name?.split(" ")[0] || "User";
@@ -291,24 +286,19 @@ function OrderHistory() {
                     flexWrap: "wrap",
                   }}
                 >
-                  <p style={{ margin: 0, color: "#475569" }}>{order.note}</p>
-                  {order.status !== "Delivered" && (
-                    <button
-                      type="button"
-                      onClick={() => handleStatusAdvance(order.id)}
-                      style={{
-                        border: "1px solid #0058a3",
-                        color: "#0058a3",
-                        background: "white",
-                        padding: "8px 12px",
-                        borderRadius: 10,
-                        cursor: "pointer",
-                        fontWeight: 700,
-                      }}
-                    >
-                      Advance status (demo)
-                    </button>
-                  )}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <p style={{ margin: 0, color: "#475569" }}>{order.note}</p>
+                    {order.statusUpdatedBy && (
+                      <span style={{ margin: 0, color: "#64748b", fontWeight: 600 }}>
+                        Last status update by {order.statusUpdatedBy}
+                      </span>
+                    )}
+                    {order.status !== "Delivered" && (
+                      <span style={{ color: "#94a3b8", fontWeight: 700 }}>
+                        Status changes are handled by the sales manager.
+                      </span>
+                    )}
+                  </div>
                   <Link
                     to={`/invoice/${encodeURIComponent(formattedId)}`}
                     style={{

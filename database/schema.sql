@@ -33,6 +33,8 @@ CREATE TABLE Products (
   product_category VARCHAR(100),
   product_material VARCHAR(100),
   product_color VARCHAR(100),
+   product_warranty VARCHAR(150),
+   product_distributor VARCHAR(150),
   product_image VARCHAR(255)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

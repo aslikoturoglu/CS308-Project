@@ -1,9 +1,12 @@
 import db from "../db.js";
+import { sendMail } from "../utils/mailer.js";
 
 const DEFAULT_USER_ID = Number(process.env.DEFAULT_USER_ID || 1);
 const DEFAULT_AGENT_ID = Number(
   process.env.SUPPORT_USER_ID || process.env.DEFAULT_AGENT_ID || DEFAULT_USER_ID + 1 || 2
 );
+const SUPPORT_INBOX_EMAIL =
+  process.env.SUPPORT_INBOX_EMAIL || process.env.SMTP_FROM || process.env.SMTP_USER;
 
 function pickUserId(rawId) {
   const asNumber = Number(rawId);
@@ -166,6 +169,21 @@ export function postCustomerMessage(req, res) {
           return res.status(500).json({ error: "Mesaj kaydedilemedi" });
         }
 
+        // Arka planda destek ekibine e-posta bildirimi gönder.
+        if (SUPPORT_INBOX_EMAIL) {
+          sendMail({
+            to: SUPPORT_INBOX_EMAIL,
+            subject: `New support message #${conversationId}`,
+            html: `
+              <p><strong>User ID:</strong> ${userId}</p>
+              ${email ? `<p><strong>Email:</strong> ${email}</p>` : ""}
+              ${orderId ? `<p><strong>Order:</strong> ${orderId}</p>` : ""}
+              <p><strong>Message:</strong></p>
+              <p>${text.trim()}</p>
+            `,
+          }).catch((err) => console.error("Support email failed:", err));
+        }
+
         res.json({
           conversation_id: conversationId,
           message: {
@@ -288,9 +306,10 @@ export function postSupportReply(req, res) {
   }
 
   const convoSql = `
-    SELECT conversation_id, user_id
-    FROM support_conversations
-    WHERE conversation_id = ?
+    SELECT sc.conversation_id, sc.user_id, u.email
+    FROM support_conversations sc
+    LEFT JOIN users u ON u.user_id = sc.user_id
+    WHERE sc.conversation_id = ?
   `;
 
   db.query(convoSql, [conversationId], (metaErr, rows) => {
@@ -305,6 +324,7 @@ export function postSupportReply(req, res) {
     const conversation = rows[0];
     const fallbackSender = conversation.user_id;
     const sender = Number.isFinite(agentId) ? agentId : fallbackSender;
+    const customerEmail = conversation.email;
 
     const insertSql = `
       INSERT INTO support_messages (conversation_id, sender_id, message_text, created_at)
@@ -333,6 +353,19 @@ export function postSupportReply(req, res) {
             timestamp: new Date().toISOString(),
           },
         });
+
+        // Arka planda müşteriye e-posta bildirimi gönder.
+        if (customerEmail) {
+          sendMail({
+            to: customerEmail,
+            subject: "New reply from support",
+            html: `
+              <p>We replied to your support conversation #${conversationId}:</p>
+              <p>${text.trim()}</p>
+              <p>If you have more details, just reply here in chat.</p>
+            `,
+          }).catch((err) => console.error("Customer email failed:", err));
+        }
       });
     };
 

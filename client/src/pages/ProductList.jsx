@@ -376,12 +376,13 @@ const handleDecrease = async (p) => {
                             borderRadius:10,
                             padding:"10px 12px",
                             fontWeight:800,
-                            cursor:"pointer",
+                            cursor:p.availableStock<=0?"not-allowed":"pointer",
+                            opacity:p.availableStock<=0?0.6:1,
                             border:"none",
                             transition:".2s"
                           }}
                         >
-                          Add to cart
+                          {p.availableStock<=0 ? "Out of stock" : "Add to cart"}
                         </button>
                       ) : (
 

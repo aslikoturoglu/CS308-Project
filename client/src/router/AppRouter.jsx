@@ -6,6 +6,8 @@ import Wishlist from "../pages/Wishlist";
 import Profile from "../pages/Profile";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
+import ForgotPassword from "../pages/ForgotPassword";
+import ResetPassword from "../pages/ResetPassword";
 import OrderHistory from "../pages/OrderHistory";
 import ProductDetail from "../pages/ProductDetail";
 import Checkout from "../pages/Checkout";
@@ -30,6 +32,8 @@ function AppRouter() {
       </Route>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password/:token" element={<ResetPassword />} />
       <Route element={<ProtectedRoute allowedRoles={['admin', 'product_manager', 'sales_manager', 'support']} />}>
         <Route path="/admin" element={<AdminDashboard />} />
       </Route>

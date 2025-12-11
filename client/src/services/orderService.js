@@ -1,4 +1,5 @@
 const ORDER_KEY = "orders";
+const timelineSteps = ["Processing", "In-transit", "Delivered"];
 
 export function formatOrderId(id) {
   if (!id && id !== 0) return "#ORD-00000";
@@ -10,93 +11,15 @@ export function formatOrderId(id) {
   return asString.startsWith("#ORD-") ? asString : `#ORD-${asString}`;
 }
 
-const seedOrders = [
-  {
-    id: "#ORD-9821",
-    date: "12 February 2025",
-    status: "In-transit",
-    total: 2899,
-    shippingCompany: "Aras Kargo",
-    estimate: "15 February 2025",
-    address: "Bagdat Street No:25, Kadikoy / Istanbul",
-    note: "Assembly service selected. Please call before delivery.",
-    progressIndex: 1,
-    items: [
-      {
-        id: 13,
-        productId: 13,
-        name: "Velvet Armchair",
-        variant: "Midnight blue",
-        qty: 1,
-        price: 1899,
-      },
-      {
-        id: 14,
-        productId: 14,
-        name: "Round Side Table",
-        variant: "Walnut",
-        qty: 1,
-        price: 999,
-      },
-    ],
-  },
-  {
-    id: "#ORD-9534",
-    date: "27 January 2025",
-    status: "Delivered",
-    total: 1699,
-    shippingCompany: "MNG Kargo",
-    estimate: "31 January 2025",
-    deliveredAt: "28 January 2025",
-    address: "Bagdat Street No:25, Kadikoy / Istanbul",
-    note: "Delivered. Leave a review if you like.",
-    progressIndex: 2,
-    items: [
-      {
-        id: 21,
-        productId: 21,
-        name: "Leather Office Chair",
-        variant: "Black",
-        qty: 1,
-        price: 1699,
-      },
-    ],
-  },
-  {
-    id: "#ORD-9418",
-    date: "15 January 2025",
-    status: "Processing",
-    total: 1098,
-    shippingCompany: "SUExpress",
-    estimate: "20 January 2025",
-    address: "Bagdat Street No:25, Kadikoy / Istanbul",
-    note: "Free store pickup selected.",
-    progressIndex: 0,
-    items: [
-      {
-        id: 8,
-        productId: 8,
-        name: "Bamboo Storage Box (Set/3)",
-        variant: "Natural",
-        qty: 2,
-        price: 549,
-      },
-    ],
-  },
-];
-
 const readOrders = () => {
-  if (typeof window === "undefined") return seedOrders;
+  if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(ORDER_KEY);
-    if (!raw) {
-      window.localStorage.setItem(ORDER_KEY, JSON.stringify(seedOrders));
-      return seedOrders;
-    }
+    if (!raw) return [];
     return JSON.parse(raw);
   } catch (error) {
     console.error("Failed to read orders", error);
-    return seedOrders;
+    return [];
   }
 };
 
@@ -161,18 +84,31 @@ export function addOrder({ items, total, id: providedId }) {
   return newOrder;
 }
 
-export function advanceOrderStatus(id) {
+export function advanceOrderStatus(id, actor) {
   const orders = readOrders();
+  const actorRole = typeof actor === "string" ? actor : actor?.role;
+  const actorName = typeof actor === "object" ? actor?.name : undefined;
+
+  if (actorRole !== "sales_manager") {
+    return { orders, error: "Only the sales manager can update order statuses." };
+  }
+
   const targetId = formatOrderId(id);
   const idx = orders.findIndex((o) => formatOrderId(o.id) === targetId);
-  if (idx === -1) return orders;
+  if (idx === -1) return { orders, error: "Order not found." };
   const order = orders[idx];
-  const steps = ["Processing", "In-transit", "Delivered"];
   const nextIndex = Math.min(
-    (order.progressIndex ?? steps.indexOf(order.status) ?? 0) + 1,
-    steps.length - 1
+    (order.progressIndex ?? timelineSteps.indexOf(order.status) ?? 0) + 1,
+    timelineSteps.length - 1
   );
-  const nextStatus = steps[nextIndex];
+  const nextStatus = timelineSteps[nextIndex];
+
+  // Best-effort backend sync when this is a numeric backend order id.
+  const numericId = Number(id);
+  if (Number.isFinite(numericId)) {
+    updateBackendOrderStatus(numericId, nextStatus).catch(() => {});
+  }
+
   orders[idx] = {
     ...order,
     progressIndex: nextIndex,
@@ -181,7 +117,86 @@ export function advanceOrderStatus(id) {
       nextStatus === "Delivered"
         ? new Date().toLocaleDateString("en-US")
         : order.deliveredAt,
+    statusUpdatedBy: actorName || "Sales Manager",
+    statusUpdatedAt: new Date().toISOString(),
   };
   writeOrders(orders);
-  return orders;
+  return { orders, updatedOrder: orders[idx] };
+}
+
+const backendToFrontendStatus = (value) => {
+  const normalized = String(value || "").toLowerCase();
+  if (normalized.includes("transit") || normalized === "shipped") return "In-transit";
+  if (normalized === "delivered") return "Delivered";
+  return "Processing";
+};
+
+const frontendToBackendStatus = {
+  Processing: "preparing",
+  "In-transit": "in_transit",
+  Delivered: "delivered",
+};
+
+export async function fetchAllOrders(signal) {
+  const res = await fetch("/api/orders", { signal });
+  const data = await res.json().catch(() => []);
+  if (!res.ok) {
+    const msg = data?.error || "Orders could not be loaded";
+    throw new Error(msg);
+  }
+
+  return (data || []).map((row) => {
+    const status = backendToFrontendStatus(row.delivery_status || row.status || row.order_status);
+    const progressIndex = timelineSteps.indexOf(status);
+    const items = Array.isArray(row.items)
+      ? row.items.map((it, idx) => ({
+          id: it.product_id ?? idx,
+          productId: it.product_id ?? idx,
+          name: it.name ?? it.product_name ?? "Item",
+          variant: "",
+          qty: it.quantity ?? it.qty ?? 1,
+          price: Number(it.price ?? it.unit_price ?? 0),
+          image: it.image,
+        }))
+      : [];
+
+    return {
+      id: row.order_id ?? row.id,
+      formattedId: formatOrderId(row.order_id ?? row.id),
+      userId: row.user_id,
+      customerName: row.user_name || `User ${row.user_id ?? ""}`,
+      customerEmail: row.user_email,
+      date: row.date || row.order_date,
+      status,
+      progressIndex: progressIndex >= 0 ? progressIndex : 0,
+      total: Number(row.total_amount ?? row.total ?? 0),
+      shippingCompany: row.shipping_company || "SUExpress",
+      estimate: row.estimate,
+      address: row.shipping_address || row.billing_address || row.address || "Not provided",
+      note: row.note || "",
+      items,
+    };
+  });
+}
+
+export async function updateBackendOrderStatus(orderId, nextStatus, signal) {
+  const backendStatus = frontendToBackendStatus[nextStatus] || "preparing";
+  const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}/status`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: backendStatus }),
+    signal,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = data?.error || "Status could not be updated";
+    throw new Error(msg);
+  }
+  return true;
+}
+
+export function getNextStatus(order) {
+  const currentIndex = timelineSteps.indexOf(order.status) >= 0 ? timelineSteps.indexOf(order.status) : 0;
+  const nextIndex = Math.min(currentIndex + 1, timelineSteps.length - 1);
+  return { nextStatus: timelineSteps[nextIndex], nextIndex };
 }

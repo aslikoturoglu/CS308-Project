@@ -2,13 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import "../../styles/chat.css";
 import { useChat } from "../../context/ChatContext";
 
-const quickPrompts = [
-  "Where is my order?",
-  "How do returns work?",
-  "Can I get a product recommendation?",
-  "How much is shipping?",
-];
-
 const formatTime = (value) =>
   new Date(value).toLocaleTimeString("en-US", {
     hour: "2-digit",
@@ -95,14 +88,6 @@ function ChatBox() {
           {syncError || lastError}
         </div>
       )}
-
-      <div className="chat-quick">
-        {quickPrompts.map((prompt) => (
-          <button key={prompt} onClick={() => handleSend(prompt)}>
-            {prompt}
-          </button>
-        ))}
-      </div>
 
       <form className="chat-input" onSubmit={handleSubmit}>
         <input

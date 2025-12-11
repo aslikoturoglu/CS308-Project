@@ -7,7 +7,15 @@ import {
   fetchSupportMessages,
   sendSupportMessage,
 } from "../services/supportService";
-import { formatOrderId } from "../services/orderService";
+import {
+  advanceOrderStatus,
+  fetchAllOrders,
+  formatOrderId,
+  getNextStatus,
+  getOrders,
+  updateBackendOrderStatus,
+} from "../services/orderService";
+import { approveReview, getReviewMap } from "../services/localStorageHelpers";
 
 const rolesToSections = {
   admin: ["dashboard", "product", "sales", "support"],
@@ -16,32 +24,14 @@ const rolesToSections = {
   support: ["support"],
 };
 
-const mockDeliveries = [
-  { id: 801, orderId: "#ORD-601", product: "Modern Chair", status: "In-transit", address: "Kadikoy / Istanbul" },
-  { id: 802, orderId: "#ORD-602", product: "Corner Sofa", status: "Delivered", address: "Beyoglu / Istanbul" },
-];
-
-const mockInvoices = [
-  { id: "#INV-601", orderId: "#ORD-601", date: "2025-02-18", total: 1248.9 },
-  { id: "#INV-602", orderId: "#ORD-602", date: "2025-02-10", total: 6999 },
-];
-
-const mockRevenue = [
-  { label: "Mon", value: 12 },
-  { label: "Tue", value: 16 },
-  { label: "Wed", value: 10 },
-  { label: "Thu", value: 20 },
-  { label: "Fri", value: 14 },
-  { label: "Sat", value: 22 },
-  { label: "Sun", value: 18 },
-];
-
 function AdminDashboard() {
   const { user } = useAuth();
   const { addToast } = useToast();
   const [activeSection, setActiveSection] = useState("dashboard");
   const [products, setProducts] = useState([]);
-  const [deliveries, setDeliveries] = useState(mockDeliveries);
+  const [orders, setOrders] = useState([]);
+  const [deliveries, setDeliveries] = useState([]);
+  const [pendingReviews, setPendingReviews] = useState([]);
   const [chats, setChats] = useState([]);
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
@@ -62,6 +52,55 @@ function AdminDashboard() {
       .catch(() => addToast("Failed to load products", "error"));
     return () => controller.abort();
   }, [addToast]);
+
+  const refreshPendingReviews = useCallback(() => {
+    const map = getReviewMap();
+    const list = [];
+    Object.entries(map).forEach(([pid, reviews]) => {
+      if (!Array.isArray(reviews)) return;
+      reviews.forEach((rev) => {
+        if (rev.approved === false) {
+          list.push({
+            productId: Number(pid),
+            id: rev.id,
+            rating: rev.rating,
+            comment: rev.comment,
+            displayName: rev.displayName,
+            date: rev.date,
+          });
+        }
+      });
+    });
+    list.sort((a, b) => Date.parse(b.date || 0) - Date.parse(a.date || 0));
+    setPendingReviews(list);
+  }, []);
+
+  const loadOrders = useCallback(async () => {
+    try {
+      const remote = await fetchAllOrders();
+      setOrders(remote);
+    } catch (error) {
+      console.error("Orders load failed, fallback to local:", error);
+      setOrders(getOrders());
+      addToast("Orders could not be loaded from server, showing local data", "error");
+    }
+  }, [addToast]);
+
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
+
+  useEffect(() => {
+    setDeliveries(
+      orders.map((order) => ({
+        id: formatOrderId(order.id),
+        orderId: formatOrderId(order.id),
+        product: order.items?.[0]?.name || "Order items",
+        status: order.status,
+        address: order.address,
+      }))
+    );
+  }, [orders]);
 
   const loadInbox = useCallback(async () => {
     setIsLoadingChats(true);
@@ -85,6 +124,10 @@ function AdminDashboard() {
     const interval = setInterval(loadInbox, 4000);
     return () => clearInterval(interval);
   }, [loadInbox]);
+
+  useEffect(() => {
+    refreshPendingReviews();
+  }, [refreshPendingReviews]);
 
   useEffect(() => {
     if (!activeConversationId) return undefined;
@@ -113,10 +156,55 @@ function AdminDashboard() {
   }, [activeSection, permittedSections]);
 
   const totals = useMemo(() => {
-    const revenue = mockInvoices.reduce((sum, o) => sum + o.total, 0);
+    const revenue = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
     const lowStock = products.filter((p) => p.availableStock < 5).length;
     return { revenue, lowStock };
-  }, [products]);
+  }, [orders, products]);
+
+  const invoiceList = useMemo(
+    () =>
+      orders.map((order) => ({
+        id: `#INV-${String(formatOrderId(order.id)).replace("#ORD-", "")}`,
+        orderId: formatOrderId(order.id),
+        date: order.date,
+        total: Number(order.total) || 0,
+      })),
+    [orders]
+  );
+
+  const revenueSeries = useMemo(() => {
+    const buckets = new Map();
+    orders.forEach((order) => {
+      const label = order.date || "Unknown";
+      const val = Number(order.total) || 0;
+      buckets.set(label, (buckets.get(label) || 0) + val);
+    });
+    return Array.from(buckets.entries()).map(([label, value]) => ({ label, value }));
+  }, [orders]);
+
+  const groupedOrders = useMemo(() => {
+    const groups = {
+      Processing: [],
+      "In-transit": [],
+      Delivered: [],
+    };
+    const parseDate = (value) => Date.parse(value) || 0;
+    orders.forEach((o) => {
+      const key =
+        o.status === "Delivered"
+          ? "Delivered"
+          : o.status === "In-transit"
+          ? "In-transit"
+          : "Processing";
+      groups[key].push(o);
+    });
+    Object.keys(groups).forEach((key) => {
+      groups[key].sort((a, b) => (parseDate(b.date) || 0) - (parseDate(a.date) || 0));
+    });
+    return groups;
+  }, [orders]);
+
+  const [orderTab, setOrderTab] = useState("Processing");
 
   const handleAddProduct = () => {
     if (!newProduct.name || !newProduct.price) {
@@ -134,7 +222,7 @@ function AdminDashboard() {
     };
     setProducts((prev) => [...prev, product]);
     setNewProduct({ name: "", price: "", stock: "", category: "" });
-    addToast("Product added (mock)", "info");
+    addToast("Product added (local only)", "info");
   };
 
   const handlePriceUpdate = () => {
@@ -145,7 +233,7 @@ function AdminDashboard() {
     setProducts((prev) =>
       prev.map((p) => (String(p.id) === String(priceUpdate.productId) ? { ...p, price: Number(priceUpdate.price) } : p))
     );
-    addToast("Price updated (mock)", "info");
+    addToast("Price updated (local only)", "info");
   };
 
   const handleDiscount = () => {
@@ -166,7 +254,7 @@ function AdminDashboard() {
           : p
       )
     );
-    addToast("Discount applied (mock)", "info");
+    addToast("Discount applied (local only)", "info");
   };
 
   const handleDeliveryStatus = () => {
@@ -177,12 +265,60 @@ function AdminDashboard() {
     setDeliveries((prev) =>
       prev.map((d) => (String(d.id) === String(deliveryUpdate.id) ? { ...d, status: deliveryUpdate.status } : d))
     );
-    addToast("Delivery status updated (mock)", "info");
+    addToast("Delivery status updated (local only)", "info");
   };
 
   const handleSelectConversation = (id) => {
     setActiveConversationId(id);
     setReplyDraft("");
+  };
+
+  const handleAdvanceOrder = async (orderId) => {
+    const current = orders.find(
+      (o) =>
+        String(o.id) === String(orderId) ||
+        formatOrderId(o.id) === formatOrderId(orderId) ||
+        o.formattedId === orderId
+    );
+
+    if (!current) {
+      addToast("Order not found", "error");
+      return;
+    }
+
+    const { nextStatus, nextIndex } = getNextStatus(current);
+    if (current.status === "Delivered" || nextStatus === current.status) {
+      addToast("Order already delivered", "info");
+      return;
+    }
+
+    const isBackendOrder = Number.isFinite(Number(current.id));
+
+    if (isBackendOrder) {
+      try {
+        await updateBackendOrderStatus(current.id, nextStatus);
+        await loadOrders();
+        addToast("Order advanced to next status", "info");
+        return;
+      } catch (error) {
+        console.error("Backend status update failed, falling back:", error);
+        addToast(error.message || "Backend update failed", "error");
+      }
+    }
+
+    const result = advanceOrderStatus(orderId, user);
+    if (result.error) {
+      addToast(result.error, "error");
+      return;
+    }
+    setOrders(result.orders);
+    addToast("Order advanced to next status", "info");
+  };
+
+  const handleApproveReview = (productId, reviewId) => {
+    approveReview(productId, reviewId, true);
+    refreshPendingReviews();
+    addToast("Review approved", "info");
   };
 
   const handleSendReply = async () => {
@@ -225,12 +361,22 @@ function AdminDashboard() {
   ].filter((s) => permittedSections.includes(s.id));
 
   return (
-    <div style={{ background: "#f3f4f6", minHeight: "calc(100vh - 160px)", padding: 16 }}>
+    <div
+      style={{
+        background: "#f3f4f6",
+        minHeight: "calc(100vh - 160px)",
+        padding: "28px 16px 72px",
+      }}
+    >
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "240px 1fr",
-          gap: 16,
+          width: "100%",
+          maxWidth: 1180,
+          boxSizing: "border-box",
+          margin: "0 auto",
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 18,
           alignItems: "flex-start",
         }}
       >
@@ -238,10 +384,12 @@ function AdminDashboard() {
           style={{
             background: "white",
             borderRadius: 14,
-            padding: 12,
+            padding: 16,
             boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
             display: "grid",
-            gap: 8,
+            gap: 10,
+            flex: "0 0 260px",
+            minWidth: 220,
           }}
         >
           <h3 style={{ margin: "0 0 8px", color: "#0f172a" }}>Admin Panel</h3>
@@ -270,7 +418,9 @@ function AdminDashboard() {
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: 16,
+            gap: 20,
+            flex: "1 1 0",
+            minWidth: 0,
           }}
         >
           <header
@@ -323,7 +473,7 @@ function AdminDashboard() {
                   style={{
                     background: "white",
                     borderRadius: 14,
-                    padding: 14,
+                    padding: 16,
                     boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
                     borderLeft: `6px solid ${card.tone}`,
                   }}
@@ -339,17 +489,19 @@ function AdminDashboard() {
           )}
 
           {activeSection === "product" && (
-            <section style={{ display: "grid", gap: 14 }}>
+            <section style={{ display: "grid", gap: 18 }}>
               <div
                 style={{
                   background: "white",
                   borderRadius: 14,
-                  padding: 14,
+                  padding: 18,
                   boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
+                  display: "grid",
+                  gap: 12,
                 }}
               >
                 <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Product Manager Panel</h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
                   <input
                     placeholder="Name"
                     value={newProduct.name}
@@ -386,13 +538,13 @@ function AdminDashboard() {
                 style={{
                   background: "white",
                   borderRadius: 14,
-                  padding: 14,
+                  padding: 18,
                   boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
                   display: "grid",
-                  gap: 10,
+                  gap: 12,
                 }}
               >
-                <h4 style={{ margin: 0 }}>Product list (mock)</h4>
+                <h4 style={{ margin: 0 }}>Product list</h4>
                 <div style={{ maxHeight: 320, overflow: "auto", border: "1px solid #e5e7eb", borderRadius: 12 }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.95rem" }}>
                     <thead>
@@ -412,7 +564,7 @@ function AdminDashboard() {
                           <td style={td}>{p.availableStock}</td>
                           <td style={td}>{p.category || "General"}</td>
                           <td style={td}>
-                            <button type="button" style={linkBtn} onClick={() => addToast("Edit (mock)", "info")}>
+                            <button type="button" style={linkBtn} onClick={() => addToast("Edit (local only)", "info")}>
                               Edit
                             </button>
                             <button
@@ -434,36 +586,90 @@ function AdminDashboard() {
                 style={{
                   background: "white",
                   borderRadius: 14,
-                  padding: 14,
+                  padding: 18,
+                  boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
+                  display: "grid",
+                  gap: 10,
+                }}
+              >
+                <h4 style={{ margin: 0 }}>Review approvals</h4>
+                {pendingReviews.length === 0 ? (
+                  <p style={{ margin: 0, color: "#6b7280" }}>No pending reviews.</p>
+                ) : (
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {pendingReviews.map((rev) => {
+                      const productName = products.find((p) => Number(p.id) === Number(rev.productId))?.name || `Product #${rev.productId}`;
+                      return (
+                        <div
+                          key={rev.id}
+                          style={{
+                            border: "1px solid #e5e7eb",
+                            borderRadius: 12,
+                            padding: 10,
+                            display: "grid",
+                            gap: 6,
+                            background: "#f8fafc",
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div>
+                              <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>{productName}</p>
+                              <small style={{ color: "#64748b" }}>{rev.displayName || "User"}</small>
+                            </div>
+                            <div style={{ color: "#f59e0b", fontWeight: 800 }}>
+                              {"★".repeat(Number(rev.rating) || 0)}
+                              {"☆".repeat(Math.max(0, 5 - (Number(rev.rating) || 0)))}
+                            </div>
+                          </div>
+                          <p style={{ margin: 0, color: "#0f172a" }}>{rev.comment}</p>
+                          <button type="button" onClick={() => handleApproveReview(rev.productId, rev.id)} style={primaryBtn}>
+                            Approve
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div
+                style={{
+                  background: "white",
+                  borderRadius: 14,
+                  padding: 18,
                   boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
                 }}
               >
                 <h4 style={{ margin: "0 0 10px", color: "#0f172a" }}>Delivery list</h4>
-                <div style={{ display: "grid", gap: 10 }}>
-                  {deliveries.map((d) => (
-                    <div
-                      key={d.id}
-                      style={{
-                        border: "1px solid #e5e7eb",
-                        borderRadius: 10,
-                        padding: 10,
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        flexWrap: "wrap",
-                        gap: 8,
-                      }}
-                    >
-                      <div>
-                        <strong>{d.product}</strong>
-                        <p style={{ margin: "2px 0 0", color: "#475569" }}>
-                          {d.orderId} • {d.address}
-                        </p>
+                {deliveries.length === 0 ? (
+                  <p style={{ margin: 0, color: "#94a3b8" }}>No deliveries to display.</p>
+                ) : (
+                  <div style={{ display: "grid", gap: 10 }}>
+                    {deliveries.map((d) => (
+                      <div
+                        key={d.id}
+                        style={{
+                          border: "1px solid #e5e7eb",
+                          borderRadius: 10,
+                          padding: 10,
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                          gap: 8,
+                        }}
+                      >
+                        <div>
+                          <strong>{d.product}</strong>
+                          <p style={{ margin: "2px 0 0", color: "#475569" }}>
+                            {d.orderId} • {d.address}
+                          </p>
+                        </div>
+                        <span style={{ fontWeight: 700, color: "#0f172a" }}>{d.status}</span>
                       </div>
-                      <span style={{ fontWeight: 700, color: "#0f172a" }}>{d.status}</span>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 8, marginTop: 10 }}>
                   <select
                     value={deliveryUpdate.id}
@@ -496,10 +702,99 @@ function AdminDashboard() {
           )}
 
           {activeSection === "sales" && (
-            <section style={{ display: "grid", gap: 14 }}>
-              <div style={{ background: "white", borderRadius: 14, padding: 14, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
+            <section style={{ display: "grid", gap: 18 }}>
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
+                <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Orders (sales manager)</h3>
+                <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+                  {["Processing", "In-transit", "Delivered"].map((status) => {
+                    const count = groupedOrders[status]?.length || 0;
+                    const active = orderTab === status;
+                    return (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => setOrderTab(status)}
+                        style={{
+                          borderRadius: 999,
+                          padding: "8px 14px",
+                          border: `1px solid ${active ? "#0f172a" : "#d1d5db"}`,
+                          background: active ? "#0f172a" : "#fff",
+                          color: active ? "#fff" : "#0f172a",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        {status} <span style={{ background: active ? "#fff" : "#f1f5f9", color: active ? "#0f172a" : "#0f172a", borderRadius: 999, padding: "2px 8px", fontSize: "0.85rem" }}>{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div style={{ overflowX: "auto", width: "100%" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760, whiteSpace: "nowrap" }}>
+                    <thead>
+                      <tr>
+                        {["Order No", "Customer / Address", "Shipping", "Amount", "Status", "Action"].map((heading) => (
+                          <th
+                            key={heading}
+                            style={{
+                              textAlign: "left",
+                              padding: "12px 10px",
+                              borderBottom: "1px solid #e5e7eb",
+                              color: "#475569",
+                              fontWeight: 700,
+                              fontSize: "0.9rem",
+                            }}
+                          >
+                            {heading}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(groupedOrders[orderTab] || []).map((order) => (
+                        <tr key={order.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                          <td style={{ padding: "12px 10px", fontWeight: 700, color: "#0f172a" }}>{formatOrderId(order.id)}</td>
+                          <td style={{ padding: "12px 10px", color: "#1f2937" }}>
+                            <div style={{ fontWeight: 700 }}>{order.customerName || "Customer"}</div>
+                            <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>{order.address}</div>
+                          </td>
+                          <td style={{ padding: "12px 10px", color: "#334155" }}>{order.shippingCompany}</td>
+                          <td style={{ padding: "12px 10px", fontWeight: 700, color: "#0f172a" }}>₺{order.total?.toLocaleString("tr-TR")}</td>
+                          <td style={{ padding: "12px 10px", color: order.status === "Delivered" ? "#22c55e" : "#0f172a", fontWeight: 700 }}>{order.status}</td>
+                          <td style={{ padding: "12px 10px" }}>
+                            {order.status === "Delivered" ? (
+                              <button type="button" style={{ ...primaryBtn, background: "#e5e7eb", color: "#9ca3af", border: "none", cursor: "not-allowed" }} disabled>
+                                Delivered
+                              </button>
+                            ) : user?.role === "sales_manager" ? (
+                              <button type="button" onClick={() => handleAdvanceOrder(order.id)} style={primaryBtn}>
+                                Advance status
+                              </button>
+                            ) : (
+                              <span style={{ color: "#94a3b8", fontWeight: 700 }}>Only sales manager can advance</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {(groupedOrders[orderTab] || []).length === 0 && (
+                        <tr>
+                          <td colSpan={6} style={{ padding: 16, textAlign: "center", color: "#94a3b8" }}>
+                            No orders in this status.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
                 <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Price & Discount</h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
                   <select
                     value={priceUpdate.productId}
                     onChange={(e) => setPriceUpdate((p) => ({ ...p, productId: e.target.value }))}
@@ -524,7 +819,7 @@ function AdminDashboard() {
                   </button>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10, marginTop: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12, marginTop: 12 }}>
                   <select
                     value={discountForm.productId}
                     onChange={(e) => setDiscountForm((p) => ({ ...p, productId: e.target.value }))}
@@ -550,9 +845,9 @@ function AdminDashboard() {
                 </div>
               </div>
 
-              <div style={{ background: "white", borderRadius: 14, padding: 14, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
-                <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Invoices (filter)</h3>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
+                <h3 style={{ margin: "0 0 6px", color: "#0f172a" }}>Invoices (filter)</h3>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                   <input
                     type="date"
                     value={filters.invoiceFrom}
@@ -566,8 +861,8 @@ function AdminDashboard() {
                     style={inputStyle}
                   />
                 </div>
-                <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
-                  {mockInvoices
+                <div style={{ display: "grid", gap: 10, marginTop: 6 }}>
+                  {invoiceList
                     .filter((inv) => {
                       const ts = Date.parse(inv.date);
                       const from = filters.invoiceFrom ? Date.parse(filters.invoiceFrom) : -Infinity;
@@ -591,37 +886,62 @@ function AdminDashboard() {
                         <span>₺{inv.total.toLocaleString("tr-TR")}</span>
                       </div>
                     ))}
+                  {invoiceList.length === 0 && <p style={{ margin: 0, color: "#94a3b8" }}>No invoices available.</p>}
                 </div>
               </div>
 
-              <div style={{ background: "white", borderRadius: 14, padding: 14, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
-                <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Revenue (mock chart)</h3>
-                <div style={{ display: "flex", gap: 8, alignItems: "flex-end", height: 160, padding: "6px 0" }}>
-                  {mockRevenue.map((bar) => (
-                    <div key={bar.label} style={{ textAlign: "center", flex: 1 }}>
-                      <div
-                        style={{
-                          height: `${bar.value * 5}px`,
-                          background: "linear-gradient(180deg, #3b82f6, #0ea5e9)",
-                          borderRadius: 10,
-                        }}
-                      />
-                      <small style={{ color: "#475569" }}>{bar.label}</small>
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
+                <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Revenue</h3>
+                <div
+                  style={{
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 12,
+                    padding: 10,
+                    maxHeight: 220,
+                    overflowY: "auto",
+                    background: "#f8fafc",
+                  }}
+                >
+                  {revenueSeries.length === 0 ? (
+                    <p style={{ margin: 0, color: "#94a3b8" }}>No revenue data yet.</p>
+                  ) : (
+                    <div style={{ display: "flex", gap: 8, alignItems: "flex-end", minHeight: 140 }}>
+                      {revenueSeries.map((bar) => (
+                        <div key={bar.label} style={{ textAlign: "center", flex: 1 }}>
+                          <div
+                            style={{
+                              height: `${Math.max(bar.value / 100, 1) * 10}px`,
+                              minHeight: 8,
+                              background: "linear-gradient(180deg, #3b82f6, #0ea5e9)",
+                              borderRadius: 8,
+                            }}
+                          />
+                          <small style={{ color: "#475569", display: "block", marginTop: 6 }}>{bar.label}</small>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             </section>
           )}
 
           {activeSection === "support" && (
-            <section style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1.4fr" }}>
-              <div style={{ background: "white", borderRadius: 14, padding: 14, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
+            <section
+              style={{
+                display: "grid",
+                gap: 18,
+                gridTemplateColumns: "1fr 1.4fr",
+                width: "100%",
+                minWidth: 0,
+              }}
+            >
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Active chat queue</h3>
                   {isLoadingChats && <span style={{ color: "#0ea5e9", fontWeight: 700 }}>Syncing…</span>}
                 </div>
-                <div style={{ display: "grid", gap: 10 }}>
+                <div style={{ display: "grid", gap: 12 }}>
                   {chats.map((chat) => {
                     const isActive = chat.id === activeConversationId;
                     return (
@@ -677,13 +997,13 @@ function AdminDashboard() {
                 style={{
                   background: "white",
                   borderRadius: 14,
-                  padding: 14,
+                  padding: 18,
                   boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
                   display: "grid",
-                  gap: 10,
+                  gap: 12,
                 }}
               >
-                <h3 style={{ margin: "0 0 4px", color: "#0f172a" }}>Conversation</h3>
+                <h3 style={{ margin: "0 0 8px", color: "#0f172a" }}>Conversation</h3>
                 {activeConversationId ? (
                   <>
                     <div
@@ -694,7 +1014,7 @@ function AdminDashboard() {
                         maxHeight: 320,
                         overflow: "auto",
                         display: "grid",
-                        gap: 8,
+                        gap: 10,
                       }}
                     >
                       {chatMessages.map((msg) => (

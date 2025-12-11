@@ -28,13 +28,18 @@ export function getReviewMap() {
 
 export function addReview(productId, rating, comment, displayName) {
   const reviewMap = getJSON(REVIEW_KEY, {});
+  const id =
+    (typeof crypto !== "undefined" && crypto.randomUUID?.()) ||
+    `rev-${Date.now()}-${Math.round(Math.random() * 1000)}`;
 
   const newReview = {
+    id,
     productId,
     rating,
     comment,
     displayName,
     date: new Date().toISOString(),
+    approved: false,
   };
 
   const list = reviewMap[productId] ?? [];
@@ -43,4 +48,17 @@ export function addReview(productId, rating, comment, displayName) {
 
   setJSON(REVIEW_KEY, reviewMap);
   return list;
+}
+
+export function approveReview(productId, reviewId, approved = true) {
+  const reviewMap = getJSON(REVIEW_KEY, {});
+  const list = reviewMap[productId];
+  if (!Array.isArray(list)) return reviewMap;
+
+  reviewMap[productId] = list.map((item) =>
+    String(item.id ?? "") === String(reviewId) ? { ...item, approved } : item
+  );
+
+  setJSON(REVIEW_KEY, reviewMap);
+  return reviewMap;
 }

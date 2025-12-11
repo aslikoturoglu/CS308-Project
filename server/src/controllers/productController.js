@@ -24,6 +24,8 @@ export function getAllProducts(req, res) {
       image: p.product_image,
       rating: p.product_rating ?? 0,
       rating_count: p.rating_count ?? 0,
+      warranty: p.product_warranty ?? p.warranty ?? null,
+      distributor: p.product_distributor ?? p.distributor ?? null,
     }));
 
     res.json(normalized);
@@ -106,15 +108,16 @@ export function getProductById(req, res) {
       originalPrice: Number(p.product_originalprice),
       stock: Number(p.product_stock),
       category: p.product_category,
-      mainCategory: p.product_main_category,
-      material: p.product_material,
-      color: p.product_color,
-      image: p.product_image,
-      rating: p.product_rating ?? 0,
-      rating_count: p.rating_count ?? 0,
-    };
+    mainCategory: p.product_main_category,
+    material: p.product_material,
+    color: p.product_color,
+    image: p.product_image,
+    rating: p.product_rating ?? 0,
+    rating_count: p.rating_count ?? 0,
+    warranty: p.product_warranty ?? p.warranty ?? null,
+    distributor: p.product_distributor ?? p.distributor ?? null,
+  };
 
     res.json(normalized);
   });
 }
-
