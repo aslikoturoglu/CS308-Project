@@ -157,21 +157,6 @@ function LoginForm({ onSuccess }) {
         </button>
       </form>
 
-      <button
-        type="button"
-        onClick={() => navigate("/forgot-password")}
-        style={{
-          marginTop: 10,
-          background: "none",
-          border: "none",
-          color: "#0058a3",
-          fontWeight: 700,
-          cursor: "pointer",
-        }}
-      >
-        Forgot password?
-      </button>
-
       <p style={{ fontSize: "0.85rem", marginTop: 16, color: "#4b5563" }}>
         Don’t have an account?{" "}
         <button
