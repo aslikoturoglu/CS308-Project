@@ -41,14 +41,20 @@ function Invoice() {
     import.meta.env.VITE_API_BASE_URL || ""
   ).replace(/\/$/, "");
 
+  const extractNumericId = (value) => {
+    const match = String(value ?? "").match(/\d+/);
+    return match ? Number(match[0]) : null;
+  };
+
   const buildInvoiceUrl = (orderId) => {
     const path = `/api/orders/${encodeURIComponent(orderId)}/invoice`;
     return API_BASE_URL ? `${API_BASE_URL}${path}` : path;
   };
 
   const handleDownloadPdf = () => {
-    const targetId = realOrderId ?? order.id;
-    if (!targetId) return;
+    const numericOrderId = extractNumericId(realOrderId ?? order.id);
+    if (!numericOrderId) return;
+    const targetId = numericOrderId;
     const url = buildInvoiceUrl(targetId);
     window.open(url, "_blank", "noopener,noreferrer");
   };
