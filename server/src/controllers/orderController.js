@@ -245,9 +245,13 @@ export function getOrderHistory(req, res) {
 }
 /**
  * GET /orders
- * Returns all orders with basic item details for managerial views.
+ * Returns orders with basic item details.
+ * If query param user_id is provided (numeric), filters by that user.
  */
 export function getAllOrders(req, res) {
+  const userIdParam = Number(req.query.user_id);
+  const hasUserFilter = Number.isFinite(userIdParam);
+
   const orderSql = `
     SELECT
       o.order_id,
@@ -263,6 +267,7 @@ export function getAllOrders(req, res) {
     FROM orders o
     LEFT JOIN deliveries d ON d.order_id = o.order_id
     LEFT JOIN users u ON u.user_id = o.user_id
+    ${hasUserFilter ? "WHERE o.user_id = ?" : ""}
     ORDER BY o.order_date DESC
   `;
 
@@ -278,7 +283,16 @@ export function getAllOrders(req, res) {
     LEFT JOIN Products p ON p.product_id = oi.product_id
   `;
 
-  db.query(orderSql, (orderErr, orderRows) => {
+  const normalizeStatus = (value) => {
+    const normalized = String(value || "").toLowerCase();
+    if (normalized.includes("transit") || normalized === "shipped" || normalized === "in_transit") {
+      return "In-transit";
+    }
+    if (normalized === "delivered") return "Delivered";
+    return "Processing";
+  };
+
+  db.query(orderSql, hasUserFilter ? [userIdParam] : [], (orderErr, orderRows) => {
     if (orderErr) {
       console.error("All orders fetch failed:", orderErr);
       return res.json([]);
@@ -305,10 +319,7 @@ export function getAllOrders(req, res) {
       });
 
       const normalized = orderRows.map((row) => {
-        const status =
-          row.delivery_status ||
-          row.order_status ||
-          "Processing";
+        const status = normalizeStatus(row.delivery_status || row.order_status);
         return {
           order_id: row.order_id,
           user_id: row.user_id,
