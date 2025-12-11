@@ -18,6 +18,7 @@ function ProductDetail() {
   const { addItem, items: cartItems } = useCart();
   const { toggleItem, inWishlist } = useWishlist();
   const { user } = useAuth();
+  const isProductManager = user?.role === "product_manager";
 
   const [product, setProduct] = useState(null);
   const [error, setError] = useState("");
@@ -95,7 +96,7 @@ function ProductDetail() {
   --------------------------- */
   const gallery = useMemo(() => {
     if (!product) return [];
-    return [product.image];
+    return [product.image, product.image + "?v=2", product.image + "?gray"];
   }, [product]);
 
   useEffect(() => {
@@ -223,7 +224,17 @@ function ProductDetail() {
         {/* IMAGE */}
         <div style={imageCard}>
           <img src={activeImage} alt="" style={mainImage} />
-          <div style={thumbRow} />
+          <div style={thumbRow}>
+            {gallery.map((img) => (
+              <button
+                key={img}
+                onClick={() => setActiveImage(img)}
+                style={img === activeImage ? activeThumb : thumb}
+              >
+                <img src={img} style={thumbImg} />
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* PRODUCT INFO */}
@@ -280,40 +291,42 @@ function ProductDetail() {
             <Info label="Distributor" value={product.distributor ?? "SUHome Logistics"} />
             </div>
 
-            <div style={buttonRow}>
-          <button
-            onClick={() => toggleItem(product)}
-            style={wishlistBtn(inWishlist(product.id))}
-          >
-            <span style={{ color: inWishlist(product.id) ? "#e11d48" : "#1e293b" }}>
-              {inWishlist(product.id) ? "♥" : "♡"}
-              </span>
-          </button>
+            {!isProductManager && (
+              <div style={buttonRow}>
+                <button
+                  onClick={() => toggleItem(product)}
+                  style={wishlistBtn(inWishlist(product.id))}
+                >
+                  <span style={{ color: inWishlist(product.id) ? "#e11d48" : "#1e293b" }}>
+                    {inWishlist(product.id) ? "♥" : "♡"}
+                  </span>
+                </button>
 
-          <button
-            onClick={handleAddToCart}
-            disabled={product.availableStock === 0}
-            style={{
-              ...addCartBtn,
-              cursor: product.availableStock === 0 ? "not-allowed" : "pointer",
-              opacity: product.availableStock === 0 ? 0.6 : 1,
-            }}
-          >
-            {product.availableStock ? "Add to Cart" : "Out of stock"}
-          </button>
+                <button
+                  onClick={handleAddToCart}
+                  disabled={product.availableStock === 0}
+                  style={{
+                    ...addCartBtn,
+                    cursor: product.availableStock === 0 ? "not-allowed" : "pointer",
+                    opacity: product.availableStock === 0 ? 0.6 : 1,
+                  }}
+                >
+                  {product.availableStock ? "Add to Cart" : "Out of stock"}
+                </button>
 
-          <button
-            onClick={handleBuyNow}
-            disabled={product.availableStock === 0}
-            style={{
-              ...buyNowBtn,
-              opacity: product.availableStock === 0 ? 0.6 : 1,
-              cursor: product.availableStock === 0 ? "not-allowed" : "pointer",
-            }}
-          >
-            Buy Now
-          </button>
-          </div>
+                <button
+                  onClick={handleBuyNow}
+                  disabled={product.availableStock === 0}
+                  style={{
+                    ...buyNowBtn,
+                    opacity: product.availableStock === 0 ? 0.6 : 1,
+                    cursor: product.availableStock === 0 ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Buy Now
+                </button>
+              </div>
+            )}
         </div>
       </div>
 
