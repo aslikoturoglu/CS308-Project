@@ -6,7 +6,8 @@ function Invoice() {
   const { id } = useParams();
   const location = useLocation();
   const decodedId = decodeURIComponent(id);
-  const order = getOrderById(decodedId);
+  const orderFromState = location.state?.order;
+  const order = orderFromState || getOrderById(decodedId);
 
   if (!order) {
     return (

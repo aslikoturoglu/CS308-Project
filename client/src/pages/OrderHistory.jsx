@@ -318,6 +318,7 @@ function OrderHistory() {
                   </div>
                   <Link
                     to={`/invoice/${encodeURIComponent(formattedId)}`}
+                    state={{ order }}
                     style={{
                       border: "1px solid #0058a3",
                       color: "#0058a3",
