@@ -23,15 +23,35 @@ const buildMessage = (text, from) => ({
   timestamp: Date.now(),
 });
 
+const safeStorage = {
+  get(key) {
+    if (typeof window === "undefined") return null;
+    try {
+      return window.localStorage.getItem(key);
+    } catch (error) {
+      console.error("Chat storage read failed", error);
+      return null;
+    }
+  },
+  set(key, value) {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(key, value);
+    } catch (error) {
+      console.error("Chat storage write failed", error);
+    }
+  },
+};
+
 export function ChatProvider({ children }) {
   const { user } = useAuth();
   const [clientToken] = useState(() => {
     if (typeof window === "undefined") return "guest";
     const key = "chat-client-token";
-    const existing = window.localStorage.getItem(key);
+    const existing = safeStorage.get(key);
     if (existing) return existing;
     const fresh = `g-${crypto.randomUUID?.() ?? Math.random().toString(16).slice(2)}`;
-    window.localStorage.setItem(key, fresh);
+    safeStorage.set(key, fresh);
     return fresh;
   });
   const [serverUserId, setServerUserId] = useState(null);
