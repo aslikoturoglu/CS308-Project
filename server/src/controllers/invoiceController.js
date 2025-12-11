@@ -1,6 +1,7 @@
 import db from "../db.js";
 import PDFDocument from "pdfkit";
 
+// Türkçe karakter düzeltme
 function normalizeTR(text) {
   if (!text) return "";
   return text
@@ -13,7 +14,18 @@ function normalizeTR(text) {
 }
 
 export function generateInvoice(req, res) {
-  const { order_id } = req.params;
+  let { order_id } = req.params;
+
+  // ⭐ ORD-00047 → 47
+  // ⭐ %23ORD-00047 → 47
+  // ⭐ #ORD-00047 → 47
+  // ⭐ 47 → 47
+  const digits = String(order_id).match(/\d+/);
+  const realOrderId = digits ? Number(digits[0]) : null;
+
+  if (!realOrderId) {
+    return res.status(400).json({ error: "Invalid order ID format" });
+  }
 
   const sqlOrder = `
     SELECT 
@@ -23,13 +35,14 @@ export function generateInvoice(req, res) {
       o.total_amount,
       o.shipping_address,
       u.email AS customer_email,
-      u.address AS customer_address
+      u.address AS customer_address,
+      u.phone AS customer_phone
     FROM orders o
     JOIN users u ON u.user_id = o.user_id
     WHERE o.order_id = ?
   `;
 
-  db.query(sqlOrder, [order_id], (err, orderRows) => {
+  db.query(sqlOrder, [realOrderId], (err, orderRows) => {
     if (err || !orderRows.length) {
       return res.status(404).json({ error: "Order not found" });
     }
@@ -48,7 +61,7 @@ export function generateInvoice(req, res) {
       WHERE oi.order_id = ?
     `;
 
-    db.query(sqlItems, [order_id], (err, items) => {
+    db.query(sqlItems, [realOrderId], (err, items) => {
       if (err || !items.length) {
         return res.status(404).json({ error: "Order items not found" });
       }
@@ -62,68 +75,123 @@ function createPdf(order, items, res) {
   const doc = new PDFDocument({ margin: 40 });
 
   res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `inline; filename=invoice_${order.order_id}.pdf`);
+  res.setHeader(
+    "Content-Disposition",
+    `inline; filename=invoice_${order.order_id}.pdf`
+  );
+
   doc.pipe(res);
 
   const blue = "#0058a3";
   const greyLight = "#f2f4f7";
   const greyBorder = "#d0d7de";
 
+  // ============================
+  // HEADER
+  // ============================
   doc.font("Helvetica-Bold").fontSize(22).fillColor(blue).text("SUHOME", 50, 40);
 
-  doc.font("Helvetica").fontSize(11).text("Bagdat Street No:25", 50, 75)
-     .text("Kadikoy / Istanbul", 50, 90)
-     .text("Phone: +90 (216) 123 45 67", 50, 105)
-     .text("Email: support@suhome.com", 50, 120);
+  doc
+    .font("Helvetica")
+    .fontSize(11)
+    .fillColor("black")
+    .text("Bagdat Street No:25", 50, 75)
+    .text("Kadikoy / Istanbul", 50, 90)
+    .text("Phone: +90 (216) 123 45 67", 50, 105)
+    .text("Email: support@suhome.com", 50, 120);
 
+  // INVOICE TITLE
   doc.font("Helvetica-Bold").fontSize(28).fillColor(blue).text("INVOICE", 350, 40);
 
-  const invoiceBoxY = 95;
-  doc.font("Helvetica").fontSize(12).fillColor("black")
-     .text(`DATE: ${new Date(order.order_date).toLocaleDateString("tr-TR")}`, 350, invoiceBoxY)
-     .text(`INVOICE #: ${order.order_id}`, 350, invoiceBoxY + 20)
-     .text(`CUSTOMER ID: ${order.user_id}`, 350, invoiceBoxY + 40);
+  const invoiceDate = new Date(order.order_date).toLocaleDateString("tr-TR");
+  const formattedInvoiceId = `ORD-${String(order.order_id).padStart(5, "0")}`;
 
+  doc
+    .font("Helvetica")
+    .fontSize(12)
+    .fillColor("black")
+    .text(`DATE: ${invoiceDate}`, 350, 95)
+    .text(`INVOICE #: ${formattedInvoiceId}`, 350, 115);
+
+  // ============================
+  // BILL TO
+  // ============================
   let y = 180;
+
   doc.rect(50, y, 500, 25).fill(blue);
   doc.fillColor("white").font("Helvetica-Bold").text("BILL TO", 55, y + 7);
 
   y += 40;
-  doc.fillColor("black").fontSize(12)
-     .text(normalizeTR(order.customer_email), 50, y)
-     .text(normalizeTR(order.shipping_address), 50, y + 20)
-     .text(normalizeTR(order.customer_address || ""), 50, y + 40)
-     .text("Türkiye", 50, y + 60);
 
+  const email = normalizeTR(order.customer_email);
+  const customerAddress = normalizeTR(order.customer_address || "Address not provided");
+  const shipping = normalizeTR(order.shipping_address || "Address not provided");
+  const phone = normalizeTR(order.customer_phone || "Phone not provided");
+
+  doc
+    .fillColor("black")
+    .font("Helvetica")
+    .fontSize(12)
+    .text(email, 50, y)
+    .text(customerAddress, 50, y + 15)
+    .text(shipping, 50, y + 30)
+    .text(phone, 50, y + 45)
+    .text("Türkiye", 50, y + 60);
+
+  // ============================
+  // PRODUCT TABLE HEADER
+  // ============================
   y += 110;
+
   doc.rect(50, y, 500, 25).fill(blue);
-  doc.fillColor("white").font("Helvetica-Bold").text("DESCRIPTION", 55, y + 7)
-     .text("QTY", 300, y + 7)
-     .text("UNIT PRICE", 360, y + 7)
-     .text("AMOUNT", 450, y + 7);
+  doc
+    .fillColor("white")
+    .font("Helvetica-Bold")
+    .text("DESCRIPTION", 55, y + 7)
+    .text("QTY", 300, y + 7)
+    .text("UNIT PRICE", 360, y + 7)
+    .text("AMOUNT", 450, y + 7);
 
   y += 30;
 
   doc.lineWidth(0.8).strokeColor(greyBorder);
 
   items.forEach((i) => {
-    const total = i.quantity * i.unit_price;
+    const amount = Number(i.quantity) * Number(i.unit_price);
 
     doc.rect(50, y - 2, 500, 28).fill(greyLight).stroke();
-    doc.fillColor("black")
-       .text(normalizeTR(i.product_name), 55, y + 5)
-       .text(i.quantity, 300, y + 5)
-       .text(`${i.unit_price} TL`, 360, y + 5)
-       .text(`${total} TL`, 450, y + 5);
+
+    doc
+      .fillColor("black")
+      .font("Helvetica")
+      .fontSize(12)
+      .text(normalizeTR(i.product_name), 55, y + 5)
+      .text(i.quantity, 300, y + 5)
+      .text(`${Number(i.unit_price).toLocaleString("tr-TR")} TL`, 360, y + 5)
+      .text(`${amount.toLocaleString("tr-TR")} TL`, 450, y + 5);
 
     y += 30;
   });
 
+  // ============================
+  // TOTAL
+  // ============================
   const totalY = y + 30;
-  doc.font("Helvetica-Bold").fontSize(16).fillColor(blue).text("TOTAL:", 360, totalY);
-  doc.fillColor("black").text(`${order.total_amount} TL`, 450, totalY);
 
-  doc.font("Helvetica").fontSize(12).text("Thank you for choosing SUHOME.", 0, totalY + 60, { align: "center" });
+  doc.font("Helvetica-Bold").fontSize(16).fillColor(blue).text("TOTAL:", 360, totalY);
+
+  doc
+    .fillColor("black")
+    .font("Helvetica-Bold")
+    .text(`${Number(order.total_amount).toLocaleString("tr-TR")} TL`, 450, totalY);
+
+  // ============================
+  // FOOTER
+  // ============================
+  doc
+    .font("Helvetica")
+    .fontSize(12)
+    .text("Thank you for choosing SUHOME.", 0, totalY + 60, { align: "center" });
 
   doc.end();
 }
