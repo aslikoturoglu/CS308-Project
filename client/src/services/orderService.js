@@ -10,93 +10,15 @@ export function formatOrderId(id) {
   return asString.startsWith("#ORD-") ? asString : `#ORD-${asString}`;
 }
 
-const seedOrders = [
-  {
-    id: "#ORD-9821",
-    date: "12 February 2025",
-    status: "In-transit",
-    total: 2899,
-    shippingCompany: "Aras Kargo",
-    estimate: "15 February 2025",
-    address: "Bagdat Street No:25, Kadikoy / Istanbul",
-    note: "Assembly service selected. Please call before delivery.",
-    progressIndex: 1,
-    items: [
-      {
-        id: 13,
-        productId: 13,
-        name: "Velvet Armchair",
-        variant: "Midnight blue",
-        qty: 1,
-        price: 1899,
-      },
-      {
-        id: 14,
-        productId: 14,
-        name: "Round Side Table",
-        variant: "Walnut",
-        qty: 1,
-        price: 999,
-      },
-    ],
-  },
-  {
-    id: "#ORD-9534",
-    date: "27 January 2025",
-    status: "Delivered",
-    total: 1699,
-    shippingCompany: "MNG Kargo",
-    estimate: "31 January 2025",
-    deliveredAt: "28 January 2025",
-    address: "Bagdat Street No:25, Kadikoy / Istanbul",
-    note: "Delivered. Leave a review if you like.",
-    progressIndex: 2,
-    items: [
-      {
-        id: 21,
-        productId: 21,
-        name: "Leather Office Chair",
-        variant: "Black",
-        qty: 1,
-        price: 1699,
-      },
-    ],
-  },
-  {
-    id: "#ORD-9418",
-    date: "15 January 2025",
-    status: "Processing",
-    total: 1098,
-    shippingCompany: "SUExpress",
-    estimate: "20 January 2025",
-    address: "Bagdat Street No:25, Kadikoy / Istanbul",
-    note: "Free store pickup selected.",
-    progressIndex: 0,
-    items: [
-      {
-        id: 8,
-        productId: 8,
-        name: "Bamboo Storage Box (Set/3)",
-        variant: "Natural",
-        qty: 2,
-        price: 549,
-      },
-    ],
-  },
-];
-
 const readOrders = () => {
-  if (typeof window === "undefined") return seedOrders;
+  if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(ORDER_KEY);
-    if (!raw) {
-      window.localStorage.setItem(ORDER_KEY, JSON.stringify(seedOrders));
-      return seedOrders;
-    }
+    if (!raw) return [];
     return JSON.parse(raw);
   } catch (error) {
     console.error("Failed to read orders", error);
-    return seedOrders;
+    return [];
   }
 };
 

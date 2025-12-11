@@ -16,33 +16,13 @@ const rolesToSections = {
   support: ["support"],
 };
 
-const mockDeliveries = [
-  { id: 801, orderId: "#ORD-601", product: "Modern Chair", status: "In-transit", address: "Kadikoy / Istanbul" },
-  { id: 802, orderId: "#ORD-602", product: "Corner Sofa", status: "Delivered", address: "Beyoglu / Istanbul" },
-];
-
-const mockInvoices = [
-  { id: "#INV-601", orderId: "#ORD-601", date: "2025-02-18", total: 1248.9 },
-  { id: "#INV-602", orderId: "#ORD-602", date: "2025-02-10", total: 6999 },
-];
-
-const mockRevenue = [
-  { label: "Mon", value: 12 },
-  { label: "Tue", value: 16 },
-  { label: "Wed", value: 10 },
-  { label: "Thu", value: 20 },
-  { label: "Fri", value: 14 },
-  { label: "Sat", value: 22 },
-  { label: "Sun", value: 18 },
-];
-
 function AdminDashboard() {
   const { user } = useAuth();
   const { addToast } = useToast();
   const [activeSection, setActiveSection] = useState("dashboard");
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [deliveries, setDeliveries] = useState(mockDeliveries);
+  const [deliveries, setDeliveries] = useState([]);
   const [chats, setChats] = useState([]);
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
@@ -68,6 +48,18 @@ function AdminDashboard() {
     // simple local read for sales manager view
     setOrders(getOrders());
   }, []);
+
+  useEffect(() => {
+    setDeliveries(
+      orders.map((order) => ({
+        id: formatOrderId(order.id),
+        orderId: formatOrderId(order.id),
+        product: order.items?.[0]?.name || "Order items",
+        status: order.status,
+        address: order.address,
+      }))
+    );
+  }, [orders]);
 
   const loadInbox = useCallback(async () => {
     setIsLoadingChats(true);
@@ -119,10 +111,31 @@ function AdminDashboard() {
   }, [activeSection, permittedSections]);
 
   const totals = useMemo(() => {
-    const revenue = mockInvoices.reduce((sum, o) => sum + o.total, 0);
+    const revenue = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
     const lowStock = products.filter((p) => p.availableStock < 5).length;
     return { revenue, lowStock };
-  }, [products]);
+  }, [orders, products]);
+
+  const invoiceList = useMemo(
+    () =>
+      orders.map((order) => ({
+        id: `#INV-${String(formatOrderId(order.id)).replace("#ORD-", "")}`,
+        orderId: formatOrderId(order.id),
+        date: order.date,
+        total: Number(order.total) || 0,
+      })),
+    [orders]
+  );
+
+  const revenueSeries = useMemo(() => {
+    const buckets = new Map();
+    orders.forEach((order) => {
+      const label = order.date || "Unknown";
+      const val = Number(order.total) || 0;
+      buckets.set(label, (buckets.get(label) || 0) + val);
+    });
+    return Array.from(buckets.entries()).map(([label, value]) => ({ label, value }));
+  }, [orders]);
 
   const handleAddProduct = () => {
     if (!newProduct.name || !newProduct.price) {
@@ -140,7 +153,7 @@ function AdminDashboard() {
     };
     setProducts((prev) => [...prev, product]);
     setNewProduct({ name: "", price: "", stock: "", category: "" });
-    addToast("Product added (mock)", "info");
+    addToast("Product added (local only)", "info");
   };
 
   const handlePriceUpdate = () => {
@@ -151,7 +164,7 @@ function AdminDashboard() {
     setProducts((prev) =>
       prev.map((p) => (String(p.id) === String(priceUpdate.productId) ? { ...p, price: Number(priceUpdate.price) } : p))
     );
-    addToast("Price updated (mock)", "info");
+    addToast("Price updated (local only)", "info");
   };
 
   const handleDiscount = () => {
@@ -172,7 +185,7 @@ function AdminDashboard() {
           : p
       )
     );
-    addToast("Discount applied (mock)", "info");
+    addToast("Discount applied (local only)", "info");
   };
 
   const handleDeliveryStatus = () => {
@@ -183,7 +196,7 @@ function AdminDashboard() {
     setDeliveries((prev) =>
       prev.map((d) => (String(d.id) === String(deliveryUpdate.id) ? { ...d, status: deliveryUpdate.status } : d))
     );
-    addToast("Delivery status updated (mock)", "info");
+    addToast("Delivery status updated (local only)", "info");
   };
 
   const handleSelectConversation = (id) => {
@@ -408,7 +421,7 @@ function AdminDashboard() {
                   gap: 10,
                 }}
               >
-                <h4 style={{ margin: 0 }}>Product list (mock)</h4>
+                <h4 style={{ margin: 0 }}>Product list</h4>
                 <div style={{ maxHeight: 320, overflow: "auto", border: "1px solid #e5e7eb", borderRadius: 12 }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.95rem" }}>
                     <thead>
@@ -428,7 +441,7 @@ function AdminDashboard() {
                           <td style={td}>{p.availableStock}</td>
                           <td style={td}>{p.category || "General"}</td>
                           <td style={td}>
-                            <button type="button" style={linkBtn} onClick={() => addToast("Edit (mock)", "info")}>
+                            <button type="button" style={linkBtn} onClick={() => addToast("Edit (local only)", "info")}>
                               Edit
                             </button>
                             <button
@@ -455,31 +468,35 @@ function AdminDashboard() {
                 }}
               >
                 <h4 style={{ margin: "0 0 10px", color: "#0f172a" }}>Delivery list</h4>
-                <div style={{ display: "grid", gap: 10 }}>
-                  {deliveries.map((d) => (
-                    <div
-                      key={d.id}
-                      style={{
-                        border: "1px solid #e5e7eb",
-                        borderRadius: 10,
-                        padding: 10,
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        flexWrap: "wrap",
-                        gap: 8,
-                      }}
-                    >
-                      <div>
-                        <strong>{d.product}</strong>
-                        <p style={{ margin: "2px 0 0", color: "#475569" }}>
-                          {d.orderId} • {d.address}
-                        </p>
+                {deliveries.length === 0 ? (
+                  <p style={{ margin: 0, color: "#94a3b8" }}>No deliveries to display.</p>
+                ) : (
+                  <div style={{ display: "grid", gap: 10 }}>
+                    {deliveries.map((d) => (
+                      <div
+                        key={d.id}
+                        style={{
+                          border: "1px solid #e5e7eb",
+                          borderRadius: 10,
+                          padding: 10,
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                          gap: 8,
+                        }}
+                      >
+                        <div>
+                          <strong>{d.product}</strong>
+                          <p style={{ margin: "2px 0 0", color: "#475569" }}>
+                            {d.orderId} • {d.address}
+                          </p>
+                        </div>
+                        <span style={{ fontWeight: 700, color: "#0f172a" }}>{d.status}</span>
                       </div>
-                      <span style={{ fontWeight: 700, color: "#0f172a" }}>{d.status}</span>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 8, marginTop: 10 }}>
                   <select
                     value={deliveryUpdate.id}
@@ -624,7 +641,7 @@ function AdminDashboard() {
                   />
                 </div>
                 <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
-                  {mockInvoices
+                  {invoiceList
                     .filter((inv) => {
                       const ts = Date.parse(inv.date);
                       const from = filters.invoiceFrom ? Date.parse(filters.invoiceFrom) : -Infinity;
@@ -648,25 +665,30 @@ function AdminDashboard() {
                         <span>₺{inv.total.toLocaleString("tr-TR")}</span>
                       </div>
                     ))}
+                  {invoiceList.length === 0 && <p style={{ margin: 0, color: "#94a3b8" }}>No invoices available.</p>}
                 </div>
               </div>
 
               <div style={{ background: "white", borderRadius: 14, padding: 14, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
-                <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Revenue (mock chart)</h3>
-                <div style={{ display: "flex", gap: 8, alignItems: "flex-end", height: 160, padding: "6px 0" }}>
-                  {mockRevenue.map((bar) => (
-                    <div key={bar.label} style={{ textAlign: "center", flex: 1 }}>
-                      <div
-                        style={{
-                          height: `${bar.value * 5}px`,
-                          background: "linear-gradient(180deg, #3b82f6, #0ea5e9)",
-                          borderRadius: 10,
-                        }}
-                      />
-                      <small style={{ color: "#475569" }}>{bar.label}</small>
-                    </div>
-                  ))}
-                </div>
+                <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Revenue</h3>
+                {revenueSeries.length === 0 ? (
+                  <p style={{ margin: 0, color: "#94a3b8" }}>No revenue data yet.</p>
+                ) : (
+                  <div style={{ display: "flex", gap: 8, alignItems: "flex-end", height: 160, padding: "6px 0" }}>
+                    {revenueSeries.map((bar) => (
+                      <div key={bar.label} style={{ textAlign: "center", flex: 1 }}>
+                        <div
+                          style={{
+                            height: `${Math.max(bar.value / 100, 1) * 10}px`,
+                            background: "linear-gradient(180deg, #3b82f6, #0ea5e9)",
+                            borderRadius: 10,
+                          }}
+                        />
+                        <small style={{ color: "#475569" }}>{bar.label}</small>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </section>
           )}
