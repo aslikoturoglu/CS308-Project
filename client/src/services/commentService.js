@@ -18,8 +18,9 @@ export async function fetchApprovedComments(productId) {
     }));
 }
 
-export async function addComment({ userId, productId, rating, text }) {
-  const displayName = userId ? `User ${userId}` : fallbackName;
+export async function addComment({ userId, productId, rating, text, name }) {
+  const trimmedName = name ? String(name).split(" ")[0] : null;
+  const displayName = trimmedName || (userId ? `User ${userId}` : fallbackName);
   addReview(productId, rating, text, displayName);
   return { success: true };
 }

@@ -149,6 +149,7 @@ function ProductDetail() {
         productId,
         rating: ratingInput,
         text: commentInput,
+        name: user.name,
       });
 
       alert("Your comment has been submitted for approval.");
@@ -334,6 +335,9 @@ function ProductDetail() {
 
         {comments.map((c) => (
           <div key={c.comment_id} style={reviewBlock}>
+            <strong style={{ display: "block", marginBottom: 4 }}>
+              {c.display_name || "Verified buyer"}
+            </strong>
             <div style={stars}>
               {"★".repeat(c.rating)}
               {"☆".repeat(5 - c.rating)}
