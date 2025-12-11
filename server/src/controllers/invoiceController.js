@@ -107,11 +107,11 @@ export function generateInvoice(req, res) {
 
 function formatAddressLines(details) {
   if (!details) return [];
+  const lines = [];
+  if (details.address) lines.push(details.address);
   const cityLine = [details.city, details.postalCode].filter(Boolean).join(" ").trim();
-  return [
-    details.address || "",
-    cityLine,
-  ].filter(Boolean);
+  if (cityLine) lines.push(cityLine);
+  return lines;
 }
 
 function createPdf(order, items, res, detailPayload = {}) {
@@ -177,41 +177,39 @@ function createPdf(order, items, res, detailPayload = {}) {
       "SUHome Customer"
     ).trim()
   );
-  const billingSource =
-    (billingDetails && formatAddressLines(billingDetails)) ||
-    (shippingDetails && formatAddressLines(shippingDetails)) ||
-    [];
-  if (billingSource.length === 0) {
-    billingSource.push(order.customer_address || order.billing_address || "Address not provided");
-  }
-  const shippingLines =
-    (shippingDetails && formatAddressLines(shippingDetails)) || [];
-  if (shippingLines.length === 0) {
-    shippingLines.push(order.shipping_address || "Address not provided");
-  }
-  const noteLine = shippingDetails?.notes
-    ? `Note: ${shippingDetails.notes}`
-    : "";
-  const phoneLine = shippingDetails?.phone ? `Phone: ${shippingDetails.phone}` : "";
+  const addressLines =
+    formatAddressLines(shippingDetails) ||
+    formatAddressLines(billingDetails) ||
+    [order.shipping_address || order.billing_address || "Address not provided"];
+  const noteLine = shippingDetails?.notes?.trim();
+  const phoneLine = shippingDetails?.phone?.trim();
 
-  const infoLines = [
-    customerName,
-    email,
-    ...billingSource.map((line) => normalizeTR(line)),
-    ...shippingLines.map((line) => normalizeTR(line)),
-    normalizeTR(phoneLine),
-    normalizeTR(noteLine),
-    "Türkiye",
-  ].filter((line) => Boolean(line));
+  const sections = [
+    { label: "Full Name", value: customerName },
+    { label: "Email", value: email },
+    {
+      label: "Address",
+      value: addressLines.map((line) => normalizeTR(line)).join("\n"),
+    },
+    phoneLine ? { label: "Phone", value: normalizeTR(phoneLine) } : null,
+    noteLine ? { label: "Note", value: normalizeTR(noteLine) } : null,
+  ].filter(Boolean);
 
   let textY = y;
-  infoLines.forEach((line) => {
+  sections.forEach((section) => {
+    doc
+      .fillColor("#0f172a")
+      .font("Helvetica-Bold")
+      .fontSize(12)
+      .text(`${section.label}:`, 50, textY);
+    textY += 15;
     doc
       .fillColor("black")
       .font("Helvetica")
       .fontSize(12)
-      .text(line, 50, textY);
-    textY += 15;
+      .text(section.value || "-", 50, textY);
+    textY += section.value?.split("\n").length * 15 || 15;
+    textY += 5;
   });
 
   // ============================

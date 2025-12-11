@@ -48,7 +48,6 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
       "address",
       "city",
       "postalCode",
-      "notes",
     ];
     const hasMissing = requiredFields.some(
       (field) => !String(formData[field] ?? "").trim()
