@@ -456,6 +456,10 @@ const mainImage = {
   height: "100%",
   objectFit: "contain",
   borderRadius: 12,
+  transition: "transform 0.2s ease",
+  transformOrigin: `${zoom.x}% ${zoom.y}%`,
+  transform: `scale(${zoom.scale})`,
+  cursor: zoom.scale > 1 ? "zoom-in" : "default",
 };
 
 const thumbRow = {
@@ -588,6 +592,27 @@ const submitBtn = {
   borderRadius: 10,
   cursor: "pointer",
   fontWeight: 700,
+};
+
+const [zoom, setZoom] = useState({ x: 50, y: 50, scale: 1 });
+
+const handleZoom = (e) => {
+  const rect = e.target.getBoundingClientRect();
+  const x = ((e.clientX - rect.left) / rect.width) * 100;
+  const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+  setZoom({ x, y, scale: 2 }); // scale = 2 → 2x zoom
+};
+
+const resetZoom = () => {
+  setZoom({ x: 50, y: 50, scale: 1 });
+};
+
+const zoomWrapper = {
+  width: "100%",
+  height: "100%",
+  overflow: "hidden",
+  borderRadius: 12,
 };
 
 export default ProductDetail;
