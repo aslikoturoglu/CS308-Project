@@ -119,6 +119,20 @@ function ProductDetail() {
     alert("Added to cart.");
   };
 
+  const handleBuyNow = () => {
+    if (!product) return;
+    if (!product.availableStock) {
+      alert("This product is out of stock.");
+      return;
+    }
+    handleAddToCart();
+    navigate("/checkout", {
+      state: {
+        items: [{ ...product, quantity: 1 }],
+      },
+    });
+  };
+
   /* ---------------------------
      SUBMIT COMMENT
   --------------------------- */
@@ -293,9 +307,17 @@ function ProductDetail() {
             {product.availableStock ? "Add to Cart" : "Out of stock"}
           </button>
 
-          <Link to="/checkout" style={buyNowBtn}>
+          <button
+            onClick={handleBuyNow}
+            disabled={product.availableStock === 0}
+            style={{
+              ...buyNowBtn,
+              opacity: product.availableStock === 0 ? 0.6 : 1,
+              cursor: product.availableStock === 0 ? "not-allowed" : "pointer",
+            }}
+          >
             Buy Now
-          </Link>
+          </button>
           </div>
         </div>
       </div>
