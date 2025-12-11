@@ -117,7 +117,7 @@ function normalizeAddress(raw) {
 
 function formatAddressObject(obj) {
   if (!obj || typeof obj !== "object") return "Not provided";
-  // Prefer the human-readable street address, falling back to other pieces.
+  // Only show the address line, city, and postal/zip code for the UI.
   const mainAddress =
     obj.address ||
     obj.street ||
@@ -126,9 +126,9 @@ function formatAddressObject(obj) {
     obj.addressLine ||
     obj.address_line ||
     obj.streetAddress;
-  const name = obj.firstName && obj.lastName ? `${obj.firstName} ${obj.lastName}` : obj.fullName;
-  const cityLine = [obj.city, obj.state, obj.postalCode ?? obj.zipCode].filter(Boolean).join(" ");
-  const parts = [mainAddress, cityLine, obj.phone, name].filter(Boolean);
+  const city = obj.city || obj.town || obj.state;
+  const postal = obj.postalCode || obj.postcode || obj.zip || obj.zipCode;
+  const parts = [mainAddress, city, postal].filter(Boolean);
   const line = parts.join(", ");
   return line || "Not provided";
 }
