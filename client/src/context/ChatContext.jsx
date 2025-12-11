@@ -100,6 +100,8 @@ export function ChatProvider({ children }) {
       console.error("Chat sync failed", error);
       setSyncError(error.message);
       setLastError(error.message);
+      setMessages([]);
+      setHasHydrated(true);
     } finally {
       setIsLoading(false);
     }

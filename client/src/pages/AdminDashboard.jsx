@@ -163,6 +163,30 @@ function AdminDashboard() {
     return Array.from(buckets.entries()).map(([label, value]) => ({ label, value }));
   }, [orders]);
 
+  const groupedOrders = useMemo(() => {
+    const groups = {
+      Processing: [],
+      "In-transit": [],
+      Delivered: [],
+    };
+    const parseDate = (value) => Date.parse(value) || 0;
+    orders.forEach((o) => {
+      const key =
+        o.status === "Delivered"
+          ? "Delivered"
+          : o.status === "In-transit"
+          ? "In-transit"
+          : "Processing";
+      groups[key].push(o);
+    });
+    Object.keys(groups).forEach((key) => {
+      groups[key].sort((a, b) => (parseDate(b.date) || 0) - (parseDate(a.date) || 0));
+    });
+    return groups;
+  }, [orders]);
+
+  const [orderTab, setOrderTab] = useState("Processing");
+
   const handleAddProduct = () => {
     if (!newProduct.name || !newProduct.price) {
       addToast("Name and price required", "error");
@@ -596,42 +620,90 @@ function AdminDashboard() {
             <section style={{ display: "grid", gap: 14 }}>
               <div style={{ background: "white", borderRadius: 14, padding: 14, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
                 <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Orders (sales manager)</h3>
-                <div style={{ display: "grid", gap: 10 }}>
-                  {orders.map((order) => (
-                    <div
-                      key={order.id}
-                      style={{
-                        border: "1px solid #e5e7eb",
-                        borderRadius: 10,
-                        padding: 12,
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
-                        gap: 8,
-                        alignItems: "center",
-                      }}
-                    >
-                      <div>
-                        <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>{formatOrderId(order.id)}</p>
-                        <p style={{ margin: "2px 0 0", color: "#475569" }}>{order.address}</p>
-                      </div>
-                      <div>
-                        <p style={{ margin: 0, color: "#0f172a", fontWeight: 700 }}>{order.status}</p>
-                        <p style={{ margin: "2px 0 0", color: "#64748b" }}>{order.shippingCompany}</p>
-                      </div>
-                      <p style={{ margin: 0, color: "#0f172a", fontWeight: 700 }}>₺{order.total?.toLocaleString("tr-TR")}</p>
-                      {order.status !== "Delivered" ? (
-                        user?.role === "sales_manager" ? (
-                          <button type="button" onClick={() => handleAdvanceOrder(order.id)} style={primaryBtn}>
-                            Advance status
-                          </button>
-                        ) : (
-                          <span style={{ color: "#94a3b8", fontWeight: 700 }}>Only sales manager can advance</span>
-                        )
-                      ) : (
-                        <span style={{ color: "#22c55e", fontWeight: 700 }}>Delivered</span>
+                <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+                  {["Processing", "In-transit", "Delivered"].map((status) => {
+                    const count = groupedOrders[status]?.length || 0;
+                    const active = orderTab === status;
+                    return (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => setOrderTab(status)}
+                        style={{
+                          borderRadius: 999,
+                          padding: "8px 14px",
+                          border: `1px solid ${active ? "#0f172a" : "#d1d5db"}`,
+                          background: active ? "#0f172a" : "#fff",
+                          color: active ? "#fff" : "#0f172a",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        {status} <span style={{ background: active ? "#fff" : "#f1f5f9", color: active ? "#0f172a" : "#0f172a", borderRadius: 999, padding: "2px 8px", fontSize: "0.85rem" }}>{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
+                    <thead>
+                      <tr>
+                        {["Order No", "Customer / Address", "Shipping", "Amount", "Status", "Action"].map((heading) => (
+                          <th
+                            key={heading}
+                            style={{
+                              textAlign: "left",
+                              padding: "10px 8px",
+                              borderBottom: "1px solid #e5e7eb",
+                              color: "#475569",
+                              fontWeight: 700,
+                              fontSize: "0.9rem",
+                            }}
+                          >
+                            {heading}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(groupedOrders[orderTab] || []).map((order) => (
+                        <tr key={order.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                          <td style={{ padding: "10px 8px", fontWeight: 700, color: "#0f172a" }}>{formatOrderId(order.id)}</td>
+                          <td style={{ padding: "10px 8px", color: "#1f2937" }}>
+                            <div style={{ fontWeight: 700 }}>{order.customerName || "Customer"}</div>
+                            <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>{order.address}</div>
+                          </td>
+                          <td style={{ padding: "10px 8px", color: "#334155" }}>{order.shippingCompany}</td>
+                          <td style={{ padding: "10px 8px", fontWeight: 700, color: "#0f172a" }}>₺{order.total?.toLocaleString("tr-TR")}</td>
+                          <td style={{ padding: "10px 8px", color: order.status === "Delivered" ? "#22c55e" : "#0f172a", fontWeight: 700 }}>{order.status}</td>
+                          <td style={{ padding: "10px 8px" }}>
+                            {order.status === "Delivered" ? (
+                              <button type="button" style={{ ...primaryBtn, background: "#e5e7eb", color: "#9ca3af", border: "none", cursor: "not-allowed" }} disabled>
+                                Delivered
+                              </button>
+                            ) : user?.role === "sales_manager" ? (
+                              <button type="button" onClick={() => handleAdvanceOrder(order.id)} style={primaryBtn}>
+                                Advance status
+                              </button>
+                            ) : (
+                              <span style={{ color: "#94a3b8", fontWeight: 700 }}>Only sales manager can advance</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {(groupedOrders[orderTab] || []).length === 0 && (
+                        <tr>
+                          <td colSpan={6} style={{ padding: 14, textAlign: "center", color: "#94a3b8" }}>
+                            No orders in this status.
+                          </td>
+                        </tr>
                       )}
-                    </div>
-                  ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
@@ -735,24 +807,36 @@ function AdminDashboard() {
 
               <div style={{ background: "white", borderRadius: 14, padding: 14, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
                 <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Revenue</h3>
-                {revenueSeries.length === 0 ? (
-                  <p style={{ margin: 0, color: "#94a3b8" }}>No revenue data yet.</p>
-                ) : (
-                  <div style={{ display: "flex", gap: 8, alignItems: "flex-end", height: 160, padding: "6px 0" }}>
-                    {revenueSeries.map((bar) => (
-                      <div key={bar.label} style={{ textAlign: "center", flex: 1 }}>
-                        <div
-                          style={{
-                            height: `${Math.max(bar.value / 100, 1) * 10}px`,
-                            background: "linear-gradient(180deg, #3b82f6, #0ea5e9)",
-                            borderRadius: 10,
-                          }}
-                        />
-                        <small style={{ color: "#475569" }}>{bar.label}</small>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div
+                  style={{
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 12,
+                    padding: 10,
+                    maxHeight: 220,
+                    overflowY: "auto",
+                    background: "#f8fafc",
+                  }}
+                >
+                  {revenueSeries.length === 0 ? (
+                    <p style={{ margin: 0, color: "#94a3b8" }}>No revenue data yet.</p>
+                  ) : (
+                    <div style={{ display: "flex", gap: 8, alignItems: "flex-end", minHeight: 140 }}>
+                      {revenueSeries.map((bar) => (
+                        <div key={bar.label} style={{ textAlign: "center", flex: 1 }}>
+                          <div
+                            style={{
+                              height: `${Math.max(bar.value / 100, 1) * 10}px`,
+                              minHeight: 8,
+                              background: "linear-gradient(180deg, #3b82f6, #0ea5e9)",
+                              borderRadius: 8,
+                            }}
+                          />
+                          <small style={{ color: "#475569", display: "block", marginTop: 6 }}>{bar.label}</small>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </section>
           )}
