@@ -70,7 +70,7 @@ export async function fetchUserOrders(userId, signal) {
       date: row.order_date || row.date,
       status,
       total: Number(row.total_amount ?? row.total ?? 0),
-      address: row.shipping_address || row.billing_address || "Not provided",
+      address: normalizeAddress(row.shipping_address || row.billing_address),
       shippingCompany: row.shipping_company || "SUExpress",
       estimate: row.estimate,
       progressIndex: timelineIndex(status),
@@ -83,6 +83,36 @@ function timelineIndex(status) {
   const steps = ["Processing", "In-transit", "Delivered"];
   const idx = steps.indexOf(status);
   return idx >= 0 ? idx : 0;
+}
+
+function normalizeAddress(raw) {
+  if (!raw) return "Not provided";
+  if (typeof raw === "string") {
+    // If it's JSON stringified, try to parse
+    try {
+      const parsed = JSON.parse(raw);
+      return formatAddressObject(parsed);
+    } catch {
+      return raw;
+    }
+  }
+  if (typeof raw === "object") {
+    return formatAddressObject(raw);
+  }
+  return String(raw);
+}
+
+function formatAddressObject(obj) {
+  if (!obj || typeof obj !== "object") return "Not provided";
+  const parts = [
+    obj.firstName && obj.lastName ? `${obj.firstName} ${obj.lastName}` : obj.fullName,
+    obj.address,
+    obj.city,
+    obj.postalCode,
+    obj.phone,
+  ].filter(Boolean);
+  const line = parts.join(", ");
+  return line || "Not provided";
 }
 
 export function getOrderById(id) {
