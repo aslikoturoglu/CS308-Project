@@ -342,9 +342,12 @@ function AdminDashboard() {
   ].filter((s) => permittedSections.includes(s.id));
 
   return (
-    <div style={{ background: "#f3f4f6", minHeight: "calc(100vh - 160px)", padding: 16 }}>
+    <div style={{ background: "#f3f4f6", minHeight: "calc(100vh - 160px)", padding: "24px 12px" }}>
       <div
         style={{
+          width: "100%",
+          maxWidth: 1280,
+          margin: "0 auto",
           display: "grid",
           gridTemplateColumns: "240px 1fr",
           gap: 16,
