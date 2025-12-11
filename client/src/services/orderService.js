@@ -70,7 +70,12 @@ export async function fetchUserOrders(userId, signal) {
       date: row.order_date || row.date,
       status,
       total: Number(row.total_amount ?? row.total ?? 0),
-      address: normalizeAddress(row.shipping_address || row.billing_address),
+      address: normalizeAddress(
+        row.shipping_address ??
+          row.shipping_adress /* some payloads use this typo */ ??
+          row.billing_address ??
+          row.address
+      ),
       shippingCompany: row.shipping_company || "SUExpress",
       estimate: row.estimate,
       progressIndex: timelineIndex(status),
@@ -87,30 +92,43 @@ function timelineIndex(status) {
 
 function normalizeAddress(raw) {
   if (!raw) return "Not provided";
-  if (typeof raw === "string") {
-    // If it's JSON stringified, try to parse
-    try {
-      const parsed = JSON.parse(raw);
-      return formatAddressObject(parsed);
-    } catch {
-      return raw;
+  const tryFormat = (value) => {
+    if (!value) return null;
+    if (typeof value === "string") {
+      try {
+        return formatAddressObject(JSON.parse(value));
+      } catch {
+        return null;
+      }
     }
-  }
-  if (typeof raw === "object") {
-    return formatAddressObject(raw);
-  }
-  return String(raw);
+    if (typeof value === "object") return formatAddressObject(value);
+    return null;
+  };
+
+  // Try direct value then nested/typo key if the backend nests it.
+  const formatted =
+    tryFormat(raw) ||
+    tryFormat(raw?.shipping_address) ||
+    tryFormat(raw?.shipping_adress) ||
+    tryFormat(raw?.address);
+
+  return formatted || String(raw);
 }
 
 function formatAddressObject(obj) {
   if (!obj || typeof obj !== "object") return "Not provided";
-  const parts = [
-    obj.firstName && obj.lastName ? `${obj.firstName} ${obj.lastName}` : obj.fullName,
-    obj.address,
-    obj.city,
-    obj.postalCode,
-    obj.phone,
-  ].filter(Boolean);
+  // Prefer the human-readable street address, falling back to other pieces.
+  const mainAddress =
+    obj.address ||
+    obj.street ||
+    obj.line1 ||
+    obj.line ||
+    obj.addressLine ||
+    obj.address_line ||
+    obj.streetAddress;
+  const name = obj.firstName && obj.lastName ? `${obj.firstName} ${obj.lastName}` : obj.fullName;
+  const cityLine = [obj.city, obj.state, obj.postalCode ?? obj.zipCode].filter(Boolean).join(" ");
+  const parts = [mainAddress, cityLine, obj.phone, name].filter(Boolean);
   const line = parts.join(", ");
   return line || "Not provided";
 }
@@ -268,7 +286,12 @@ export async function fetchAllOrders(signal) {
       total: Number(row.total_amount ?? row.total ?? 0),
       shippingCompany: row.shipping_company || "SUExpress",
       estimate: row.estimate,
-      address: row.shipping_address || row.billing_address || row.address || "Not provided",
+      address: normalizeAddress(
+        row.shipping_address ??
+          row.shipping_adress /* backend sometimes returns this field */ ??
+          row.billing_address ??
+          row.address
+      ),
       note: row.note || "",
       items,
     };
