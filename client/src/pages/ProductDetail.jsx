@@ -96,7 +96,7 @@ function ProductDetail() {
   --------------------------- */
   const gallery = useMemo(() => {
     if (!product) return [];
-    return [product.image, product.image + "?v=2", product.image + "?gray"];
+    return [product.image];
   }, [product]);
 
   useEffect(() => {
@@ -224,17 +224,7 @@ function ProductDetail() {
         {/* IMAGE */}
         <div style={imageCard}>
           <img src={activeImage} alt="" style={mainImage} />
-          <div style={thumbRow}>
-            {gallery.map((img) => (
-              <button
-                key={img}
-                onClick={() => setActiveImage(img)}
-                style={img === activeImage ? activeThumb : thumb}
-              >
-                <img src={img} style={thumbImg} />
-              </button>
-            ))}
-          </div>
+          <div style={thumbRow} />
         </div>
 
         {/* PRODUCT INFO */}
