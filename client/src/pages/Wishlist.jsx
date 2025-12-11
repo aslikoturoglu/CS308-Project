@@ -117,7 +117,12 @@ function Wishlist() {
             <div style={{ display: "flex", gap: 10 }}>
             <button
               type="button"
-              onClick={() => addItem(item, 1)}
+              onClick={() => {
+                if (item.availableStock > 0) {
+                  addItem(item, 1);
+                }
+              }}
+              disabled={item.availableStock <= 0}
               style={{
                 flex: 1,
                 background: "#0058a3",
@@ -125,11 +130,12 @@ function Wishlist() {
                 padding: "10px 12px",
                 borderRadius: 10,
                 fontWeight: 700,
-                cursor: "pointer",
+                cursor: item.availableStock <= 0 ? "not-allowed" : "pointer",
+                opacity: item.availableStock <= 0 ? 0.6 : 1,
                 border: "none",
               }}
             >
-            Add to Cart
+            {item.availableStock <= 0 ? "Out of stock" : "Add to Cart"}
             </button>
 
               
