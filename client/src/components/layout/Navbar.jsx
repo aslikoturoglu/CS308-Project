@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
-import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useChat } from "../../context/ChatContext";
 import "../../styles/navbar.css";
 import { useAuth } from "../../context/AuthContext";
 
-const links = [
+const baseLinks = [
   { to: "/", label: "Home", end: true },
   { to: "/products", label: "Categories" },
   { to: "/cart", label: "Cart" },
@@ -19,8 +19,12 @@ function Navbar() {
   const [search, setSearch] = useState(""); //
   const { openChat } = useChat(); //
 
-  const { user, logout } = useAuth(); 
-  const userLoggedIn = !!user; 
+  const { user, logout } = useAuth();
+  const userLoggedIn = !!user;
+  const isProductManager = user?.role === "product_manager";
+  const canAccessAdmin = ["admin", "product_manager", "sales_manager", "support"].includes(
+    user?.role
+  );
 
   const handleLogout = () => {
     logout();
@@ -40,8 +44,7 @@ function Navbar() {
   return (
     <nav className="nav">
       <div className="nav__inner">
-
-      <div className={`nav__brand ${userLoggedIn ? "logged-in-shadow" : ""}`}>
+        <div className={`nav__brand ${userLoggedIn ? "logged-in-shadow" : ""}`}>
           {userLoggedIn ? `Welcome, ${user.name}` : "SUHome"}
         </div>
 
@@ -57,21 +60,26 @@ function Navbar() {
         </button>
 
         <div className={`nav__links ${open ? "is-open" : ""}`}>
-          {links.filter(
-              (link) => !(link.to === "/login" && userLoggedIn) // login olduysan login linkini gösterme
-            ).map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              end={link.end}
-              className={({ isActive }) => `nav__link ${isActive ? "active" : ""}`}
-              onClick={handleNavClick}
-            >
-              {link.label}
-            </NavLink>
-          ))}
+          {[...baseLinks, ...(canAccessAdmin ? [{ to: "/admin", label: "Admin" }] : [])]
+            .filter((link) => {
+              if (userLoggedIn && link.to === "/login") return false; // login olduysan login linkini gösterme
+              if (isProductManager && (link.to === "/cart" || link.to === "/wishlist")) return false;
+              if (isProductManager && link.to === "/profile") return false;
+              return true;
+            })
+            .map((link) => (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                end={link.end}
+                className={({ isActive }) => `nav__link ${isActive ? "active" : ""}`}
+                onClick={handleNavClick}
+              >
+                {link.label}
+              </NavLink>
+            ))}
 
-           {userLoggedIn && (
+          {userLoggedIn && (
             <a
               href="#"
               className="nav__link signout-link"

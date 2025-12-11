@@ -5,6 +5,7 @@ import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import Spinner from "../components/ui/Spinner";
 import { updateStock } from "../services/api.js";
+import { useAuth } from "../context/AuthContext";
 
 
 const categories = [
@@ -29,8 +30,10 @@ function ProductList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sort, setSort] = useState("popularity");
 
-const { addItem, items: cartItems, increment, decrement, removeItem } = useCart();
+  const { addItem, items: cartItems, increment, decrement, removeItem } = useCart();
   const { toggleItem, inWishlist } = useWishlist();
+  const { user } = useAuth();
+  const isProductManager = user?.role === "product_manager";
 
 // 🔹1) cartQty burada
 const cartQty = (id) => {
@@ -361,105 +364,109 @@ const handleDecrease = async (p) => {
                       </p>
                     </div>
                   </Link>
-                  {/* ---------- Add to cart buton alanı ---------- */}
-                    <div style={{ display:"flex", gap:8, padding:"0 14px 14px" }}>
+                  {!isProductManager && (
+                    <>
+                      {/* ---------- Add to cart buton alanı ---------- */}
+                      <div style={{ display:"flex", gap:8, padding:"0 14px 14px" }}>
 
-                      {cartQty(p.id) === 0 ? (
-                        // ---------------- ADD TO CART (başlangıç) ----------------
-                        <button
-                          onClick={() => handleAddFirst(p)}
-                          disabled={p.availableStock<=0}
-                          style={{
+                        {cartQty(p.id) === 0 ? (
+                          // ---------------- ADD TO CART (başlangıç) ----------------
+                          <button
+                            onClick={() => handleAddFirst(p)}
+                            disabled={p.availableStock<=0}
+                            style={{
+                              flex:1,
+                              background:"#0058a3",
+                              color:"#fff",
+                              borderRadius:10,
+                              padding:"10px 12px",
+                              fontWeight:800,
+                              cursor:p.availableStock<=0?"not-allowed":"pointer",
+                              opacity:p.availableStock<=0?0.6:1,
+                              border:"none",
+                              transition:".2s"
+                            }}
+                          >
+                            {p.availableStock<=0 ? "Out of stock" : "Add to cart"}
+                          </button>
+                        ) : (
+
+                          // ---------------- Sayaç görünümü ----------------
+                          <div style={{
                             flex:1,
+                            display:"flex",
+                            alignItems:"center",
+                            justifyContent:"space-between",
+                            padding:"4px 12px",
+                            borderRadius:10,
                             background:"#0058a3",
                             color:"#fff",
-                            borderRadius:10,
-                            padding:"10px 12px",
                             fontWeight:800,
-                            cursor:p.availableStock<=0?"not-allowed":"pointer",
-                            opacity:p.availableStock<=0?0.6:1,
-                            border:"none",
+                            fontSize:"1rem",
                             transition:".2s"
+                          }}>
+                            
+                            {/* - */}
+                            <button
+                              onClick={() => handleDecrease(p)}
+                              style={{
+                                width:28,
+                                height:28,
+                                borderRadius:6,
+                                border:"none",
+                                background:"#fff",
+                                color:"#0058a3",
+                                fontWeight:900,
+                                cursor:"pointer"
+                              }}
+                            >
+                              -
+                            </button>
+
+                            {/* sayı */}
+                            <span style={{ fontSize:"1rem", fontWeight:900 }}>
+                              {cartQty(p.id)}
+                            </span>
+
+                            {/* + */}
+                            <button
+                              onClick={() => handleIncrease(p)}
+                              disabled={p.availableStock <= 0}
+                              style={{
+                                width:28,
+                                height:28,
+                                borderRadius:6,
+                                border:"none",
+                                background:"#fff",
+                                color:"#0058a3",
+                                fontWeight:900,
+                                cursor: p.availableStock<=0?"not-allowed":"pointer",
+                                opacity:p.availableStock<=0?.5:1
+                              }}
+                            >
+                              +
+                            </button>
+
+                          </div>
+                        )}
+
+                        <button
+                          onClick={() => toggleItem(p)}
+                          style={{
+                            width:48,
+                            borderRadius:10,
+                            border:"1px solid #cbd5e1",
+                            background:inWishlist(p.id)?"#fee2e2":"#fff",
+                            cursor:"pointer",
+                            fontSize:"1.1rem",
+                            fontWeight:700
                           }}
                         >
-                          {p.availableStock<=0 ? "Out of stock" : "Add to cart"}
+                          {inWishlist(p.id) ? "♥" : "♡"}
                         </button>
-                      ) : (
-
-                        // ---------------- Sayaç görünümü ----------------
-                        <div style={{
-                          flex:1,
-                          display:"flex",
-                          alignItems:"center",
-                          justifyContent:"space-between",
-                          padding:"4px 12px",
-                          borderRadius:10,
-                          background:"#0058a3",
-                          color:"#fff",
-                          fontWeight:800,
-                          fontSize:"1rem",
-                          transition:".2s"
-                        }}>
-                          
-                          {/* - */}
-                          <button
-                            onClick={() => handleDecrease(p)}
-                            style={{
-                              width:28,
-                              height:28,
-                              borderRadius:6,
-                              border:"none",
-                              background:"#fff",
-                              color:"#0058a3",
-                              fontWeight:900,
-                              cursor:"pointer"
-                            }}
-                          >
-                            -
-                          </button>
-
-                          {/* sayı */}
-                          <span style={{ fontSize:"1rem", fontWeight:900 }}>
-                            {cartQty(p.id)}
-                          </span>
-
-                          {/* + */}
-                          <button
-                            onClick={() => handleIncrease(p)}
-                            disabled={p.availableStock <= 0}
-                            style={{
-                              width:28,
-                              height:28,
-                              borderRadius:6,
-                              border:"none",
-                              background:"#fff",
-                              color:"#0058a3",
-                              fontWeight:900,
-                              cursor: p.availableStock<=0?"not-allowed":"pointer",
-                              opacity:p.availableStock<=0?.5:1
-                            }}
-                          >
-                            +
-                          </button>
-
-                        </div>
-                      )}
-
-                      <button
-                        onClick={() => toggleItem(p)}
-                        style={{
-                          width:48,
-                          borderRadius:10,
-                          border:"1px solid #cbd5e1",
-                          background:inWishlist(p.id)?"#fee2e2":"#fff",
-                          cursor:"pointer",
-                          fontSize:"1.1rem",
-                          fontWeight:700
-                        }}
-                      >
-                        {inWishlist(p.id) ? "♥" : "♡"}
-                      </button>
-                    </div>
+                      </div>
+                    </>
+                  )}
 
                 </article>
               ))}
