@@ -284,7 +284,16 @@ function AdminDashboard() {
     }
     try {
       await updateBackendOrderStatus(numericId, deliveryUpdate.status);
-      await loadOrders();
+      // Optimistically update UI
+      setDeliveries((prev) =>
+        prev.map((d) => (String(d.id) === String(numericId) ? { ...d, status: deliveryUpdate.status } : d))
+      );
+      setOrders((prev) =>
+        prev.map((o) =>
+          String(o.id) === String(numericId) ? { ...o, status: deliveryUpdate.status } : o
+        )
+      );
+      await loadOrders(); // re-sync with backend
       addToast("Delivery status updated", "info");
     } catch (error) {
       console.error("Delivery update failed", error);
