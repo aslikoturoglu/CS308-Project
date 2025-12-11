@@ -60,11 +60,11 @@
 .chat-header {
   background: linear-gradient(135deg, #0f6fff, #0fb1d6);
   color: #ffffff;
-  padding: 14px 16px;
+  padding: 10px 12px 8px;
   display: grid;
   grid-template-columns: 1fr auto auto;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .chat-title {
@@ -132,11 +132,11 @@
 }
 
 .chat-hero {
-  padding: 14px 16px 10px;
-  background: linear-gradient(180deg, rgba(15, 111, 255, 0.06), rgba(15, 111, 255, 0));
+  padding: 10px 12px 8px;
+  background: linear-gradient(180deg, rgba(15, 111, 255, 0.04), rgba(15, 111, 255, 0));
   border-bottom: 1px dashed #dbe8ff;
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .chat-hero-eyebrow {
@@ -148,14 +148,14 @@
 }
 
 .chat-hero-title {
-  margin: 4px 0 6px;
-  font-size: 1.05rem;
+  margin: 3px 0 4px;
+  font-size: 1.02rem;
   line-height: 1.4;
   color: #0f172a;
 }
 
 .chat-hero-text {
-  margin: 0;
+  margin: 0 0 4px;
   color: #475569;
   line-height: 1.5;
 }
@@ -164,6 +164,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-top: 0;
 }
 
 .chat-hero-badges span {
@@ -297,10 +298,10 @@
 }
 
 .chat-quick {
-  padding: 10px 14px 4px;
+  padding: 8px 12px 6px;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .chat-quick button {
@@ -308,8 +309,8 @@
   color: #0d2149;
   border: 1px solid #d9e5ff;
   border-radius: 12px;
-  padding: 9px 12px;
-  font-size: 0.87rem;
+  padding: 8px 12px;
+  font-size: 0.85rem;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
