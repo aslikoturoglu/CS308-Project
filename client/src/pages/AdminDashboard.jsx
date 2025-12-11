@@ -95,7 +95,7 @@ function AdminDashboard() {
   useEffect(() => {
     setDeliveries(
       orders.map((order) => ({
-        id: formatOrderId(order.id),
+        id: order.id,
         orderId: formatOrderId(order.id),
         product: order.items?.[0]?.name || "Order items",
         status: order.status,
@@ -272,15 +272,24 @@ function AdminDashboard() {
     addToast("Discount applied (local only)", "info");
   };
 
-  const handleDeliveryStatus = () => {
+  const handleDeliveryStatus = async () => {
     if (!deliveryUpdate.id || !deliveryUpdate.status) {
       addToast("Select delivery and status", "error");
       return;
     }
-    setDeliveries((prev) =>
-      prev.map((d) => (String(d.id) === String(deliveryUpdate.id) ? { ...d, status: deliveryUpdate.status } : d))
-    );
-    addToast("Delivery status updated (local only)", "info");
+    const numericId = Number(deliveryUpdate.id);
+    if (!Number.isFinite(numericId)) {
+      addToast("Only backend orders can be updated here", "error");
+      return;
+    }
+    try {
+      await updateBackendOrderStatus(numericId, deliveryUpdate.status);
+      await loadOrders();
+      addToast("Delivery status updated", "info");
+    } catch (error) {
+      console.error("Delivery update failed", error);
+      addToast(error.message || "Delivery status could not be updated", "error");
+    }
   };
 
   const handleSelectConversation = (id) => {
