@@ -386,10 +386,11 @@ function AdminDashboard() {
       <div
         style={{
           width: "100%",
-          maxWidth: 1280,
+          maxWidth: 1180,
+          boxSizing: "border-box",
           margin: "0 auto",
           display: "grid",
-          gridTemplateColumns: "240px 1fr",
+          gridTemplateColumns: "240px minmax(0, 1fr)",
           gap: 18,
           alignItems: "flex-start",
         }}
