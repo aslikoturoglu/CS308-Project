@@ -32,7 +32,7 @@ if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
   console.warn("SMTP env değişkenleri tanımlı değil; e-posta gönderimi devre dışı.");
 }
 
-export async function sendMail({ to, subject, html, text }) {
+export async function sendMail({ to, subject, html, text, attachments }) {
   if (!transporter) {
     console.warn("sendMail çağrıldı ama SMTP yok; no-op.");
     return { skipped: true };
@@ -45,5 +45,6 @@ export async function sendMail({ to, subject, html, text }) {
     subject,
     text: text || "",
     html: html || text || "",
+    attachments: Array.isArray(attachments) && attachments.length > 0 ? attachments : undefined,
   });
 }

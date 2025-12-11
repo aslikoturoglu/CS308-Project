@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useParams, useLocation } from "react-router-dom";
 import { formatOrderId, getOrderById } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
@@ -34,20 +35,61 @@ function Invoice() {
     0
   );
   const realOrderId = order.order_id ?? order.id;
-
   const displayId = formatOrderId(order.id);
 
-  // 🔹 Backend URL (relative to current origin by default)
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+  const [emailStatus, setEmailStatus] = useState({
+    loading: false,
+    message: "",
+    error: "",
+  });
 
-  // 🔹 PDF indirme / görüntüleme
-  const handleDownloadPdf = () => {
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+  const buildApiUrl = (path) =>
+    API_BASE_URL ? `${API_BASE_URL}${path}` : path;
+
+  const extractNumericId = () => {
     const rawId = realOrderId ?? order.id;
-    if (!rawId) return;
+    if (!rawId) return null;
     const numeric = String(rawId).match(/\d+/);
-    const cleanId = numeric ? numeric[0] : rawId;
-    const url = `${API_BASE_URL}/api/orders/${encodeURIComponent(cleanId)}/invoice`;
+    return numeric ? numeric[0] : rawId;
+  };
+
+  const handleDownloadPdf = () => {
+    const cleanId = extractNumericId();
+    if (!cleanId) return;
+    const url = buildApiUrl(`/api/orders/${encodeURIComponent(cleanId)}/invoice`);
     window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const handleEmailInvoice = async () => {
+    const cleanId = extractNumericId();
+    if (!cleanId || emailStatus.loading) return;
+    setEmailStatus({ loading: true, message: "", error: "" });
+    try {
+      const res = await fetch(
+        buildApiUrl(`/api/orders/${encodeURIComponent(cleanId)}/invoice/email`),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: order.contact?.email }),
+        }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Invoice email failed");
+      }
+      setEmailStatus({
+        loading: false,
+        message: data.message || "Invoice sent to your email.",
+        error: "",
+      });
+    } catch (error) {
+      setEmailStatus({
+        loading: false,
+        message: "",
+        error: error.message || "Email could not be sent.",
+      });
+    }
   };
 
   return (
@@ -192,12 +234,21 @@ function Invoice() {
             <button
               type="button"
               style={buttonSecondary}
-              onClick={() =>
-                alert("Email sent placeholder - backend not implemented yet.")
-              }
+              onClick={handleEmailInvoice}
+              disabled={emailStatus.loading}
             >
-              Email me the invoice
+              {emailStatus.loading ? "Sending..." : "Email me the invoice"}
             </button>
+            {emailStatus.message && (
+              <p style={{ margin: 0, color: "#059669", fontSize: "0.9rem" }}>
+                {emailStatus.message}
+              </p>
+            )}
+            {emailStatus.error && (
+              <p style={{ margin: 0, color: "#b91c1c", fontSize: "0.9rem" }}>
+                {emailStatus.error}
+              </p>
+            )}
           </div>
         </div>
 
