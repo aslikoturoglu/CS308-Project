@@ -1,6 +1,5 @@
 import db from "../db.js";
 import PDFDocument from "pdfkit";
-import { sendMail } from "../utils/mailer.js";
 
 // Türkçe karakter düzeltme
 function normalizeTR(text) {
@@ -24,7 +23,20 @@ function parseAddressPayload(raw) {
   }
 }
 
-function fetchInvoiceData(realOrderId, callback) {
+export function generateInvoice(req, res) {
+  let { order_id } = req.params;
+
+  // ⭐ ORD-00047 → 47
+  // ⭐ %23ORD-00047 → 47
+  // ⭐ #ORD-00047 → 47
+  // ⭐ 47 → 47
+  const digits = String(order_id).match(/\d+/);
+  const realOrderId = digits ? Number(digits[0]) : null;
+
+  if (!realOrderId) {
+    return res.status(400).json({ error: "Invalid order ID format" });
+  }
+
   const sqlOrder = `
     SELECT 
       o.order_id,
@@ -42,13 +54,9 @@ function fetchInvoiceData(realOrderId, callback) {
     LIMIT 1
   `;
 
-  db.query(sqlOrder, [realOrderId], (orderErr, orderRows) => {
-    if (orderErr) {
-      console.error("Invoice order query failed:", orderErr);
-      return callback({ status: 500, message: "Order lookup failed" });
-    }
-    if (!orderRows.length) {
-      return callback({ status: 404, message: "Order not found" });
+  db.query(sqlOrder, [realOrderId], (err, orderRows) => {
+    if (err || !orderRows.length) {
+      return res.status(404).json({ error: "Order not found" });
     }
 
     const order = orderRows[0];
@@ -66,13 +74,10 @@ function fetchInvoiceData(realOrderId, callback) {
       WHERE oi.order_id = ?
     `;
 
-    db.query(sqlItems, [realOrderId], (itemErr, items) => {
-      if (itemErr) {
-        console.error("Invoice items query failed:", itemErr);
-        return callback({
-          status: 500,
-          message: "Order items could not be loaded",
-        });
+    db.query(sqlItems, [realOrderId], (err, items) => {
+      if (err) {
+        console.error("Invoice items query failed:", err);
+        return res.status(500).json({ error: "Order items could not be loaded" });
       }
 
       const safeItems =
@@ -92,101 +97,11 @@ function fetchInvoiceData(realOrderId, callback) {
       const shippingDetails = parseAddressPayload(order.shipping_address);
       const billingDetails = parseAddressPayload(order.billing_address);
 
-      callback(null, {
-        order,
-        items: safeItems,
-        detailPayload: { shippingDetails, billingDetails },
+      return createPdf(order, safeItems, res, {
+        shippingDetails,
+        billingDetails,
       });
     });
-  });
-}
-
-export function generateInvoice(req, res) {
-  let { order_id } = req.params;
-
-  // ⭐ ORD-00047 → 47
-  // ⭐ %23ORD-00047 → 47
-  // ⭐ #ORD-00047 → 47
-  // ⭐ 47 → 47
-  const digits = String(order_id).match(/\d+/);
-  const realOrderId = digits ? Number(digits[0]) : null;
-
-  if (!realOrderId) {
-    return res.status(400).json({ error: "Invalid order ID format" });
-  }
-
-  fetchInvoiceData(realOrderId, (err, data) => {
-    if (err) {
-      return res.status(err.status || 500).json({ error: err.message });
-    }
-    return streamInvoiceToResponse(data.order, data.items, data.detailPayload, res);
-  });
-}
-
-export function emailInvoice(req, res) {
-  let { order_id } = req.params;
-  const digits = String(order_id).match(/\d+/);
-  const realOrderId = digits ? Number(digits[0]) : null;
-
-  if (!realOrderId) {
-    return res.status(400).json({ error: "Invalid order ID format" });
-  }
-
-  fetchInvoiceData(realOrderId, async (err, data) => {
-    if (err) {
-      return res.status(err.status || 500).json({ error: err.message });
-    }
-
-    const {
-      order,
-      items,
-      detailPayload: { shippingDetails },
-    } = data;
-
-    const explicitEmail = req.body?.email;
-    const targetEmail =
-      (explicitEmail && explicitEmail.trim()) ||
-      shippingDetails?.email ||
-      order.customer_email ||
-      null;
-
-    if (!targetEmail) {
-      return res.status(400).json({ error: "Email address is required" });
-    }
-
-    try {
-      const pdfBuffer = await buildInvoiceBuffer(order, items, data.detailPayload);
-      const formattedId = `ORD-${String(order.order_id).padStart(5, "0")}`;
-
-      const mailResult = await sendMail({
-        to: targetEmail,
-        subject: `Invoice ${formattedId} - SUHome`,
-        text: `Hello,\n\nYour SUHome invoice (${formattedId}) is attached.\n\nThank you.`,
-        html: `<p>Hello,</p><p>Your SUHome invoice <strong>${formattedId}</strong> is attached.</p><p>Thank you.</p>`,
-        attachments: [
-          {
-            filename: `invoice_${order.order_id}.pdf`,
-            content: pdfBuffer,
-          },
-        ],
-      });
-
-      if (mailResult?.skipped) {
-        return res
-          .status(503)
-          .json({ error: "Email service is not configured on the server." });
-      }
-
-      return res.json({
-        success: true,
-        message: `Invoice sent to ${targetEmail}`,
-      });
-    } catch (mailErr) {
-      console.error("Invoice email failed:", mailErr);
-      return res
-        .status(500)
-        .json({ error: "Invoice email could not be sent" });
-    }
   });
 }
 
@@ -199,31 +114,17 @@ function formatAddressLines(details) {
   return lines;
 }
 
-function streamInvoiceToResponse(order, items, detailPayload, res) {
+function createPdf(order, items, res, detailPayload = {}) {
   const doc = new PDFDocument({ margin: 40 });
+
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader(
     "Content-Disposition",
     `inline; filename=invoice_${order.order_id}.pdf`
   );
+
   doc.pipe(res);
-  renderInvoice(doc, order, items, detailPayload);
-  doc.end();
-}
 
-function buildInvoiceBuffer(order, items, detailPayload) {
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 40 });
-    const chunks = [];
-    doc.on("data", (chunk) => chunks.push(chunk));
-    doc.on("end", () => resolve(Buffer.concat(chunks)));
-    doc.on("error", reject);
-    renderInvoice(doc, order, items, detailPayload);
-    doc.end();
-  });
-}
-
-function renderInvoice(doc, order, items, detailPayload = {}) {
   const blue = "#0058a3";
   const greyLight = "#f2f4f7";
   const greyBorder = "#d0d7de";
@@ -363,7 +264,7 @@ function renderInvoice(doc, order, items, detailPayload = {}) {
   doc
     .font("Helvetica")
     .fontSize(12)
-    .text("Thank you for choosing SUHOME.", 0, totalY + 60, {
-      align: "center",
-    });
+    .text("Thank you for choosing SUHOME.", 0, totalY + 60, { align: "center" });
+
+  doc.end();
 }
