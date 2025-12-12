@@ -141,15 +141,25 @@ function normalizeItems(row) {
     row?.products,
     row?.product_list,
     row?.orderProduct,
+    row?.item_list,
+    row?.itemList,
   ].filter(Boolean);
 
   for (const candidate of candidates) {
     if (Array.isArray(candidate)) return candidate;
+    if (candidate && typeof candidate === "object") {
+      const values = Object.values(candidate);
+      if (values.every((v) => typeof v === "object")) return values;
+    }
     if (typeof candidate === "string") {
       try {
         const parsed = JSON.parse(candidate);
         if (Array.isArray(parsed)) return parsed;
         if (parsed?.items && Array.isArray(parsed.items)) return parsed.items;
+        if (parsed && typeof parsed === "object") {
+          const values = Object.values(parsed);
+          if (values.every((v) => typeof v === "object")) return values;
+        }
       } catch {
         // ignore parse errors
       }
