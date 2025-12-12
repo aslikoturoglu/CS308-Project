@@ -17,6 +17,7 @@ const cartRoutes = (await import("./routes/cartRoutes.js")).default;
 const orderRoutes = (await import("./routes/orderRoutes.js")).default;
 const supportRoutes = (await import("./routes/supportRoutes.js")).default;
 const authRoutes = (await import("./routes/authRoutes.js")).default;
+const commentRoutes = (await import("./routes/commentRoutes.js")).default;
 const dbModule = await import("./db.js");
 const db = dbModule.default; // DB bağlantısı burada load ediliyor
 
@@ -32,6 +33,7 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/support", supportRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/comments", commentRoutes);
 
 // Static serve for built client
 const publicDir = path.resolve(__dirname, "../public");

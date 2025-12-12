@@ -1,50 +1,43 @@
-import { addReview, getReviewMap } from "./localStorageHelpers";
-import { getOrders, fetchUserOrders } from "./orderService";
+const API_BASE =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) || "";
 
-const fallbackName = "Verified buyer";
-
-export async function fetchApprovedComments(productId) {
-  const reviewMap = getReviewMap();
-  const list = reviewMap?.[productId] ?? [];
-
-  return list
-    .filter((entry) => entry.approved !== false) // default to approved when undefined
-    .map((entry, index) => ({
-      comment_id: entry.id ?? `${productId}-${index}`,
-      rating: Number(entry.rating) || 0,
-      comment_text: entry.comment ?? entry.text ?? "",
-      created_at: entry.date ?? new Date().toISOString(),
-      display_name: entry.displayName ?? fallbackName,
-    }));
+export async function fetchApprovedComments(productId, signal) {
+  if (!productId) return [];
+  const res = await fetch(`${API_BASE}/api/comments/${productId}`, { signal });
+  const data = await res.json().catch(() => []);
+  if (!res.ok) {
+    console.error("Failed to load comments", data);
+    return [];
+  }
+  return Array.isArray(data) ? data : [];
 }
 
-export async function addComment({ userId, productId, rating, text, name }) {
-  const trimmedName = name ? String(name).split(" ")[0] : null;
-  const displayName = trimmedName || (userId ? `User ${userId}` : fallbackName);
-  addReview(productId, rating, text, displayName);
-  return { success: true };
+export async function addComment({ userId, productId, rating, text }) {
+  const res = await fetch(`${API_BASE}/api/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId,
+      productId,
+      rating,
+      text,
+    }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const message = data?.message || "Comment could not be saved";
+    throw new Error(message);
+  }
+  return data;
 }
 
-export async function hasDelivered(userId, productId) {
-  let orders = [];
-  try {
-    if (Number.isFinite(Number(userId))) {
-      orders = await fetchUserOrders(userId);
-    }
-  } catch {
-    orders = [];
-  }
-
-  if (!orders.length) {
-    orders = getOrders();
-  }
-
-  const delivered = orders.some(
-    (order) =>
-      order.status === "Delivered" &&
-      Array.isArray(order.items) &&
-      order.items.some((item) => (item.productId ?? item.id) === productId)
+export async function hasDelivered(userId, productId, signal) {
+  if (!userId || !productId) return { delivered: false };
+  const res = await fetch(
+    `${API_BASE}/api/comments/can/${productId}?userId=${encodeURIComponent(userId)}`,
+    { signal }
   );
-
-  return { delivered };
+  const data = await res.json().catch(() => ({ canReview: false }));
+  return { delivered: !!data.canReview };
 }

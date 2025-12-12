@@ -77,7 +77,10 @@ function ProductDetail() {
      CHECK IF USER HAS DELIVERY
   --------------------------- */
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setDelivered(false);
+      return;
+    }
 
     async function checkDelivery() {
       try {
@@ -351,50 +354,46 @@ function ProductDetail() {
         ))}
 
         {/* REVIEW FORM */}
-        {user ? (
+        {user && delivered ? (
           <div style={{ marginTop: 20 }}>
-            {!delivered && (
-              <p style={{ color: "#b91c1c" }}>
-                You can only leave a review after delivery.
-              </p>
-            )}
+            <h3>Leave a Review</h3>
 
-            {delivered && (
-              <>
-                <h3>Leave a Review</h3>
+            <select
+              value={ratingInput}
+              onChange={(e) => setRatingInput(Number(e.target.value))}
+              style={select}
+            >
+              {[1, 2, 3, 4, 5].map((r) => (
+                <option key={r} value={r}>
+                  {r} ★
+                </option>
+              ))}
+            </select>
 
-                <select
-                  value={ratingInput}
-                  onChange={(e) => setRatingInput(Number(e.target.value))}
-                  style={select}
-                >
-                  {[1, 2, 3, 4, 5].map((r) => (
-                    <option key={r} value={r}>
-                      {r} ★
-                    </option>
-                  ))}
-                </select>
+            <textarea
+              value={commentInput}
+              onChange={(e) => setCommentInput(e.target.value)}
+              placeholder="Write your review..."
+              style={textarea}
+            />
 
-                <textarea
-                  value={commentInput}
-                  onChange={(e) => setCommentInput(e.target.value)}
-                  placeholder="Write your review..."
-                  style={textarea}
-                />
-
-                <button
-                  onClick={handleSubmitComment}
-                  disabled={submitting}
-                  style={submitBtn}
-                >
-                  {submitting ? "Sending..." : "Submit Review"}
-                </button>
-              </>
-            )}
+            <button
+              onClick={handleSubmitComment}
+              disabled={submitting}
+              style={submitBtn}
+            >
+              {submitting ? "Sending..." : "Submit Review"}
+            </button>
           </div>
         ) : (
           <p>
-            You must <Link to="/login">log in</Link> to review.
+            {user
+              ? "You can leave a review after your order is delivered."
+              : (
+                <>
+                  You must <Link to="/login">log in</Link> to review.
+                </>
+                )}
           </p>
         )}
       </section>
