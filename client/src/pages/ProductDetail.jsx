@@ -5,11 +5,7 @@ import { fetchProductById } from "../services/productService";
 import { useWishlist } from "../context/WishlistContext";
 import { useAuth } from "../context/AuthContext";
 
-import {
-  addComment,
-  fetchApprovedComments,
-  hasDelivered,
-} from "../services/commentService";
+import { addComment, fetchProductComments, hasDelivered } from "../services/commentService";
 
 function ProductDetail() {
   const { id } = useParams();          // productId as string
@@ -33,6 +29,16 @@ function ProductDetail() {
 
   // Delivery check
   const [delivered, setDelivered] = useState(false);
+
+  const approvedComments = useMemo(
+    () => comments.filter((c) => (c.status || "approved") === "approved"),
+    [comments]
+  );
+
+  const reviewCount = useMemo(
+    () => (product?.ratingCount ?? approvedComments.length),
+    [product, approvedComments]
+  );
 
   /* ---------------------------
      LOAD PRODUCT
@@ -62,7 +68,7 @@ function ProductDetail() {
   --------------------------- */
   async function loadComments() {
     try {
-      const list = await fetchApprovedComments(productId);
+      const list = await fetchProductComments(productId, { userId: user?.id });
       setComments(list || []);
     } catch {
       setComments([]);
@@ -71,7 +77,7 @@ function ProductDetail() {
 
   useEffect(() => {
     loadComments();
-  }, [productId]);
+  }, [productId, user?.id]);
 
   /* ---------------------------
      CHECK IF USER HAS DELIVERY
@@ -204,9 +210,9 @@ function ProductDetail() {
 
           <div style={{ display: "flex", gap: 8 }}>
             <strong style={{ color: "#f59e0b" }}>
-              ⭐ {product.averageRating ?? "0.0"}
+              ⭐ {Number(product.averageRating ?? product.rating ?? 0).toFixed(1)}
             </strong>
-            <span>({comments.length} reviews)</span>
+            <span>({reviewCount} reviews)</span>
             <span
               style={{ color: product.availableStock ? "green" : "red" }}
             >
@@ -339,24 +345,123 @@ function ProductDetail() {
 
         {comments.length === 0 && <p>No reviews yet.</p>}
 
-        {comments.map((c) => (
-          <div key={c.comment_id} style={reviewBlock}>
-            <strong style={{ display: "block", marginBottom: 4 }}>
-              {c.display_name || "Verified buyer"}
-            </strong>
-            <div style={stars}>
-              {"★".repeat(c.rating)}
-              {"☆".repeat(5 - c.rating)}
-            </div>
-            <p style={{ margin: "4px 0" }}>{c.comment_text}</p>
-            <small>{new Date(c.created_at).toLocaleDateString()}</small>
-          </div>
-        ))}
+        {comments.map((c) => {
+          const status = c.status || "approved";
+          const statusColor = statusColors[status] || "#475569";
+          const createdLabel = c.created_at
+            ? new Date(c.created_at).toLocaleString()
+            : "";
 
-        {/* REVIEW FORM DISABLED: view-only */}
-        <p style={{ marginTop: 12, color: "#475569" }}>
-          Reviews are view-only on this page.
-        </p>
+          return (
+            <div key={c.comment_id} style={reviewBlock}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 10,
+                  marginBottom: 6,
+                }}
+              >
+                <strong>{c.display_name || "Verified buyer"}</strong>
+                <span
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: 12,
+                    backgroundColor: `${statusColor}1a`,
+                    color: statusColor,
+                    fontWeight: 700,
+                    fontSize: "0.85rem",
+                    textTransform: "capitalize",
+                  }}
+                >
+                  {status}
+                </span>
+              </div>
+
+              <div style={stars}>
+                {"★".repeat(Number(c.rating) || 0)}
+                {"☆".repeat(5 - (Number(c.rating) || 0))}
+              </div>
+
+              {c.comment_text ? (
+                <p style={{ margin: "4px 0" }}>{c.comment_text}</p>
+              ) : (
+                <p style={{ margin: "4px 0", color: "#94a3b8" }}>
+                  No comment text provided.
+                </p>
+              )}
+
+              {createdLabel && (
+                <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>
+                  {createdLabel}
+                </span>
+              )}
+            </div>
+          );
+        })}
+
+        {!isProductManager && (
+          <div
+            style={{
+              marginTop: 16,
+              padding: 14,
+              borderRadius: 12,
+              border: "1px solid #e2e8f0",
+              background: "#f8fafc",
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            <h3 style={{ margin: 0, color: "#0f172a" }}>Leave a review</h3>
+            <p style={{ margin: 0, color: "#475569" }}>
+              Only delivered orders can create or update reviews. Status will be pending until a product manager approves.
+            </p>
+
+            <label style={{ fontWeight: 700, color: "#0f172a" }}>
+              Rating
+              <select
+                value={ratingInput}
+                onChange={(e) => setRatingInput(Number(e.target.value))}
+                disabled={!delivered || submitting}
+                style={select}
+              >
+                {[5, 4, 3, 2, 1].map((r) => (
+                  <option key={r} value={r}>
+                    {r} / 5
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <textarea
+              style={textarea}
+              placeholder="Share your experience with this product"
+              value={commentInput}
+              disabled={!delivered || submitting}
+              onChange={(e) => setCommentInput(e.target.value)}
+            />
+
+            <button
+              type="button"
+              onClick={handleSubmitComment}
+              disabled={submitting || !delivered}
+              style={{
+                ...submitBtn,
+                opacity: submitting || !delivered ? 0.6 : 1,
+                cursor: submitting || !delivered ? "not-allowed" : "pointer",
+              }}
+            >
+              {submitting ? "Sending..." : "Submit for approval"}
+            </button>
+
+            {!delivered && (
+              <small style={{ color: "#b91c1c" }}>
+                You can leave a review once your delivery status is delivered.
+              </small>
+            )}
+          </div>
+        )}
       </section>
     </section>
   );
@@ -509,6 +614,12 @@ const reviewBlock = {
   border: "1px solid #e2e8f0",
   marginBottom: 12,
   background: "#f8fafc",
+};
+
+const statusColors = {
+  approved: "#15803d",
+  pending: "#d97706",
+  rejected: "#b91c1c",
 };
 
 const stars = {

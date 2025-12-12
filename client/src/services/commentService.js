@@ -1,9 +1,10 @@
 const API_BASE =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) || "";
 
-export async function fetchApprovedComments(productId, signal) {
+export async function fetchProductComments(productId, { userId, signal } = {}) {
   if (!productId) return [];
-  const res = await fetch(`${API_BASE}/api/comments/${productId}`, { signal });
+  const userQuery = userId ? `?userId=${encodeURIComponent(userId)}` : "";
+  const res = await fetch(`${API_BASE}/api/comments/${productId}${userQuery}`, { signal });
   const data = await res.json().catch(() => []);
   if (!res.ok) {
     console.error("Failed to load comments", data);
@@ -51,6 +52,16 @@ export async function fetchUserComments(userId, signal) {
   if (!res.ok) {
     console.error("Failed to load user comments", data);
     return [];
+  }
+  return Array.isArray(data) ? data : [];
+}
+
+export async function fetchPendingComments(signal) {
+  const res = await fetch(`${API_BASE}/api/comments/pending`, { signal });
+  const data = await res.json().catch(() => []);
+  if (!res.ok) {
+    console.error("Failed to load pending comments", data);
+    throw new Error("Pending comments fetch failed");
   }
   return Array.isArray(data) ? data : [];
 }

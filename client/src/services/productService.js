@@ -1,35 +1,40 @@
 import { getProducts, getProductById, updateStock } from "./api.js";
-import { calculateAverageRating } from "../utils/ratingUtils.js";
-import { getInventoryAdjustments, getReviewMap } from "./localStorageHelpers";
+import { getInventoryAdjustments } from "./localStorageHelpers";
 
-// Ürünü zenginleştirme
-function enrichProduct(product, adjustments, reviewMap) {
-  const consumed = adjustments[product.id] ?? 0;
-  const baseStock = Number(product.stock || 0);
+const normalizeRating = (product) => {
+  const avg =
+    Number(product.averageRating ?? product.rating ?? product.product_rating ?? 0) || 0;
+  const count =
+    Number(product.ratingCount ?? product.rating_count ?? product.product_rating_count ?? 0) ||
+    0;
 
-  const availableStock = Math.max(0, baseStock - consumed);
-
-  const userReviews = reviewMap[product.id] ?? [];
-  const averageRating =
-    userReviews.length > 0
-      ? calculateAverageRating(userReviews).toFixed(1)
-      : 0;
+  const averageRating = Number.isFinite(avg) ? Number(avg.toFixed(1)) : 0;
 
   return {
-    ...product,
+    averageRating,
+    ratingCount: count,
+  };
+};
+
+function enrichProduct(raw, adjustments) {
+  const consumed = adjustments[raw.id] ?? 0;
+  const baseStock = Number(raw.stock || 0);
+  const availableStock = Math.max(0, baseStock - consumed);
+
+  const { averageRating, ratingCount } = normalizeRating(raw);
+
+  return {
+    ...raw,
     availableStock,
     averageRating,
-    ratingCount: userReviews.length,
-    reviews: userReviews,
+    ratingCount,
   };
 }
 
-// ---- Tüm ürünleri getir + meta ekle ----
-export async function fetchProductsWithMeta() {
-  const rawProducts = await getProducts();
-
+// Tum urunleri getir + meta ekle
+export async function fetchProductsWithMeta(signal) {
+  const rawProducts = await getProducts(signal);
   const adjustments = getInventoryAdjustments();
-  const reviewMap = getReviewMap();
 
   return rawProducts.map((p) =>
     enrichProduct(
@@ -42,24 +47,24 @@ export async function fetchProductsWithMeta() {
         stock: p.stock,
         image: p.image,
         category: p.category,
-      material: p.material,
-      color: p.color,
-      mainCategory: p.mainCategory,
-      warranty: p.warranty,
-      distributor: p.distributor,
+        material: p.material,
+        color: p.color,
+        mainCategory: p.mainCategory,
+        warranty: p.warranty,
+        distributor: p.distributor,
+        rating: p.rating,
+        averageRating: p.averageRating,
+        ratingCount: p.ratingCount,
       },
-      adjustments,
-      reviewMap
+      adjustments
     )
   );
 }
 
-// ---- ID ile ürün getir ----
-export async function fetchProductById(id) {
-  const p = await getProductById(id);
-
+// ID ile urun getir
+export async function fetchProductById(id, signal) {
+  const p = await getProductById(id, signal);
   const adjustments = getInventoryAdjustments();
-  const reviewMap = getReviewMap();
 
   return enrichProduct(
     {
@@ -76,8 +81,12 @@ export async function fetchProductById(id) {
       mainCategory: p.mainCategory,
       warranty: p.warranty,
       distributor: p.distributor,
+      rating: p.rating,
+      averageRating: p.averageRating,
+      ratingCount: p.ratingCount,
     },
-    adjustments,
-    reviewMap
+    adjustments
   );
 }
+
+export { updateStock };
