@@ -203,10 +203,12 @@ export function forgotPassword(req, res) {
         return res.status(500).json({ error: "Şifre sıfırlama oluşturulamadı" });
       }
 
-      const resetUrl =
-        process.env.FRONTEND_BASE_URL
-          ? `${process.env.FRONTEND_BASE_URL}/reset-password/${rawToken}`
-          : `/reset-password/${rawToken}`;
+      // Build absolute reset URL (prefer env, otherwise infer from request)
+      const baseUrl =
+        process.env.FRONTEND_BASE_URL ||
+        req.get("origin") ||
+        (req.get("host") ? `https://${req.get("host")}` : "");
+      const resetUrl = `${baseUrl}/reset-password/${rawToken}`;
 
       // SMTP varsa mail at, yoksa console + response dev token
       const payload = { success: true, message: "Reset link sent" };
