@@ -33,16 +33,15 @@ async function refreshProductRating(productId) {
   );
 
   const avg = Number(row?.avg_rating ?? 0);
-  const count = Number(row?.rating_count ?? 0);
-
+  // Update only existing column to avoid schema mismatches
   await runQuery(
     `UPDATE products
-     SET product_rating = ?, rating_count = ?
+     SET product_rating = ?
      WHERE product_id = ?`,
-    [avg, count, productId]
+    [avg, productId]
   );
 
-  return { averageRating: avg, ratingCount: count };
+  return { averageRating: avg };
 }
 
 export async function listComments(req, res) {
