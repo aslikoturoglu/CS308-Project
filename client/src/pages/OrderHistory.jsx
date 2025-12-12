@@ -50,7 +50,11 @@ function OrderHistory() {
     [orders]
   );
 
-  const handleReviewSubmit = (productId, rating, comment) => {
+  const handleReviewSubmit = (productId, rating, comment, canReview) => {
+    if (!canReview) {
+      alert("You can only review delivered items.");
+      return;
+    }
     const displayName = user?.name?.split(" ")[0] || "User";
     const list = addReview(productId, rating, comment, displayName);
     setReviews((prev) => ({ ...prev, [productId]: list }));
@@ -281,7 +285,7 @@ function OrderHistory() {
                               productId={productId}
                               latestReview={latestReview}
                               onSubmit={handleReviewSubmit}
-                              isDelivered
+                              isDelivered={order.status === "Delivered"}
                             />
                           )}
                         </div>
@@ -318,6 +322,7 @@ function OrderHistory() {
                   </div>
                   <Link
                     to={`/invoice/${encodeURIComponent(formattedId)}`}
+                    state={{ order }}
                     style={{
                       border: "1px solid #0058a3",
                       color: "#0058a3",
@@ -346,7 +351,7 @@ function ReviewForm({ productId, latestReview, onSubmit, isDelivered }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(productId, rating, comment);
+    onSubmit(productId, rating, comment, isDelivered);
     setComment("");
   };
 
