@@ -15,7 +15,11 @@ import {
   getOrders,
   updateBackendOrderStatus,
 } from "../services/orderService";
-import { approveReview, getReviewMap } from "../services/localStorageHelpers";
+import {
+  approveComment,
+  rejectComment,
+  fetchPendingComments,
+} from "../services/commentService";
 
 const rolesToSections = {
   admin: ["dashboard", "product", "sales", "support"],
@@ -56,25 +60,11 @@ function AdminDashboard() {
   }, [addToast]);
 
   const refreshPendingReviews = useCallback(() => {
-    const map = getReviewMap();
-    const list = [];
-    Object.entries(map).forEach(([pid, reviews]) => {
-      if (!Array.isArray(reviews)) return;
-      reviews.forEach((rev) => {
-        if (rev.approved === false) {
-          list.push({
-            productId: Number(pid),
-            id: rev.id,
-            rating: rev.rating,
-            comment: rev.comment,
-            displayName: rev.displayName,
-            date: rev.date,
-          });
-        }
-      });
-    });
-    list.sort((a, b) => Date.parse(b.date || 0) - Date.parse(a.date || 0));
-    setPendingReviews(list);
+    const controller = new AbortController();
+    fetchPendingComments(controller.signal)
+      .then((data) => setPendingReviews(data))
+      .catch(() => setPendingReviews([]));
+    return () => controller.abort();
   }, []);
 
   const loadOrders = useCallback(async () => {
@@ -348,10 +338,24 @@ function AdminDashboard() {
     addToast("Order advanced to next status", "info");
   };
 
-  const handleApproveReview = (productId, reviewId) => {
-    approveReview(productId, reviewId, true);
-    refreshPendingReviews();
-    addToast("Review approved", "info");
+  const handleApproveReview = async (commentId) => {
+    try {
+      await approveComment(commentId);
+      refreshPendingReviews();
+      addToast("Review approved", "info");
+    } catch (err) {
+      addToast(err.message || "Approve failed", "error");
+    }
+  };
+
+  const handleRejectReview = async (commentId) => {
+    try {
+      await rejectComment(commentId);
+      refreshPendingReviews();
+      addToast("Review rejected", "info");
+    } catch (err) {
+      addToast(err.message || "Reject failed", "error");
+    }
   };
 
   const handleSendReply = async () => {
@@ -643,10 +647,13 @@ function AdminDashboard() {
                 ) : (
                   <div style={{ display: "grid", gap: 8 }}>
                     {pendingReviews.map((rev) => {
-                      const productName = products.find((p) => Number(p.id) === Number(rev.productId))?.name || `Product #${rev.productId}`;
+                      const productName =
+                        rev.product_name ||
+                        products.find((p) => Number(p.id) === Number(rev.product_id ?? rev.productId))?.name ||
+                        `Product #${rev.product_id ?? rev.productId}`;
                       return (
                         <div
-                          key={rev.id}
+                          key={rev.comment_id ?? rev.id}
                           style={{
                             border: "1px solid #e5e7eb",
                             borderRadius: 12,
@@ -659,17 +666,41 @@ function AdminDashboard() {
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <div>
                               <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>{productName}</p>
-                              <small style={{ color: "#64748b" }}>{rev.displayName || "User"}</small>
+                              <small style={{ color: "#64748b" }}>
+                                {rev.display_name || rev.user_name || rev.displayName || "User"}
+                              </small>
                             </div>
                             <div style={{ color: "#f59e0b", fontWeight: 800 }}>
                               {"★".repeat(Number(rev.rating) || 0)}
                               {"☆".repeat(Math.max(0, 5 - (Number(rev.rating) || 0)))}
                             </div>
                           </div>
-                          <p style={{ margin: 0, color: "#0f172a" }}>{rev.comment}</p>
-                          <button type="button" onClick={() => handleApproveReview(rev.productId, rev.id)} style={primaryBtn}>
-                            Approve
-                          </button>
+                          <p style={{ margin: 0, color: "#475569" }}>
+                            {rev.comment_text || rev.comment || "No comment"}
+                          </p>
+                          <small style={{ color: "#94a3b8" }}>
+                            {rev.created_at
+                              ? new Date(rev.created_at).toLocaleString()
+                              : rev.date
+                              ? new Date(rev.date).toLocaleString()
+                              : ""}
+                          </small>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button
+                              type="button"
+                              onClick={() => handleApproveReview(rev.comment_id ?? rev.id)}
+                              style={primaryBtn}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRejectReview(rev.comment_id ?? rev.id)}
+                              style={{ ...linkBtn, color: "#ef4444" }}
+                            >
+                              Reject
+                            </button>
+                          </div>
                         </div>
                       );
                     })}

@@ -66,3 +66,23 @@ export async function rejectComment(commentId) {
   if (!res.ok) throw new Error("Reject failed");
   return res.json();
 }
+
+export async function fetchPendingComments(signal) {
+  const res = await fetch(`${API_BASE}/api/comments/pending`, { signal });
+  const data = await res.json().catch(() => []);
+  if (!res.ok) {
+    console.error("Failed to load pending comments", data);
+    return [];
+  }
+  return Array.isArray(data) ? data : [];
+}
+
+export async function fetchRatingAggregates(signal) {
+  const res = await fetch(`${API_BASE}/api/comments/ratings`, { signal });
+  const data = await res.json().catch(() => []);
+  if (!res.ok) {
+    console.error("Failed to load rating aggregates", data);
+    return [];
+  }
+  return Array.isArray(data) ? data : [];
+}

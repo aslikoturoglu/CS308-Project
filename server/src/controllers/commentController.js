@@ -62,6 +62,45 @@ export async function listComments(req, res) {
   }
 }
 
+export async function listPendingComments(_req, res) {
+  try {
+    const rows = await runQuery(
+      `SELECT 
+         c.comment_id,
+         c.user_id,
+         c.product_id,
+         c.rating,
+         c.comment_text,
+         c.created_at,
+         c.status,
+         u.full_name AS user_name,
+         p.product_name
+       FROM comments c
+       LEFT JOIN users u ON u.user_id = c.user_id
+       LEFT JOIN products p ON p.product_id = c.product_id
+       WHERE c.status = 'pending'
+       ORDER BY c.created_at DESC`
+    );
+
+    const normalized = rows.map((row) => ({
+      comment_id: row.comment_id,
+      user_id: row.user_id,
+      product_id: row.product_id,
+      rating: Number(row.rating) || 0,
+      comment_text: row.comment_text || "",
+      created_at: row.created_at,
+      status: row.status || "pending",
+      display_name: row.user_name || `User ${row.user_id}`,
+      product_name: row.product_name || `Product #${row.product_id}`,
+    }));
+
+    return res.json(normalized);
+  } catch (err) {
+    console.error("listPendingComments error:", err);
+    return res.status(500).json({ message: "Pending comments fetch failed" });
+  }
+}
+
 export async function canReview(req, res) {
   const userId = req.user?.user_id ?? Number(req.query.userId);
   const { productId } = req.params;
@@ -160,5 +199,25 @@ export async function rejectComment(req, res) {
   } catch (err) {
     console.error("rejectComment error:", err);
     return res.status(500).json({ message: "Reject failed" });
+  }
+}
+
+export async function ratingAggregates(_req, res) {
+  try {
+    const rows = await runQuery(
+      `SELECT product_id, AVG(rating) AS avg_rating, COUNT(*) AS rating_count
+       FROM comments
+       WHERE status = 'approved'
+       GROUP BY product_id`
+    );
+    const normalized = rows.map((r) => ({
+      product_id: r.product_id,
+      average: Number(r.avg_rating) || 0,
+      rating_count: Number(r.rating_count) || 0,
+    }));
+    return res.json(normalized);
+  } catch (err) {
+    console.error("ratingAggregates error:", err);
+    return res.status(500).json({ message: "Rating aggregates fetch failed" });
   }
 }
