@@ -486,31 +486,33 @@ function AdminDashboard() {
             minWidth: 0,
           }}
         >
-          <header
-            style={{
-              background: "white",
-              borderRadius: 16,
-              padding: 18,
-              boxShadow: "0 18px 40px rgba(0,0,0,0.06)",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <div>
-              <p style={{ margin: "0 0 6px", color: "#6b7280", fontWeight: 700 }}>
-                Admin workspace / {activeSection}
-              </p>
-              <h1 style={{ margin: 0, color: "#0f172a" }}>Dashboard</h1>
-              <p style={{ margin: "6px 0 0", color: "#475569" }}>Role: {user?.role || "customer"}</p>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <p style={{ margin: 0, color: "#6b7280" }}>Today&apos;s revenue</p>
-              <strong style={{ fontSize: "1.4rem", color: "#0058a3" }}>
-                ₺{totals.revenue.toLocaleString("tr-TR")}
-              </strong>
-            </div>
-          </header>
+          {activeSection !== "support" && (
+            <header
+              style={{
+                background: "white",
+                borderRadius: 16,
+                padding: 18,
+                boxShadow: "0 18px 40px rgba(0,0,0,0.06)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div>
+                <p style={{ margin: "0 0 6px", color: "#6b7280", fontWeight: 700 }}>
+                  Admin workspace / {activeSection}
+                </p>
+                <h1 style={{ margin: 0, color: "#0f172a" }}>Dashboard</h1>
+                <p style={{ margin: "6px 0 0", color: "#475569" }}>Role: {user?.role || "customer"}</p>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <p style={{ margin: 0, color: "#6b7280" }}>Today&apos;s revenue</p>
+                <strong style={{ fontSize: "1.4rem", color: "#0058a3" }}>
+                  ₺{totals.revenue.toLocaleString("tr-TR")}
+                </strong>
+              </div>
+            </header>
+          )}
 
           {activeSection === "dashboard" && (
             <section
