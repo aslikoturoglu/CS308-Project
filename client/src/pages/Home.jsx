@@ -25,9 +25,9 @@ const highlights = [
 ];
 
 const categories = [
-  { name: "Living Room", image: "https://raw.githubusercontent.com/aslikoturoglu/CS308-Project/main/project_pictures/10027.png" },
-  { name: "Bedroom", image: "https://raw.githubusercontent.com/aslikoturoglu/CS308-Project//main/project_pictures/10049.png" },
-  { name: "Workspace", image: "https://raw.githubusercontent.com/aslikoturoglu/CS308-Project//main/project_pictures/10019.png" },
+  { name: "Living Room", image: "https://cdn.thecoolist.com/wp-content/uploads/2025/07/Total-Eclipse-Vibes.jpg" },
+  { name: "Bedroom", image: "https://i.pinimg.com/originals/e7/9c/f4/e79cf4a8c6520c22ce2d2083be9f0dcf.jpg" },
+  { name: "Workspace", image: "https://woodpulse.com/cdn/shop/files/Small-Black-Vase-Black-Vase-Decor-Modern-Vases_57aa3ba1-fc05-4f53-b115-e65f6a7786d4.jpg?v=1691342414" },
 ];
 
 function Home() {
@@ -82,7 +82,7 @@ function Home() {
           WELCOME
         </p>
         <h1 className="hero-item" style={{ fontSize: "3rem", maxWidth: 720, margin: 0 }}>
-          The SUHome experience that inspires your home starts here
+          The SUHome experience where refined living is shaped by timeless design and purpose
         </h1>
         <p className="hero-item" style={{ maxWidth: 540, lineHeight: 1.6, fontSize: "1.1rem" }}>
           From comfy sofas to smart storage, everything you are looking for is a click away.
