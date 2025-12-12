@@ -262,31 +262,62 @@ function OrderHistory() {
                             border: "1px solid #e2e8f0",
                             borderRadius: 12,
                             padding: 12,
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 10,
+                            display: "grid",
+                            gridTemplateColumns: "auto 1fr auto",
+                            alignItems: "center",
+                            gap: 12,
                             backgroundColor: "#f8fafc",
                           }}
                         >
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <div>
-                              <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>{item.name}</p>
-                              <p style={{ margin: 0, color: "#475569" }}>
-                                {item.variant} · Qty: {item.qty}
-                              </p>
-                            </div>
+                          <div
+                            style={{
+                              width: 64,
+                              height: 64,
+                              borderRadius: 10,
+                              overflow: "hidden",
+                              background: "#e2e8f0",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              />
+                            ) : (
+                              <span style={{ color: "#94a3b8", fontWeight: 700 }}>No image</span>
+                            )}
+                          </div>
+
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>{item.name}</p>
+                            <p style={{ margin: 0, color: "#475569" }}>Qty: {item.qty}</p>
+                            {item.variant && (
+                              <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.9rem" }}>{item.variant}</p>
+                            )}
+                          </div>
+
+                          <div style={{ textAlign: "right" }}>
                             <p style={{ margin: 0, fontWeight: 800, color: "#0f172a" }}>
                               {formatPrice(item.price * item.qty)}
+                            </p>
+                            <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.9rem" }}>
+                              {formatPrice(item.price)} each
                             </p>
                           </div>
 
                           {order.status === "Delivered" && (
-                            <ReviewForm
-                              productId={productId}
-                              latestReview={latestReview}
-                              onSubmit={handleReviewSubmit}
-                              isDelivered={order.status === "Delivered"}
-                            />
+                            <div style={{ gridColumn: "1 / -1", marginTop: 4 }}>
+                              <ReviewForm
+                                productId={productId}
+                                latestReview={latestReview}
+                                onSubmit={handleReviewSubmit}
+                                isDelivered={order.status === "Delivered"}
+                              />
+                            </div>
                           )}
                         </div>
                       );

@@ -1,22 +1,25 @@
-if (process.env.NODE_ENV !== "production") {
-  const { config } = await import("dotenv");
-  config();
-}
-
 import express from "express";
 import cors from "cors";
 import fs from "fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import productRoutes from "./routes/productRoutes.js";
-import cartRoutes from "./routes/cartRoutes.js";
-import orderRoutes from "./routes/orderRoutes.js";
-import supportRoutes from "./routes/supportRoutes.js";
-import authRoutes from "./routes/authRoutes.js";
-import db from "./db.js"; // DB bağlantısı burada load ediliyor
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Load env from server/.env in non-production
+if (process.env.NODE_ENV !== "production") {
+  const { config } = await import("dotenv");
+  config({ path: path.resolve(__dirname, "../.env") });
+}
+
+const productRoutes = (await import("./routes/productRoutes.js")).default;
+const cartRoutes = (await import("./routes/cartRoutes.js")).default;
+const orderRoutes = (await import("./routes/orderRoutes.js")).default;
+const supportRoutes = (await import("./routes/supportRoutes.js")).default;
+const authRoutes = (await import("./routes/authRoutes.js")).default;
+const dbModule = await import("./db.js");
+const db = dbModule.default; // DB bağlantısı burada load ediliyor
+
 
 const app = express();
 

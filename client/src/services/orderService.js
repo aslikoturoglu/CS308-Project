@@ -59,7 +59,7 @@ export async function fetchUserOrders(userId, signal) {
       qty: it.quantity ?? it.qty ?? it.amount ?? 1,
       quantity: it.quantity ?? it.qty ?? it.amount ?? 1,
       price: Number(it.price ?? it.unit_price ?? it.total_price ?? 0),
-      image: it.image ?? it.product_image ?? it.thumbnail,
+      image: it.image ?? it.product_image ?? it.thumbnail ?? it.productImage,
     }));
 
     return {
@@ -301,11 +301,11 @@ export async function fetchAllOrders(signal) {
       ? row.items.map((it, idx) => ({
           id: it.product_id ?? idx,
           productId: it.product_id ?? idx,
-          name: it.name ?? it.product_name ?? "Item",
+          name: it.name ?? it.product_name ?? it.title ?? "Item",
           variant: "",
-          qty: it.quantity ?? it.qty ?? 1,
-          price: Number(it.price ?? it.unit_price ?? 0),
-          image: it.image,
+          qty: it.quantity ?? it.qty ?? it.amount ?? 1,
+          price: Number(it.price ?? it.unit_price ?? it.total_price ?? 0),
+          image: it.image ?? it.product_image ?? it.thumbnail ?? it.productImage,
         }))
       : [];
 
