@@ -60,7 +60,7 @@ function ChatBox() {
           <p className="placeholder">Type your question and we’ll jump in to help.</p>
         ) : (
           messages.map((msg) => {
-            const alignment = msg.from === "user" || msg.from === "customer" ? "user" : "assistant";
+            const alignment = msg.from === "user" ? "user" : "assistant";
             return (
               <div key={msg.id} className={`message-row ${alignment}`}>
                 <div className="avatar">{alignment === "assistant" ? "🤝" : "🙂"}</div>
