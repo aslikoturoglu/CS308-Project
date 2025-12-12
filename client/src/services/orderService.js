@@ -41,45 +41,36 @@ export async function fetchUserOrders(userId, signal) {
   const numericId = Number(userId);
   if (!Number.isFinite(numericId)) return [];
 
-  const res = await fetch(`${API_BASE}/api/orders/history?user_id=${encodeURIComponent(numericId)}`, {
-    signal,
-  });
-  const data = await res.json().catch(() => []);
-  if (!res.ok) {
-    const msg = data?.error || "Orders could not be loaded";
+  const historyRes = await fetch(
+    `${API_BASE}/api/orders/history?user_id=${encodeURIComponent(numericId)}`,
+    { signal }
+  );
+  const historyData = await historyRes.json().catch(() => []);
+  if (!historyRes.ok) {
+    const msg = historyData?.error || "Orders could not be loaded";
     throw new Error(msg);
   }
 
-  return (data || []).map((row) => {
-    const status = backendToFrontendStatus(row.delivery_status || row.status);
-    const items = normalizeItems(row).map((it, idx) => ({
-      id: it.product_id ?? it.id ?? idx,
-      productId: it.product_id ?? it.id ?? idx,
-      name: it.name ?? it.product_name ?? it.title ?? "Item",
-      qty: it.quantity ?? it.qty ?? it.amount ?? 1,
-      quantity: it.quantity ?? it.qty ?? it.amount ?? 1,
-      price: Number(it.price ?? it.unit_price ?? it.total_price ?? 0),
-      image: it.image ?? it.product_image ?? it.thumbnail ?? it.productImage,
-    }));
+  const mappedHistory = mapOrderRows(historyData);
+  const hasItems = mappedHistory.some((o) => Array.isArray(o.items) && o.items.length > 0);
+  if (hasItems) return mappedHistory;
 
-    return {
-      id: row.order_id ?? row.id,
-      formattedId: formatOrderId(row.order_id ?? row.id),
-      date: row.order_date || row.date,
-      status,
-      total: Number(row.total_amount ?? row.total ?? 0),
-      address: normalizeAddress(
-        row.shipping_address ??
-          row.shipping_adress /* some payloads use this typo */ ??
-          row.billing_address ??
-          row.address
-      ),
-      shippingCompany: row.shipping_company || "SUExpress",
-      estimate: row.estimate,
-      progressIndex: timelineIndex(status),
-      items,
-    };
-  });
+  // Fallback: some backends only return items on the /orders endpoint.
+  try {
+    const altRes = await fetch(
+      `${API_BASE}/api/orders?user_id=${encodeURIComponent(numericId)}`,
+      { signal }
+    );
+    const altData = await altRes.json().catch(() => []);
+    if (altRes.ok) {
+      const mappedAlt = mapOrderRows(altData);
+      if (mappedAlt.length) return mappedAlt;
+    }
+  } catch {
+    // ignore and return history result
+  }
+
+  return mappedHistory;
 }
 
 function timelineIndex(status) {
@@ -166,6 +157,40 @@ function normalizeItems(row) {
     }
   }
   return [];
+}
+
+function mapOrderRows(data = []) {
+  return (data || []).map((row) => {
+    const status = backendToFrontendStatus(row.delivery_status || row.status || row.order_status);
+    const items = normalizeItems(row).map((it, idx) => ({
+      id: it.product_id ?? it.id ?? idx,
+      productId: it.product_id ?? it.id ?? idx,
+      name: it.name ?? it.product_name ?? it.title ?? "Item",
+      qty: it.quantity ?? it.qty ?? it.amount ?? 1,
+      quantity: it.quantity ?? it.qty ?? it.amount ?? 1,
+      price: Number(it.price ?? it.unit_price ?? it.total_price ?? 0),
+      image: it.image ?? it.product_image ?? it.thumbnail ?? it.productImage,
+      variant: it.variant ?? it.color ?? it.product_color,
+    }));
+
+    return {
+      id: row.order_id ?? row.id,
+      formattedId: formatOrderId(row.order_id ?? row.id),
+      date: row.order_date || row.date,
+      status,
+      total: Number(row.total_amount ?? row.total ?? 0),
+      address: normalizeAddress(
+        row.shipping_address ??
+          row.shipping_adress /* some payloads use this typo */ ??
+          row.billing_address ??
+          row.address
+      ),
+      shippingCompany: row.shipping_company || "SUExpress",
+      estimate: row.estimate,
+      progressIndex: timelineIndex(status),
+      items,
+    };
+  });
 }
 
 export function getOrderById(id) {
