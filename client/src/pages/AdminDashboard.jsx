@@ -1185,6 +1185,16 @@ const primaryBtn = {
   cursor: "pointer",
 };
 
+const secondaryBtn = {
+  border: "1px solid #e5e7eb",
+  background: "#ffffff",
+  color: "#0f172a",
+  padding: "10px 12px",
+  borderRadius: 10,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
 const linkBtn = {
   border: "none",
   background: "none",
