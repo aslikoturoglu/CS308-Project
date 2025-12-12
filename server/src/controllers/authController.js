@@ -219,12 +219,12 @@ export function forgotPassword(req, res) {
         to: email,
         subject: "SUHome Password Reset",
         html: `
-          <p>Merhaba ${user.full_name || ""},</p>
-          <p>Şifreni sıfırlamak için aşağıdaki bağlantıyı kullan:</p>
+          <p>Hello ${user.full_name || ""},</p>
+          <p>You requested to reset your password. Click the link below to set a new one:</p>
           <p><a href="${resetUrl}">${resetUrl}</a></p>
-          <p>Bağlantı 15 dakika geçerlidir.</p>
+          <p>This link is valid for 15 minutes. If you didn’t request this, you can ignore this email.</p>
         `,
-        text: `Şifreni sıfırlamak için: ${resetUrl}`,
+        text: `Reset your password using this link (valid for 15 minutes): ${resetUrl}`,
       }).catch((mailErr) => {
         console.error("Reset email send failed:", mailErr);
       });

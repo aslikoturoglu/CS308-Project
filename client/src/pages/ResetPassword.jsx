@@ -18,23 +18,23 @@ function ResetPassword() {
     setError("");
     setSuccess("");
     if (password.length < 6) {
-      setError("Şifre en az 6 karakter olmalı");
+      setError("Password must be at least 6 characters.");
       return;
     }
     if (password !== confirm) {
-      setError("Şifreler uyuşmuyor");
+      setError("Passwords do not match.");
       return;
     }
 
     setLoading(true);
     submitPasswordReset({ token, password })
       .then(() => {
-        setSuccess("Şifre güncellendi. Giriş ekranına yönlendiriliyorsunuz.");
-        addToast("Şifre başarıyla sıfırlandı", "info");
+        setSuccess("Password updated. Redirecting to login...");
+        addToast("Password reset successfully", "info");
         setTimeout(() => navigate("/login"), 1200);
       })
       .catch((err) => {
-        const msg = err.message || "Sıfırlama başarısız";
+        const msg = err.message || "Reset failed";
         setError(msg);
         addToast(msg, "error");
       })
@@ -65,8 +65,8 @@ function ResetPassword() {
           gap: 12,
         }}
       >
-        <h2 style={{ margin: 0, color: "#0f172a" }}>Şifreyi Sıfırla</h2>
-        <p style={{ margin: 0, color: "#475569" }}>Yeni şifreni belirle.</p>
+        <h2 style={{ margin: 0, color: "#0f172a" }}>Reset Password</h2>
+        <p style={{ margin: 0, color: "#475569" }}>Set a new password.</p>
         {error && <p style={{ color: "#b91c1c", margin: 0 }}>{error}</p>}
         {success && <p style={{ color: "#059669", margin: 0 }}>{success}</p>}
         <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10 }}>
@@ -74,7 +74,7 @@ function ResetPassword() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Yeni şifre"
+            placeholder="New password"
             minLength={6}
             required
             style={{
@@ -87,7 +87,7 @@ function ResetPassword() {
             type="password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
-            placeholder="Şifreyi tekrar et"
+            placeholder="Confirm password"
             minLength={6}
             required
             style={{
@@ -107,11 +107,11 @@ function ResetPassword() {
               borderRadius: 10,
               fontWeight: 700,
               cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.8 : 1,
-            }}
-          >
-            {loading ? "Kaydediliyor..." : "Şifreyi Güncelle"}
-          </button>
+            opacity: loading ? 0.8 : 1,
+          }}
+        >
+          {loading ? "Saving..." : "Update password"}
+        </button>
         </form>
       </div>
     </section>
