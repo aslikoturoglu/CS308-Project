@@ -6,10 +6,11 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load env from server/.env in non-production
-if (process.env.NODE_ENV !== "production") {
+// Load env from server/.env if present (even in production) so Docker builds pick it up
+const envPath = path.resolve(__dirname, "../.env");
+if (fs.existsSync(envPath)) {
   const { config } = await import("dotenv");
-  config({ path: path.resolve(__dirname, "../.env") });
+  config({ path: envPath });
 }
 
 const productRoutes = (await import("./routes/productRoutes.js")).default;
