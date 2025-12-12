@@ -176,7 +176,12 @@ const handleWishlist = (product) => {
     } else if (sort === "price-desc") {
       list = [...list].sort((a, b) => b.price - a.price);
     } else if (sort === "popularity") {
-      list = [...list].sort((a, b) => (b.ratingCount || 0) - (a.ratingCount || 0));
+      // Higher average rating first; tie-breaker: more ratings
+      list = [...list].sort((a, b) => {
+        const avgDiff = (b.averageRating || 0) - (a.averageRating || 0);
+        if (avgDiff !== 0) return avgDiff;
+        return (b.ratingCount || 0) - (a.ratingCount || 0);
+      });
     }
     return list;
   }, [category, products, searchTerm, sort]);
