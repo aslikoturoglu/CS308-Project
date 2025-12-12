@@ -1,13 +1,71 @@
 import { Link, useParams, useLocation } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import { formatOrderId, getOrderById } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
+import { useAuth } from "../context/AuthContext";
 
 function Invoice() {
   const { id } = useParams();
   const location = useLocation();
   const decodedId = decodeURIComponent(id);
   const orderFromState = location.state?.order;
-  const order = orderFromState || getOrderById(decodedId);
+  const { user } = useAuth();
+  const [order, setOrder] = useState(orderFromState || getOrderById(decodedId));
+
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+
+  useEffect(() => {
+    if (orderFromState?.items?.length) return;
+    if (!user?.id) return;
+
+    const controller = new AbortController();
+
+    async function fetchOrder() {
+      try {
+        const res = await fetch(
+          `${API_BASE_URL}/api/orders?user_id=${encodeURIComponent(user.id)}`,
+          { signal: controller.signal }
+        );
+        const data = await res.json().catch(() => []);
+        if (!Array.isArray(data)) return;
+
+        const numericId = String(decodedId).match(/\d+/)?.[0];
+        const match = data.find(
+          (row) =>
+            String(row.order_id ?? row.id) === numericId ||
+            formatOrderId(row.order_id ?? row.id) === formatOrderId(decodedId)
+        );
+
+        if (match) {
+          const items =
+            Array.isArray(match.items) && match.items.length
+              ? match.items.map((it, idx) => ({
+                  id: it.product_id ?? it.id ?? idx,
+                  name: it.name ?? it.product_name ?? "Item",
+                  qty: Number(it.quantity ?? it.qty ?? 1) || 1,
+                  price: Number(it.unit_price ?? it.price ?? 0),
+                }))
+              : [];
+
+          setOrder({
+            ...match,
+            id: match.order_id ?? match.id,
+            order_id: match.order_id ?? match.id,
+            items,
+            total: Number(match.total_amount ?? match.total ?? 0),
+            address: match.shipping_address ?? match.billing_address ?? match.address,
+          });
+        }
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          console.error("Invoice fetch failed", err);
+        }
+      }
+    }
+
+    fetchOrder();
+    return () => controller.abort();
+  }, [API_BASE_URL, decodedId, orderFromState, user]);
 
   if (!order) {
     return (
@@ -30,18 +88,34 @@ function Invoice() {
     );
   }
 
-  const totalItems = order.items.reduce(
-    (sum, item) => sum + Number(item.qty || item.quantity || 1),
+  const normalizedItems = useMemo(
+    () =>
+      Array.isArray(order.items)
+        ? order.items.map((item, idx) => ({
+            id: item.id ?? idx,
+            name: item.name,
+            qty: Number(item.qty ?? item.quantity ?? 1) || 1,
+            price: Number(item.price ?? 0),
+          }))
+        : [],
+    [order.items]
+  );
+
+  const totalItems = normalizedItems.reduce(
+    (sum, item) => sum + Number(item.qty || 1),
     0
   );
   const realOrderId = order.order_id ?? order.id;
 
   const displayId = formatOrderId(order.id);
+  const displayDate = order.date
+    ? new Date(order.date).toLocaleDateString("tr-TR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+    : order.date;
 
-  // 🔹 Backend URL (relative to current origin by default)
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
-
-  // 🔹 PDF indirme / görüntüleme
   const handleDownloadPdf = () => {
     const rawId = realOrderId ?? order.id;
     if (!rawId) return;
@@ -89,7 +163,7 @@ function Invoice() {
             marginTop: 14,
           }}
         >
-          <Info label="Date" value={order.date} />
+          <Info label="Date" value={displayDate} />
           <Info label="Status" value={order.status} />
           <Info label="Items" value={`${totalItems} pcs`} />
           <Info label="Total Paid" value={formatPrice(order.total)} />
@@ -118,7 +192,7 @@ function Invoice() {
             <span>Total</span>
           </div>
           <div style={{ display: "grid", gap: 8, padding: "12px" }}>
-            {order.items.map((item) => (
+            {normalizedItems.map((item) => (
               <div
                 key={item.id}
                 style={{
