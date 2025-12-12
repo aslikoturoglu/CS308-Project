@@ -125,6 +125,31 @@ function Invoice() {
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
+  const formatAddress = (raw) => {
+    if (!raw) return "Saved default address";
+    if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw);
+        return formatAddress(parsed);
+      } catch {
+        return raw;
+      }
+    }
+    if (typeof raw === "object") {
+      const line1 =
+        raw.address ||
+        raw.street ||
+        raw.line1 ||
+        raw.addressLine ||
+        raw.address_line;
+      const city = raw.city || raw.town || raw.state;
+      const postal = raw.postalCode || raw.zip || raw.zipCode;
+      const parts = [line1, city, postal].filter(Boolean);
+      return parts.join(", ") || "Saved default address";
+    }
+    return String(raw);
+  };
+
   return (
     <section style={pageStyle}>
       <div style={{ ...cardStyle, maxWidth: 980 }}>
@@ -237,7 +262,7 @@ function Invoice() {
               Billing & Shipping
             </h3>
             <p style={{ margin: "4px 0", color: "#475569" }}>
-              {order.address ?? "Saved default address"}
+              {formatAddress(order.address)}
             </p>
             <p style={{ margin: "4px 0", color: "#475569" }}>
               Shipping Company: {order.shippingCompany ?? "SUExpress"}
