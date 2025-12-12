@@ -32,28 +32,44 @@ function AdminTopbar() {
         zIndex: 100,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 800 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, fontWeight: 800 }}>
         <img
           src="https://raw.githubusercontent.com/aslikoturoglu/CS308-Project/main/suhome_logo_1.png"
           alt="SUHome"
           style={{ height: 34, objectFit: "contain" }}
         />
-        <span>SUHome Support</span>
+        <span>SUHome</span>
       </div>
-      <button
-        onClick={handleSignOut}
-        style={{
-          background: "rgba(255,255,255,0.12)",
-          color: "white",
-          border: "1px solid rgba(255,255,255,0.25)",
-          borderRadius: 10,
-          padding: "8px 14px",
-          fontWeight: 700,
-          cursor: "pointer",
-        }}
-      >
-        Sign out{user?.email ? ` (${user.email})` : ""}
-      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <button
+          onClick={() => navigate("/products")}
+          style={{
+            background: "rgba(255,255,255,0.16)",
+            color: "white",
+            border: "1px solid rgba(255,255,255,0.25)",
+            borderRadius: 10,
+            padding: "8px 12px",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          Categories
+        </button>
+        <button
+          onClick={handleSignOut}
+          style={{
+            background: "rgba(255,255,255,0.12)",
+            color: "white",
+            border: "1px solid rgba(255,255,255,0.25)",
+            borderRadius: 10,
+            padding: "8px 14px",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          Sign out{user?.email ? ` (${user.email})` : ""}
+        </button>
+      </div>
     </header>
   );
 }
