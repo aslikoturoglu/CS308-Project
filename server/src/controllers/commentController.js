@@ -125,8 +125,7 @@ export async function addComment(req, res) {
        ON DUPLICATE KEY UPDATE 
          rating = VALUES(rating),
          comment_text = VALUES(comment_text),
-         status = 'pending',
-         updated_at = NOW()`,
+         status = 'pending'`,
       [userId, productId, numericRating, trimmedText]
     );
 
@@ -147,13 +146,12 @@ export async function getUserComments(req, res) {
          comment_id,
          product_id,
          rating,
-         comment_text,
-         status,
-         created_at,
-         updated_at
-       FROM comments
-       WHERE user_id = ?
-       ORDER BY created_at DESC`,
+       comment_text,
+       status,
+       created_at
+      FROM comments
+      WHERE user_id = ?
+      ORDER BY created_at DESC`,
       [userId]
     );
     const normalized = rows.map((row) => ({
@@ -178,7 +176,7 @@ export async function approveComment(req, res) {
 
     const result = await runQuery(
       `UPDATE comments
-       SET status = 'approved', approved_at = NOW(), updated_at = NOW()
+       SET status = 'approved'
        WHERE comment_id = ?`,
       [commentId]
     );
@@ -212,7 +210,7 @@ export async function rejectComment(req, res) {
 
     const result = await runQuery(
       `UPDATE comments
-       SET status = 'rejected', updated_at = NOW()
+       SET status = 'rejected', comment_text = NULL, rating = NULL
        WHERE comment_id = ?`,
       [commentId]
     );
