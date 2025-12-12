@@ -267,9 +267,6 @@ function Invoice() {
             <p style={{ margin: "4px 0", color: "#475569" }}>
               Shipping Company: {order.shippingCompany ?? "SUExpress"}
             </p>
-            <p style={{ margin: "4px 0", color: "#475569" }}>
-              Estimate: {order.estimate ?? "TBD"}
-            </p>
           </div>
 
           <div
