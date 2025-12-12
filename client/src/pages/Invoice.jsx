@@ -190,15 +190,9 @@ function Invoice() {
             >
               Download PDF
             </button>
-            <button
-              type="button"
-              style={buttonSecondary}
-              onClick={() =>
-                alert("Email sent placeholder - backend not implemented yet.")
-              }
-            >
-              Email me the invoice
-            </button>
+            <div style={{ ...pillInfo }}>
+              Email has been sent to your address.
+            </div>
           </div>
         </div>
 
@@ -283,14 +277,14 @@ const buttonPrimary = {
   cursor: "pointer",
 };
 
-const buttonSecondary = {
+const pillInfo = {
   border: "1px solid #cbd5e1",
-  background: "white",
+  background: "#f8fafc",
   color: "#0f172a",
   padding: "10px 12px",
   borderRadius: 10,
-  fontWeight: 800,
-  cursor: "pointer",
+  fontWeight: 700,
+  textAlign: "center",
 };
 
 const linkPrimary = {
