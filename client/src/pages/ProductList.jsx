@@ -32,7 +32,7 @@ function ProductList() {
 
   const { addItem, items: cartItems, increment, decrement, removeItem } = useCart();
   const { toggleItem, inWishlist } = useWishlist();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const isProductManager = user?.role === "product_manager";
 
 // 🔹1) cartQty burada
@@ -106,6 +106,14 @@ const handleDecrease = async (p) => {
         : pr
     )
   );
+};
+
+const handleWishlist = (product) => {
+  if (!isAuthenticated) {
+    navigate("/login", { state: { from: location } });
+    return;
+  }
+  toggleItem(product);
 };
 
 
@@ -451,7 +459,7 @@ const handleDecrease = async (p) => {
                         )}
 
                         <button
-                          onClick={() => toggleItem(p)}
+                          onClick={() => handleWishlist(p)}
                           style={{
                             width:48,
                             borderRadius:10,
