@@ -31,8 +31,24 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
 
   const grandTotal = useMemo(() => Number(cartTotal || 0) + shippingFee, [cartTotal, shippingFee]);
 
+  const toTitleCase = (value) =>
+    String(value || "")
+      .split(" ")
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+
   const handleChange = (field) => (event) => {
-    const value = event.target.value;
+    const raw = event.target.value;
+    const titleCaseFields = [
+      "firstName",
+      "lastName",
+      "address",
+      "city",
+      "notes",
+      "cardName",
+    ];
+    const value = titleCaseFields.includes(field) ? toTitleCase(raw) : raw;
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
