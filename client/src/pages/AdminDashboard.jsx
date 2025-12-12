@@ -38,6 +38,8 @@ function AdminDashboard() {
   const [deliveries, setDeliveries] = useState([]);
   const [pendingReviews, setPendingReviews] = useState([]);
   const [chats, setChats] = useState([]);
+  const [chatPage, setChatPage] = useState(1);
+  const CHAT_PAGE_SIZE = 6;
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [replyDraft, setReplyDraft] = useState("");
@@ -1012,7 +1014,9 @@ function AdminDashboard() {
                   {isLoadingChats && <span style={{ color: "#0ea5e9", fontWeight: 700 }}>Syncing…</span>}
                 </div>
                 <div style={{ display: "grid", gap: 12 }}>
-                  {chats.map((chat) => {
+                  {chats
+                    .slice((chatPage - 1) * CHAT_PAGE_SIZE, chatPage * CHAT_PAGE_SIZE)
+                    .map((chat) => {
                     const isActive = chat.id === activeConversationId;
                     return (
                       <button
@@ -1057,6 +1061,45 @@ function AdminDashboard() {
                       </button>
                     );
                   })}
+                  {chats.length > CHAT_PAGE_SIZE && (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+                      <button
+                        type="button"
+                        onClick={() => setChatPage((p) => Math.max(1, p - 1))}
+                        disabled={chatPage === 1}
+                        style={{
+                          padding: "6px 12px",
+                          borderRadius: 10,
+                          border: "1px solid #e5e7eb",
+                          background: chatPage === 1 ? "#f8fafc" : "white",
+                          cursor: chatPage === 1 ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        ‹ Prev
+                      </button>
+                      <span style={{ color: "#475569", fontWeight: 600 }}>
+                        Page {chatPage} / {Math.max(1, Math.ceil(chats.length / CHAT_PAGE_SIZE))}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setChatPage((p) => Math.min(Math.ceil(chats.length / CHAT_PAGE_SIZE), p + 1))
+                        }
+                        disabled={chatPage >= Math.ceil(chats.length / CHAT_PAGE_SIZE)}
+                        style={{
+                          padding: "6px 12px",
+                          borderRadius: 10,
+                          border: "1px solid #e5e7eb",
+                          background:
+                            chatPage >= Math.ceil(chats.length / CHAT_PAGE_SIZE) ? "#f8fafc" : "white",
+                          cursor:
+                            chatPage >= Math.ceil(chats.length / CHAT_PAGE_SIZE) ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        Next ›
+                      </button>
+                    </div>
+                  )}
                   {!chats.length && !isLoadingChats && (
                     <p style={{ margin: 0, color: "#6b7280" }}>No active chats yet.</p>
                   )}
