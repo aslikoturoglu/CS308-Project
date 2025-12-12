@@ -237,14 +237,14 @@ export function getOrderHistory(req, res) {
     const orderIds = rows.map((r) => r.order_id);
     if (!orderIds.length) return res.json([]);
 
-    const itemSql = `
+      const itemSql = `
       SELECT 
         oi.order_id,
         oi.product_id,
         oi.quantity,
         oi.unit_price,
-        COALESCE(p.product_name, p.product_title, p.name) AS product_name,
-        COALESCE(p.product_image, p.image, p.thumbnail) AS product_image
+        COALESCE(p.product_name, CONCAT('Product #', oi.product_id)) AS product_name,
+        p.product_image
       FROM order_items oi
       LEFT JOIN products p ON p.product_id = oi.product_id
       WHERE oi.order_id IN (?)
@@ -318,8 +318,8 @@ export function getAllOrders(req, res) {
       oi.product_id,
       oi.quantity,
       oi.unit_price,
-      COALESCE(p.product_name, p.product_title, p.name) AS product_name,
-      COALESCE(p.product_image, p.image, p.thumbnail) AS product_image
+      COALESCE(p.product_name, CONCAT('Product #', oi.product_id)) AS product_name,
+      p.product_image
     FROM order_items oi
     LEFT JOIN products p ON p.product_id = oi.product_id
   `;
