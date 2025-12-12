@@ -1,5 +1,6 @@
 // server/src/controllers/orderController.js
 import db from "../db.js";
+import { sendInvoiceEmailForOrder } from "./invoiceController.js";
 
 /**
  * POST /orders/checkout
@@ -121,6 +122,11 @@ export function checkout(req, res) {
                     if (err) {
                       console.error("Sepet temizlenemedi:", err);
                     }
+
+                    // Invoice email (fire-and-forget)
+                    sendInvoiceEmailForOrder(order_id).catch((e) =>
+                      console.error("Invoice email error:", e)
+                    );
 
                     return res.json({
                       success: true,
