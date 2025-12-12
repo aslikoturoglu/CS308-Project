@@ -41,36 +41,29 @@ export async function fetchUserOrders(userId, signal) {
   const numericId = Number(userId);
   if (!Number.isFinite(numericId)) return [];
 
-  const historyRes = await fetch(
-    `${API_BASE}/api/orders/history?user_id=${encodeURIComponent(numericId)}`,
-    { signal }
-  );
-  const historyData = await historyRes.json().catch(() => []);
-  if (!historyRes.ok) {
-    const msg = historyData?.error || "Orders could not be loaded";
+  // Prefer the orders endpoint (includes items); fall back to history.
+  const primaryUrl = `${API_BASE}/api/orders?user_id=${encodeURIComponent(numericId)}`;
+  const fallbackUrl = `${API_BASE}/api/orders/history?user_id=${encodeURIComponent(numericId)}`;
+
+  const tryFetch = async (url) => {
+    const res = await fetch(url, { signal });
+    const data = await res.json().catch(() => []);
+    return { ok: res.ok, data };
+  };
+
+  const primary = await tryFetch(primaryUrl);
+  if (primary.ok && Array.isArray(primary.data)) {
+    const mapped = mapOrderRows(primary.data);
+    const hasItems = mapped.some((o) => Array.isArray(o.items) && o.items.length > 0);
+    if (mapped.length && hasItems) return mapped;
+  }
+
+  const fallback = await tryFetch(fallbackUrl);
+  if (!fallback.ok) {
+    const msg = fallback.data?.error || "Orders could not be loaded";
     throw new Error(msg);
   }
-
-  const mappedHistory = mapOrderRows(historyData);
-  const hasItems = mappedHistory.some((o) => Array.isArray(o.items) && o.items.length > 0);
-  if (hasItems) return mappedHistory;
-
-  // Fallback: some backends only return items on the /orders endpoint.
-  try {
-    const altRes = await fetch(
-      `${API_BASE}/api/orders?user_id=${encodeURIComponent(numericId)}`,
-      { signal }
-    );
-    const altData = await altRes.json().catch(() => []);
-    if (altRes.ok) {
-      const mappedAlt = mapOrderRows(altData);
-      if (mappedAlt.length) return mappedAlt;
-    }
-  } catch {
-    // ignore and return history result
-  }
-
-  return mappedHistory;
+  return mapOrderRows(fallback.data);
 }
 
 function timelineIndex(status) {
