@@ -46,3 +46,10 @@ export async function sendSupportMessage({ conversationId, agentId, text }) {
   });
   return handleResponse(res);
 }
+
+export async function deleteConversation(conversationId) {
+  const res = await fetch(`${SUPPORT_BASE}/conversations/${conversationId}`, {
+    method: "DELETE",
+  });
+  return handleResponse(res);
+}

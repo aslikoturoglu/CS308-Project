@@ -6,6 +6,7 @@ import {
   fetchSupportInbox,
   fetchSupportMessages,
   sendSupportMessage,
+  deleteConversation as deleteConversationApi,
 } from "../services/supportService";
 import {
   advanceOrderStatus,
@@ -152,6 +153,24 @@ function AdminDashboard() {
     const interval = setInterval(() => fetchThread({ showSpinner: false }), 3000);
     return () => clearInterval(interval);
   }, [activeConversationId, addToast]);
+
+  const handleDeleteConversation = async (conversationId) => {
+    if (!conversationId) return;
+    if (!window.confirm("Delete this conversation and all its messages?")) return;
+    try {
+      await deleteConversationApi(conversationId);
+      setChats((prev) => prev.filter((c) => c.id !== conversationId));
+      if (activeConversationId === conversationId) {
+        const remaining = chats.filter((c) => c.id !== conversationId);
+        setActiveConversationId(remaining[0]?.id ?? null);
+        setChatMessages([]);
+      }
+      addToast("Conversation deleted", "info");
+    } catch (error) {
+      console.error("Conversation delete failed", error);
+      addToast("Conversation could not be deleted", "error");
+    }
+  };
 
   const permittedSections = rolesToSections[user?.role] || [];
   useEffect(() => {
@@ -1058,6 +1077,38 @@ function AdminDashboard() {
                         <small style={{ color: "#6b7280" }}>
                           Last update: {new Date(chat.last_message_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
                         </small>
+                        <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectConversation(chat.id)}
+                            style={{
+                              padding: "6px 10px",
+                              borderRadius: 8,
+                              border: "1px solid #e5e7eb",
+                              background: "white",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Open
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteConversation(chat.id);
+                            }}
+                            style={{
+                              padding: "6px 10px",
+                              borderRadius: 8,
+                              border: "1px solid #fca5a5",
+                              background: "#fef2f2",
+                              color: "#b91c1c",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </button>
                     );
                   })}
