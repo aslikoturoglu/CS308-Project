@@ -41,3 +41,28 @@ export async function hasDelivered(userId, productId, signal) {
   const data = await res.json().catch(() => ({ canReview: false }));
   return { delivered: !!data.canReview };
 }
+
+export async function fetchUserComments(userId, signal) {
+  if (!userId) return [];
+  const res = await fetch(`${API_BASE}/api/comments/user?userId=${encodeURIComponent(userId)}`, {
+    signal,
+  });
+  const data = await res.json().catch(() => []);
+  if (!res.ok) {
+    console.error("Failed to load user comments", data);
+    return [];
+  }
+  return Array.isArray(data) ? data : [];
+}
+
+export async function approveComment(commentId) {
+  const res = await fetch(`${API_BASE}/api/comments/${commentId}/approve`, { method: "POST" });
+  if (!res.ok) throw new Error("Approve failed");
+  return res.json();
+}
+
+export async function rejectComment(commentId) {
+  const res = await fetch(`${API_BASE}/api/comments/${commentId}/reject`, { method: "POST" });
+  if (!res.ok) throw new Error("Reject failed");
+  return res.json();
+}

@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { addReview, getReviewMap } from "../services/localStorageHelpers";
+import {
+  addComment as addCommentApi,
+  fetchUserComments,
+} from "../services/commentService";
 import { formatOrderId, fetchUserOrders } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
 import { useAuth } from "../context/AuthContext";
@@ -16,7 +19,7 @@ const statusPills = {
 
 function OrderHistory() {
   const { user } = useAuth();
-  const [filter, setFilter] = useState("All");
+  const [filter, setFilter] = useState("Delivered");
   const [orders, setOrders] = useState([]);
   const [reviews, setReviews] = useState({});
 
@@ -29,10 +32,20 @@ function OrderHistory() {
           console.error("Order history load failed", err);
           setOrders([]);
         });
+      fetchUserComments(user.id, controller.signal)
+        .then((data) => {
+          const map = {};
+          data.forEach((row) => {
+            map[row.product_id] = map[row.product_id] || [];
+            map[row.product_id].push(row);
+          });
+          setReviews(map);
+        })
+        .catch(() => setReviews({}));
     } else {
       setOrders([]);
+      setReviews({});
     }
-    setReviews(getReviewMap());
     return () => controller.abort();
   }, [user]);
 
@@ -50,15 +63,44 @@ function OrderHistory() {
     [orders]
   );
 
-  const handleReviewSubmit = (productId, rating, comment, canReview) => {
+  const handleReviewSubmit = async (productId, rating, comment, canReview) => {
     if (!canReview) {
       alert("You can only review delivered items.");
       return;
     }
-    const displayName = user?.name?.split(" ")[0] || "User";
-    const list = addReview(productId, rating, comment, displayName);
-    setReviews((prev) => ({ ...prev, [productId]: list }));
-    alert("Thanks for sharing your feedback!");
+    if (!user?.id) {
+      alert("Please sign in.");
+      return;
+    }
+
+    try {
+      await addCommentApi({
+        userId: user.id,
+        productId,
+        rating,
+        text: comment,
+      });
+
+      // Refresh user comments for this product
+      setReviews((prev) => {
+        const entry = prev[productId] || [];
+        const updated = [
+          ...entry,
+          {
+            product_id: productId,
+            rating,
+            comment_text: comment,
+            status: "pending",
+            created_at: new Date().toISOString(),
+          },
+        ];
+        return { ...prev, [productId]: updated };
+      });
+
+      alert("Your review was sent for approval (status: in review).");
+    } catch (err) {
+      alert(err.message || "Review could not be submitted.");
+    }
   };
 
   return (
@@ -254,7 +296,9 @@ function OrderHistory() {
                       const productId = item.productId ?? item.id;
                       const userReviews = reviews[productId] ?? [];
                       const latestReview = userReviews[userReviews.length - 1];
-                      const approvedReview = [...userReviews].reverse().find((r) => r.approved);
+                      const approvedReview = [...userReviews]
+                        .reverse()
+                        .find((r) => (r.status ?? "approved") === "approved" || r.approved);
 
                       return (
                         <div
@@ -328,18 +372,22 @@ function OrderHistory() {
                                     <p style={{ margin: 0, color: "#0f172a", fontWeight: 700 }}>
                                       Your rating: {latestReview.rating}/5
                                     </p>
-                                    {approvedReview?.comment ? (
+                                    {approvedReview?.comment_text ? (
                                       <p style={{ margin: "4px 0 0", color: "#475569" }}>
-                                        {approvedReview.comment}
+                                        {approvedReview.comment_text}
                                       </p>
-                                    ) : latestReview.comment ? (
+                                    ) : latestReview.status === "rejected" ? (
+                                      <p style={{ margin: "4px 0 0", color: "#b91c1c" }}>
+                                        Comment rejected by manager.
+                                      </p>
+                                    ) : latestReview.comment_text ? (
                                       <p style={{ margin: "4px 0 0", color: "#94a3b8" }}>
                                         Comment pending manager approval
                                       </p>
                                     ) : null}
                                   </div>
                                   <span style={{ color: "#94a3b8", fontSize: "0.9rem" }}>
-                                    {new Date(latestReview.date).toLocaleDateString()}
+                                    {new Date(latestReview.created_at ?? latestReview.date).toLocaleDateString()}
                                   </span>
                                 </div>
                               )}

@@ -35,10 +35,11 @@ export async function listComments(req, res) {
          c.rating,
          c.comment_text,
          c.created_at,
+         c.status,
          u.full_name AS user_name
        FROM comments c
        LEFT JOIN users u ON u.user_id = c.user_id
-       WHERE c.product_id = ?
+       WHERE c.product_id = ? AND (c.status IS NULL OR c.status = 'approved')
        ORDER BY c.created_at DESC`,
       [productId]
     );
@@ -51,6 +52,7 @@ export async function listComments(req, res) {
       comment_text: row.comment_text || "",
       created_at: row.created_at,
       display_name: row.user_name || `User ${row.user_id}`,
+      status: row.status || "approved",
     }));
 
     return res.json(normalized);
@@ -82,15 +84,81 @@ export async function addComment(req, res) {
     }
 
     await runQuery(
-      `INSERT INTO comments (user_id, product_id, rating, comment_text, created_at)
-       VALUES (?, ?, ?, ?, NOW())
-       ON DUPLICATE KEY UPDATE rating = VALUES(rating), comment_text = VALUES(comment_text), updated_at = NOW()`,
+      `INSERT INTO comments (user_id, product_id, rating, comment_text, status, created_at)
+       VALUES (?, ?, ?, ?, 'pending', NOW())
+       ON DUPLICATE KEY UPDATE 
+         rating = VALUES(rating),
+         comment_text = VALUES(comment_text),
+         status = 'pending',
+         updated_at = NOW()`,
       [userId, productId, rating, text]
     );
 
-    return res.status(201).json({ success: true });
+    return res.status(201).json({ success: true, status: "pending" });
   } catch (err) {
     console.error("addComment error:", err);
     return res.status(500).json({ message: "Comment save failed" });
+  }
+}
+
+export async function getUserComments(req, res) {
+  const userId = req.user?.user_id ?? Number(req.query.userId);
+  if (!userId) return res.status(400).json({ message: "userId is required" });
+
+  try {
+    const rows = await runQuery(
+      `SELECT 
+         comment_id,
+         product_id,
+         rating,
+         comment_text,
+         status,
+         created_at,
+         updated_at
+       FROM comments
+       WHERE user_id = ?
+       ORDER BY created_at DESC`,
+      [userId]
+    );
+    return res.json(rows);
+  } catch (err) {
+    console.error("getUserComments error:", err);
+    return res.status(500).json({ message: "User comments fetch failed" });
+  }
+}
+
+export async function approveComment(req, res) {
+  const { commentId } = req.params;
+  if (!commentId) return res.status(400).json({ message: "commentId is required" });
+
+  try {
+    await runQuery(
+      `UPDATE comments
+       SET status = 'approved', approved_at = NOW(), updated_at = NOW()
+       WHERE comment_id = ?`,
+      [commentId]
+    );
+    return res.json({ success: true, status: "approved" });
+  } catch (err) {
+    console.error("approveComment error:", err);
+    return res.status(500).json({ message: "Approve failed" });
+  }
+}
+
+export async function rejectComment(req, res) {
+  const { commentId } = req.params;
+  if (!commentId) return res.status(400).json({ message: "commentId is required" });
+
+  try {
+    await runQuery(
+      `UPDATE comments
+       SET status = 'rejected', comment_text = NULL, rating = NULL, updated_at = NOW()
+       WHERE comment_id = ?`,
+      [commentId]
+    );
+    return res.json({ success: true, status: "rejected" });
+  } catch (err) {
+    console.error("rejectComment error:", err);
+    return res.status(500).json({ message: "Reject failed" });
   }
 }
