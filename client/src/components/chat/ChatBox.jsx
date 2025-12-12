@@ -60,7 +60,7 @@ function ChatBox() {
           <p className="placeholder">Type your question and we’ll jump in to help.</p>
         ) : (
           messages.map((msg) => (
-            <div key={msg.id} className={`message-row ${msg.from}`}>
+            <div key={msg.id} className={`message-row ${msg.from === "customer" ? "user" : "assistant"}`}>
               <div className="avatar">{msg.from === "assistant" ? "🤝" : "🙂"}</div>
               <div className="bubble">
                 <p>{msg.text}</p>
