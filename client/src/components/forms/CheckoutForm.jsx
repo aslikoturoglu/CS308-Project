@@ -40,14 +40,8 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
 
   const handleChange = (field) => (event) => {
     const raw = event.target.value;
-    const titleCaseFields = [
-      "firstName",
-      "lastName",
-      "address",
-      "city",
-      "notes",
-      "cardName",
-    ];
+    // Keep light normalization on names/city; leave address/card/notes as-is so spaces are preserved.
+    const titleCaseFields = ["firstName", "lastName", "city"];
     const value = titleCaseFields.includes(field) ? toTitleCase(raw) : raw;
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
