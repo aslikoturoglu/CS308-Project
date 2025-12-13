@@ -28,7 +28,7 @@ async function refreshProductRating(productId) {
        COALESCE(AVG(rating), 0) AS avg_rating,
        COUNT(*) AS rating_count
      FROM comments
-     WHERE product_id = ? AND rating IS NOT NULL AND (status IS NULL OR status != 'rejected')`,
+     WHERE product_id = ? AND rating IS NOT NULL`,
     [productId]
   );
 
@@ -212,7 +212,7 @@ export async function rejectComment(req, res) {
 
     const result = await runQuery(
       `UPDATE comments
-       SET status = 'rejected', comment_text = NULL, rating = NULL
+       SET status = 'rejected', updated_at = NOW()
        WHERE comment_id = ?`,
       [commentId]
     );
