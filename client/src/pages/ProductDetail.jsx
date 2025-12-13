@@ -79,6 +79,15 @@ function ProductDetail() {
     loadComments();
   }, [productId, user?.id]);
 
+  async function refreshProductMeta() {
+    try {
+      const updated = await fetchProductById(productId);
+      setProduct(updated);
+    } catch (err) {
+      console.error("Product refresh failed", err);
+    }
+  }
+
   /* ---------------------------
      CHECK IF USER HAS DELIVERY
   --------------------------- */
@@ -166,6 +175,8 @@ function ProductDetail() {
       } else {
         alert("Your comment has been submitted for approval.");
       }
+
+      await refreshProductMeta();
 
       // update product rating locally if backend sent aggregates
       if (response?.averageRating !== undefined || response?.ratingCount !== undefined) {
@@ -373,6 +384,7 @@ function ProductDetail() {
           const createdLabel = c.created_at
             ? new Date(c.created_at).toLocaleString()
             : "";
+          const hasText = (c.comment_text || "").trim().length > 0;
 
           return (
             <div key={c.comment_id} style={reviewBlock}>
@@ -386,19 +398,21 @@ function ProductDetail() {
                 }}
               >
                 <strong>{c.display_name || "Verified buyer"}</strong>
-                <span
-                  style={{
-                    padding: "4px 10px",
-                    borderRadius: 12,
-                    backgroundColor: `${statusColor}1a`,
-                    color: statusColor,
-                    fontWeight: 700,
-                    fontSize: "0.85rem",
-                    textTransform: "capitalize",
-                  }}
-                >
-                  {status}
-                </span>
+                {hasText && (
+                  <span
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 12,
+                      backgroundColor: `${statusColor}1a`,
+                      color: statusColor,
+                      fontWeight: 700,
+                      fontSize: "0.85rem",
+                      textTransform: "capitalize",
+                    }}
+                  >
+                    {status}
+                  </span>
+                )}
               </div>
 
               <div style={stars}>
