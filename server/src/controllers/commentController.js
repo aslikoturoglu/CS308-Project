@@ -104,6 +104,7 @@ export async function addComment(req, res) {
 
   const numericRating = Number(rating);
   const rawText = (text ?? "").toString();
+  const status = rawText.trim() === "" ? "approved" : "pending";
 
   if (!userId || !productId || !numericRating) {
     return res.status(400).json({ message: "Missing fields" });
@@ -121,17 +122,19 @@ export async function addComment(req, res) {
 
     await runQuery(
       `INSERT INTO comments (user_id, product_id, rating, comment_text, status, created_at)
-       VALUES (?, ?, ?, ?, 'pending', NOW())
+       VALUES (?, ?, ?, ?, ?, NOW())
        ON DUPLICATE KEY UPDATE 
          rating = VALUES(rating),
          comment_text = VALUES(comment_text),
-         status = 'pending'`,
-      [userId, productId, numericRating, rawText]
+         status = VALUES(status)`,
+      [userId, productId, numericRating, rawText, status]
     );
 
-    await refreshProductRating(productId);
+    const agg = await refreshProductRating(productId);
 
-    return res.status(201).json({ success: true, status: "pending" });
+    return res
+      .status(201)
+      .json({ success: true, status, averageRating: agg.averageRating, ratingCount: agg.ratingCount });
   } catch (err) {
     console.error("addComment error:", err);
     return res.status(500).json({ message: "Comment save failed" });

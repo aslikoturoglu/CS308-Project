@@ -153,7 +153,7 @@ function ProductDetail() {
     setSubmitting(true);
 
     try {
-      await addComment({
+      const response = await addComment({
         userId: user.id,
         productId,
         rating: ratingInput,
@@ -161,7 +161,30 @@ function ProductDetail() {
         name: user.name,
       });
 
-      alert("Your comment has been submitted for approval.");
+      if (response?.status === "approved") {
+        alert("Your rating has been submitted and applied.");
+      } else {
+        alert("Your comment has been submitted for approval.");
+      }
+
+      // update product rating locally if backend sent aggregates
+      if (response?.averageRating !== undefined || response?.ratingCount !== undefined) {
+        setProduct((prev) =>
+          prev
+            ? {
+                ...prev,
+                averageRating:
+                  response.averageRating !== undefined
+                    ? Number(response.averageRating)
+                    : prev.averageRating,
+                ratingCount:
+                  response.ratingCount !== undefined
+                    ? Number(response.ratingCount)
+                    : prev.ratingCount,
+              }
+            : prev
+        );
+      }
 
       // reset form
       setRatingInput(5);
@@ -400,67 +423,6 @@ function ProductDetail() {
           );
         })}
 
-        {!isProductManager && (
-          <div
-            style={{
-              marginTop: 16,
-              padding: 14,
-              borderRadius: 12,
-              border: "1px solid #e2e8f0",
-              background: "#f8fafc",
-              display: "grid",
-              gap: 10,
-            }}
-          >
-            <h3 style={{ margin: 0, color: "#0f172a" }}>Leave a review</h3>
-            <p style={{ margin: 0, color: "#475569" }}>
-              Only delivered orders can create or update reviews. Status will be pending until a product manager approves.
-            </p>
-
-            <label style={{ fontWeight: 700, color: "#0f172a" }}>
-              Rating
-              <select
-                value={ratingInput}
-                onChange={(e) => setRatingInput(Number(e.target.value))}
-                disabled={!delivered || submitting}
-                style={select}
-              >
-                {[5, 4, 3, 2, 1].map((r) => (
-                  <option key={r} value={r}>
-                    {r} / 5
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <textarea
-              style={textarea}
-              placeholder="Share your experience with this product"
-              value={commentInput}
-              disabled={!delivered || submitting}
-              onChange={(e) => setCommentInput(e.target.value)}
-            />
-
-            <button
-              type="button"
-              onClick={handleSubmitComment}
-              disabled={submitting || !delivered}
-              style={{
-                ...submitBtn,
-                opacity: submitting || !delivered ? 0.6 : 1,
-                cursor: submitting || !delivered ? "not-allowed" : "pointer",
-              }}
-            >
-              {submitting ? "Sending..." : "Submit for approval"}
-            </button>
-
-            {!delivered && (
-              <small style={{ color: "#b91c1c" }}>
-                You can leave a review once your delivery status is delivered.
-              </small>
-            )}
-          </div>
-        )}
       </section>
     </section>
   );

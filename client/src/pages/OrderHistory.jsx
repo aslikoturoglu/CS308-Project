@@ -74,7 +74,7 @@ function OrderHistory() {
     }
 
     try {
-      await addCommentApi({
+      const response = await addCommentApi({
         userId: user.id,
         productId,
         rating,
@@ -90,14 +90,18 @@ function OrderHistory() {
             product_id: productId,
             rating,
             comment_text: comment,
-            status: "pending",
+            status: response?.status || "pending",
             created_at: new Date().toISOString(),
           },
         ];
         return { ...prev, [productId]: updated };
       });
 
-      alert("Your review was sent for approval (status: in review).");
+      if (response?.status === "approved") {
+        alert("Your rating was applied immediately.");
+      } else {
+        alert("Your review was sent for approval (status: in review).");
+      }
     } catch (err) {
       alert(err.message || "Review could not be submitted.");
     }
