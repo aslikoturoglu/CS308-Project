@@ -51,6 +51,9 @@ export async function listComments(req, res) {
   if (!productId) return res.status(400).json({ message: "productId is required" });
 
   try {
+    const params = [productId];
+    const includeOwn = Number.isFinite(requesterId) && requesterId > 0;
+
     const rows = await runQuery(
       `SELECT 
          c.comment_id,
@@ -67,10 +70,10 @@ export async function listComments(req, res) {
          AND (
            c.status IS NULL
            OR c.status = 'approved'
-           OR (c.user_id = ?)
+           ${includeOwn ? "OR c.user_id = ?" : ""}
          )
        ORDER BY c.created_at DESC`,
-      [productId, requesterId ?? -1]
+      includeOwn ? [...params, requesterId] : params
     );
 
     const normalized = rows.map((row) => ({
