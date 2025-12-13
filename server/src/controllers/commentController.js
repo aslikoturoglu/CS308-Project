@@ -104,7 +104,7 @@ export async function addComment(req, res) {
 
   const numericRating = Number(rating);
   const rawText = (text ?? "").toString();
-  const status = rawText.trim() === "" ? "approved" : "pending";
+  const status = "pending";
 
   if (!userId || !productId || !numericRating) {
     return res.status(400).json({ message: "Missing fields" });
@@ -126,7 +126,7 @@ export async function addComment(req, res) {
        ON DUPLICATE KEY UPDATE 
          rating = VALUES(rating),
          comment_text = VALUES(comment_text),
-         status = IF(status = 'approved', 'approved', VALUES(status))`,
+         status = 'pending'`,
       [userId, productId, numericRating, rawText, status]
     );
 
