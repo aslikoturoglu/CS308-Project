@@ -14,7 +14,7 @@ export function getAllProducts(req, res) {
         AVG(rating)   AS avg_rating,
         COUNT(*)      AS rating_count
       FROM comments
-      WHERE status = 'approved' AND rating IS NOT NULL
+      WHERE rating IS NOT NULL AND (status IS NULL OR status <> 'rejected')
       GROUP BY product_id
     ) stats ON stats.product_id = p.product_id
   `;
@@ -114,7 +114,7 @@ export function getProductById(req, res) {
         AVG(rating)   AS avg_rating,
         COUNT(*)      AS rating_count
       FROM comments
-      WHERE status = 'approved' AND rating IS NOT NULL
+      WHERE rating IS NOT NULL AND (status IS NULL OR status <> 'rejected')
       GROUP BY product_id
     ) stats ON stats.product_id = p.product_id
     WHERE p.product_id = ?
