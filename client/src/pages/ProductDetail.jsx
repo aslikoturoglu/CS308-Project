@@ -149,7 +149,6 @@ function ProductDetail() {
   const handleSubmitComment = async () => {
     if (!user) return alert("You must log in to leave a review.");
     if (!delivered) return alert("You can only comment after delivery.");
-    if (!commentInput.trim()) return alert("Please write a comment.");
 
     setSubmitting(true);
 

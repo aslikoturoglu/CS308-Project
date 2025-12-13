@@ -28,20 +28,21 @@ async function refreshProductRating(productId) {
        COALESCE(AVG(rating), 0) AS avg_rating,
        COUNT(*) AS rating_count
      FROM comments
-     WHERE product_id = ? AND status = 'approved' AND rating IS NOT NULL`,
+     WHERE product_id = ? AND rating IS NOT NULL AND (status IS NULL OR status != 'rejected')`,
     [productId]
   );
 
   const avg = Number(row?.avg_rating ?? 0);
+  const count = Number(row?.rating_count ?? 0);
   // Update only existing column to avoid schema mismatches
   await runQuery(
     `UPDATE products
-     SET product_rating = ?
+     SET product_rating = ?, rating_count = ?
      WHERE product_id = ?`,
-    [avg, productId]
+    [avg, count, productId]
   );
 
-  return { averageRating: avg };
+  return { averageRating: avg, ratingCount: count };
 }
 
 export async function listComments(req, res) {
@@ -102,9 +103,9 @@ export async function addComment(req, res) {
   const { productId, rating, text } = req.body;
 
   const numericRating = Number(rating);
-  const trimmedText = (text || "").toString().trim();
+  const rawText = (text ?? "").toString();
 
-  if (!userId || !productId || !numericRating || !trimmedText) {
+  if (!userId || !productId || !numericRating) {
     return res.status(400).json({ message: "Missing fields" });
   }
 
@@ -125,8 +126,10 @@ export async function addComment(req, res) {
          rating = VALUES(rating),
          comment_text = VALUES(comment_text),
          status = 'pending'`,
-      [userId, productId, numericRating, trimmedText]
+      [userId, productId, numericRating, rawText]
     );
+
+    await refreshProductRating(productId);
 
     return res.status(201).json({ success: true, status: "pending" });
   } catch (err) {
