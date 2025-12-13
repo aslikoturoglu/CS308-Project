@@ -64,7 +64,11 @@ export async function listComments(req, res) {
        FROM comments c
        LEFT JOIN users u ON u.user_id = c.user_id
        WHERE c.product_id = ?
-         AND (c.status IS NULL OR c.status <> 'rejected')
+         AND (
+           c.status IS NULL
+           OR c.status = 'approved'
+           OR (c.user_id = ?)
+         )
        ORDER BY c.created_at DESC`,
       [productId, requesterId ?? -1]
     );
@@ -122,7 +126,7 @@ export async function addComment(req, res) {
        ON DUPLICATE KEY UPDATE 
          rating = VALUES(rating),
          comment_text = VALUES(comment_text),
-         status = VALUES(status)`,
+         status = IF(status = 'approved', 'approved', VALUES(status))`,
       [userId, productId, numericRating, rawText, status]
     );
 

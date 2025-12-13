@@ -386,24 +386,24 @@ function ProductDetail() {
             : "";
           const hasText = (c.comment_text || "").trim().length > 0;
 
-          return (
-            <div key={c.comment_id} style={reviewBlock}>
-              <div
+      return (
+        <div key={c.comment_id} style={reviewBlock}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 10,
+              marginBottom: 6,
+            }}
+          >
+            <strong>{c.display_name || "Verified buyer"}</strong>
+            {hasText && user?.id === c.user_id && status !== "approved" && (
+              <span
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 10,
-                  marginBottom: 6,
-                }}
-              >
-                <strong>{c.display_name || "Verified buyer"}</strong>
-                {hasText && (
-                  <span
-                    style={{
-                      padding: "4px 10px",
-                      borderRadius: 12,
-                      backgroundColor: `${statusColor}1a`,
+                  padding: "4px 10px",
+                  borderRadius: 12,
+                  backgroundColor: `${statusColor}1a`,
                       color: statusColor,
                       fontWeight: 700,
                       fontSize: "0.85rem",
