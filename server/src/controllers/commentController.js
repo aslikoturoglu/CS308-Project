@@ -218,7 +218,7 @@ export async function rejectComment(req, res) {
 
     const result = await runQuery(
       `UPDATE comments
-       SET status = 'rejected', updated_at = NOW()
+       SET status = 'rejected'
        WHERE comment_id = ?`,
       [commentId]
     );
