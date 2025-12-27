@@ -261,22 +261,22 @@ function ProductDetail() {
         </Link>
       </div>
 
-      {/* CONTENT GRID */}
+      {/* CONTENT */}
       <div style={contentGrid}>
-        {/* IMAGE */}
+        {/* 🔴 CHANGE — SINGLE IMAGE + ZOOM */}
         <div style={imageCard}>
-          <img src={activeImage} alt="" style={mainImage} />
-          <div style={thumbRow}>
-            {gallery.map((img) => (
-              <button
-                key={img}
-                onClick={() => setActiveImage(img)}
-                style={img === activeImage ? activeThumb : thumb}
-              >
-                <img src={img} style={thumbImg} />
-              </button>
-            ))}
-          </div>
+          <img
+            src={product.image}
+            alt={product.name}
+            style={mainImage}
+            onMouseMove={(e) => {
+              const { left, top, width, height } =
+                e.target.getBoundingClientRect();
+              const x = ((e.clientX - left) / width) * 100;
+              const y = ((e.clientY - top) / height) * 100;
+              e.target.style.transformOrigin = `${x}% ${y}%`;
+            }}
+          />
         </div>
 
         {/* PRODUCT INFO */}
@@ -451,9 +451,7 @@ function Info({ label, value }) {
   );
 }
 
-/* ---------------------------
-   STYLES (FULL, NO CUTS)
---------------------------- */
+
 const pageStyle = {
   padding: "40px 24px",
   background: "#f5f7fb",
@@ -485,11 +483,13 @@ const imageCard = {
   padding: 16,
   borderRadius: 12,
   border: "1px solid #e5e7eb",
+  overflow: "hidden",
 };
 
 const mainImage = {
   width: "100%",
   borderRadius: 12,
+  transition: "transform 0.2s ease",
 };
 
 const thumbRow = {
