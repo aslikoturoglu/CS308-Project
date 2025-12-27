@@ -254,24 +254,23 @@ function ProductDetail() {
         {/* 🔴 CHANGE — SINGLE IMAGE + ZOOM */}
         <div style={imageCard}>
         <img
-  src={product.image}
-  alt={product.name}
-  style={mainImage}
-  onMouseEnter={(e) => {
-    e.currentTarget.style.transform = "scale(2)"; // ✅ ZOOM burada
-  }}
-  onMouseLeave={(e) => {
-    e.currentTarget.style.transform = "scale(1)";
-    e.currentTarget.style.transformOrigin = "center center";
-  }}
-  onMouseMove={(e) => {
-    const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - left) / width) * 100;
-    const y = ((e.clientY - top) / height) * 100;
-    e.currentTarget.style.transformOrigin = `${x}% ${y}%`; // ✅ mouse neredeyse orası zoom
-  }}
-/>
-
+          src={product.image}
+          alt={product.name}
+          style={mainImage}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(2)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.transformOrigin = "center center";
+          }}
+          onMouseMove={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            e.currentTarget.style.transformOrigin = `${x}% ${y}%`;
+          }}
+        />
         </div>
 
         {/* PRODUCT INFO */}
