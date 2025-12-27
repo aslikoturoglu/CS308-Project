@@ -5,6 +5,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 gsap.registerPlugin(ScrollTrigger);
 
+const [lightPos, setLightPos] = useState({ x: "50%", y: "50%" });
 
 const highlights = [
   {
@@ -67,38 +68,65 @@ function Home() {
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
   
-    e.currentTarget.style.setProperty("--x", `${x}%`);
-    e.currentTarget.style.setProperty("--y", `${y}%`);
-  };
+    setLightPos({
+      x: `${x}%`,
+      y: `${y}%`,
+    });
+  };  
   
 
   return (
     <main style={{ fontFamily: "Arial, sans-serif" }}>
       <section
-        className="hero"
-        onMouseMove={handleMouseMove}
+      onMouseMove={handleMouseMove}
+      style={{
+        minHeight: "60vh",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        textAlign: "center",
+        padding: "80px 16px",
+        color: "white",
+        gap: 24,
+        position: "relative",
+        overflow: "hidden",
+        background: "#14001f",
+      }}
+    >
+      {/* IŞIK KATMANI */}
+      <div
         style={{
-          minHeight: "60vh",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          textAlign: "center",
-          padding: "80px 16px",
-          color: "white",
-          gap: 24,
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          background: `radial-gradient(
+            circle at ${lightPos.x} ${lightPos.y},
+            rgba(255,255,255,0.22),
+            rgba(255,255,255,0.1) 25%,
+            rgba(20,0,31,0.95) 50%
+          )`,
+          transition: "background 0.05s linear",
         }}
-        >
+      />
+
+      {/* HERO CONTENT */}
+      <div style={{ position: "relative", zIndex: 1 }}>
         <p className="hero-item" style={{ letterSpacing: 2, fontSize: "0.95rem", margin: 0 }}>
           WELCOME
         </p>
+
         <h1 className="hero-item" style={{ fontSize: "3rem", maxWidth: 720, margin: 0 }}>
           The SUHome experience where refined living is shaped by timeless design and purpose
         </h1>
+
         <p className="hero-item" style={{ maxWidth: 540, lineHeight: 1.6, fontSize: "1.1rem" }}>
           From comfy sofas to smart storage, everything you are looking for is a click away.
           Don’t miss the new season offers.
         </p>
+      </div>
+
+
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
           <Link
             to="/products"
