@@ -273,3 +273,31 @@ body {
     position: static;
   }
 }
+
+.hero {
+  position: relative;
+  background-color: #14001f; /* 🔮 ÇOK KOYU MOR */
+  overflow: hidden;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  background: radial-gradient(
+    circle at var(--x, 50%) var(--y, 50%),
+    rgba(255, 255, 255, 0.18),
+    rgba(255, 255, 255, 0.08) 20%,
+    rgba(20, 0, 31, 0.95) 45%
+  );
+
+  pointer-events: none;
+  transition: background 0.05s linear;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+}
+

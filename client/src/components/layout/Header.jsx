@@ -97,12 +97,14 @@ function Header() {
             <span style={{ marginRight: 60 }}>Masterfully Coordinated Luxury Delivery</span>
             <span style={{ marginRight: 60 }}>Private, Invitation-Only Support Service </span>
             <span style={{ marginRight: 60 }}>Introducing Newly Released Masterpieces — Reserved for Refined Tastes</span>
+            <span style={{ marginRight: 60 }}>Designed for those who notice details.</span>
           </div>
           
           <div className="ticker-track">
             <span style={{ marginRight: 60 }}>Masterfully Coordinated Luxury Delivery</span>
             <span style={{ marginRight: 60 }}>Private, Invitation-Only Support Service </span>
             <span style={{ marginRight: 60 }}>Introducing Newly Released Masterpieces — Reserved for Refined Tastes</span>
+            <span style={{ marginRight: 60 }}>Designed for those who notice details.</span>
           
           </div>
 

@@ -62,9 +62,21 @@ function Home() {
     });
   }, []);  
 
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+  
+    e.currentTarget.style.setProperty("--x", `${x}%`);
+    e.currentTarget.style.setProperty("--y", `${y}%`);
+  };
+  
+
   return (
     <main style={{ fontFamily: "Arial, sans-serif" }}>
       <section
+        className="hero"
+        onMouseMove={handleMouseMove}
         style={{
           minHeight: "60vh",
           display: "flex",
@@ -73,11 +85,10 @@ function Home() {
           alignItems: "center",
           textAlign: "center",
           padding: "80px 16px",
-          background: "linear-gradient(120deg, rgba(0, 174, 255, 0.9), rgba(0, 14, 79, 0.95))",
           color: "white",
           gap: 24,
         }}
-      >
+        >
         <p className="hero-item" style={{ letterSpacing: 2, fontSize: "0.95rem", margin: 0 }}>
           WELCOME
         </p>
@@ -279,5 +290,7 @@ function Home() {
     </main>
   );
 }
+
+
 
 export default Home;
