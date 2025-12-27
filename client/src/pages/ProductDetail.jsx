@@ -19,7 +19,6 @@ function ProductDetail() {
   const [product, setProduct] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [activeImage, setActiveImage] = useState("");
 
   // COMMENTS
   const [comments, setComments] = useState([]);
@@ -109,18 +108,7 @@ function ProductDetail() {
     checkDelivery();
   }, [productId, user]);
 
-  /* ---------------------------
-     GALLERY
-  --------------------------- */
-  const gallery = useMemo(() => {
-    if (!product) return [];
-    return [product.image, product.image + "?v=2", product.image + "?gray"];
-  }, [product]);
-
-  useEffect(() => {
-    if (gallery.length) setActiveImage(gallery[0]);
-  }, [gallery]);
-
+  
   /* ---------------------------
      ADD TO CART
   --------------------------- */
@@ -265,18 +253,25 @@ function ProductDetail() {
       <div style={contentGrid}>
         {/* 🔴 CHANGE — SINGLE IMAGE + ZOOM */}
         <div style={imageCard}>
-          <img
-            src={product.image}
-            alt={product.name}
-            style={mainImage}
-            onMouseMove={(e) => {
-              const { left, top, width, height } =
-                e.target.getBoundingClientRect();
-              const x = ((e.clientX - left) / width) * 100;
-              const y = ((e.clientY - top) / height) * 100;
-              e.target.style.transformOrigin = `${x}% ${y}%`;
-            }}
-          />
+        <img
+  src={product.image}
+  alt={product.name}
+  style={mainImage}
+  onMouseEnter={(e) => {
+    e.currentTarget.style.transform = "scale(2)"; // ✅ ZOOM burada
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.transform = "scale(1)";
+    e.currentTarget.style.transformOrigin = "center center";
+  }}
+  onMouseMove={(e) => {
+    const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - left) / width) * 100;
+    const y = ((e.clientY - top) / height) * 100;
+    e.currentTarget.style.transformOrigin = `${x}% ${y}%`; // ✅ mouse neredeyse orası zoom
+  }}
+/>
+
         </div>
 
         {/* PRODUCT INFO */}
@@ -490,31 +485,7 @@ const mainImage = {
   width: "100%",
   borderRadius: 12,
   transition: "transform 0.2s ease",
-};
-
-const thumbRow = {
-  display: "flex",
-  gap: 10,
-  marginTop: 10,
-};
-
-const thumb = {
-  border: "1px solid #ccc",
-  padding: 4,
-  borderRadius: 8,
-  background: "white",
-};
-
-const activeThumb = {
-  ...thumb,
-  border: "2px solid #0058a3",
-};
-
-const thumbImg = {
-  width: 70,
-  height: 70,
-  borderRadius: 6,
-  objectFit: "cover",
+  cursor: "zoom-in",
 };
 
 const infoCard = {
