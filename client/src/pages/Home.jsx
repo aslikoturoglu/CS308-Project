@@ -5,8 +5,6 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 gsap.registerPlugin(ScrollTrigger);
 
-const [lightPos, setLightPos] = useState({ x: "50%", y: "50%" });
-
 const highlights = [
   {
     title: "New Season Collection",
@@ -33,6 +31,7 @@ const categories = [
 
 function Home() {
   const [featured, setFeatured] = useState([]);
+  const [lightPos, setLightPos] = useState({ x: "50%", y: "50%" });
 
   useEffect(() => {
     const controller = new AbortController();
