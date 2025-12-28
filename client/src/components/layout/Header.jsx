@@ -39,7 +39,7 @@ function Header() {
             display: inline-flex;
             gap: 60px;
             font-weight: 600;
-            color: #140020;
+            color: #ffffff;
             padding-right: 60px;
             animation: scrollLeft 40s linear infinite;
           }
@@ -88,7 +88,7 @@ function Header() {
             width: "100%",
             overflow: "hidden",
             whiteSpace: "nowrap",
-            background: "#ffcc00",
+            background: "#140020",
             padding: "4px 0",
           }}
         >
