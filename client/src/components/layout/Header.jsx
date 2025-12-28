@@ -39,7 +39,7 @@ function Header() {
             display: inline-flex;
             gap: 60px;
             font-weight: 600;
-            color: #003f7f;
+            color: #140020;
             padding-right: 60px;
             animation: scrollLeft 40s linear infinite;
           }
@@ -57,8 +57,8 @@ function Header() {
 
       <header
         style={{
-          background: "#ffcc00",
-          color: "#0058a3",
+          background: "#140020",
+          color: "#ffffff",
           padding: "10px 18px 0px",
           textAlign: "center",
           fontWeight: "bold",
