@@ -24,6 +24,7 @@ function ProductList() {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [category, setCategory] = useState("All");
+  const [roomFilter, setRoomFilter] = useState("");
   const [page, setPage] = useState(1);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -138,7 +139,9 @@ const handleWishlist = (product) => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const term = params.get("search") || "";
+    const room = params.get("room") || "";
     setSearchTerm(term);
+    setRoomFilter(room);
     setPage(1);
   }, [location.search]);
 
@@ -153,6 +156,7 @@ const handleWishlist = (product) => {
         "category",
         "material",
         "color",
+        "mainCategory",
       ];
       
       list = list.filter((p) =>
@@ -161,6 +165,37 @@ const handleWishlist = (product) => {
         )
       );
   
+    }
+    if (roomFilter.trim()) {
+      const normalizedRoom = roomFilter.trim().toLowerCase();
+      if (normalizedRoom === "workspace") {
+        const workspaceKeywords = [
+          "desk",
+          "table",
+          "chair",
+          "lamp",
+          "lighting",
+          "shelf",
+          "storage",
+          "work",
+        ];
+        list = list.filter((p) => {
+          const haystack = [
+            p.name,
+            p.category,
+            p.description,
+            p.mainCategory,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return workspaceKeywords.some((kw) => haystack.includes(kw));
+        });
+      } else {
+        list = list.filter((p) =>
+          (p.mainCategory || "").toLowerCase().includes(normalizedRoom)
+        );
+      }
     }
     if (category !== "All") {
       const rule = categories.find((c) => c.label === category);
@@ -237,6 +272,36 @@ const handleWishlist = (product) => {
               <p style={{ margin: "6px 0 0", color: "#0f172a", fontWeight: 700 }}>
                 Showing results for “{searchTerm}”
               </p>
+            )}
+            {roomFilter && (
+              <div style={{ margin: "6px 0 0", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                <span style={{ color: "#0f172a", fontWeight: 700 }}>
+                  Room: {roomFilter}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const params = new URLSearchParams(location.search);
+                    params.delete("room");
+                    const next = params.toString();
+                    navigate({
+                      pathname: location.pathname,
+                      search: next ? `?${next}` : "",
+                    });
+                  }}
+                  style={{
+                    border: "1px solid #cbd5e1",
+                    background: "#ffffff",
+                    color: "#0f172a",
+                    padding: "4px 10px",
+                    borderRadius: 999,
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  Clear room filter
+                </button>
+              </div>
             )}
           </div>
           <div style={{ flex: 1, minWidth: 240, display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>

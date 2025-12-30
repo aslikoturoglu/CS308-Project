@@ -24,9 +24,21 @@ const highlights = [
 ];
 
 const categories = [
-  { name: "Living Room", image: "https://cdn.thecoolist.com/wp-content/uploads/2025/07/Total-Eclipse-Vibes.jpg" },
-  { name: "Bedroom", image: "https://i.pinimg.com/originals/e7/9c/f4/e79cf4a8c6520c22ce2d2083be9f0dcf.jpg" },
-  { name: "Workspace", image: "https://woodpulse.com/cdn/shop/files/Small-Black-Vase-Black-Vase-Decor-Modern-Vases_57aa3ba1-fc05-4f53-b115-e65f6a7786d4.jpg?v=1691342414" },
+  {
+    name: "Living Room",
+    room: "Living Room",
+    image: "https://cdn.thecoolist.com/wp-content/uploads/2025/07/Total-Eclipse-Vibes.jpg",
+  },
+  {
+    name: "Bedroom",
+    room: "Bedroom",
+    image: "https://i.pinimg.com/originals/e7/9c/f4/e79cf4a8c6520c22ce2d2083be9f0dcf.jpg",
+  },
+  {
+    name: "Workspace",
+    room: "Workspace",
+    image: "https://woodpulse.com/cdn/shop/files/Small-Black-Vase-Black-Vase-Decor-Modern-Vases_57aa3ba1-fc05-4f53-b115-e65f6a7786d4.jpg?v=1691342414",
+  },
 ];
 
 function Home() {
@@ -279,8 +291,10 @@ function Home() {
           }}
         >
           {categories.map((category) => (
-            <div
+            <Link
               key={category.name}
+              to={`/products?room=${encodeURIComponent(category.room)}`}
+              aria-label={`Browse ${category.name} products`}
               style={{
                 position: "relative",
                 borderRadius: 16,
@@ -288,6 +302,9 @@ function Home() {
                 minHeight: 220,
                 boxShadow: "0 18px 35px rgba(0,0,0,0.08)",
                 backgroundColor: "#e5e7eb",
+                textDecoration: "none",
+                color: "inherit",
+                display: "block",
               }}
             >
               <img
@@ -310,7 +327,7 @@ function Home() {
               >
                 {category.name}
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </section>
