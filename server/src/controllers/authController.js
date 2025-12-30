@@ -35,6 +35,7 @@ function normalizeUser(row) {
     email: row.email,
     name: row.full_name || "User",
     address: row.home_address || "",
+    taxId: row.tax_id || "",
     role: row.role_name || row.role || "customer",
   };
 }
@@ -45,11 +46,11 @@ async function upsertDemoUser(email) {
   const hashed = await bcrypt.hash(demo.password, 10);
   return new Promise((resolve, reject) => {
     const sql = `
-      INSERT INTO users (full_name, email, password_hash, home_address)
-      VALUES (?, ?, ?, '')
+      INSERT INTO users (full_name, email, password_hash, tax_id, home_address)
+      VALUES (?, ?, ?, ?, '')
       ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash)
     `;
-    db.query(sql, [demo.name, email, hashed], (err, result) => {
+    db.query(sql, [demo.name, email, hashed, `DEMO-${email}`], (err, result) => {
       if (err) return reject(err);
       resolve({ id: result.insertId || null, role: demo.role, name: demo.name });
     });
@@ -61,29 +62,33 @@ function hashToken(rawToken) {
 }
 
 export function register(req, res) {
-  const { fullName, email, password, address } = req.body;
+  const { fullName, email, password, address, taxId } = req.body;
 
-  if (!fullName || !email || !password) {
-    return res.status(400).json({ error: "fullname, email ve password zorunlu" });
+  if (!fullName || !email || !password || !taxId) {
+    return res.status(400).json({ error: "fullname, email, password ve tax_id zorunlu" });
   }
 
-  const checkSql = "SELECT user_id FROM users WHERE email = ?";
-  db.query(checkSql, [email], async (checkErr, rows) => {
+  const checkSql = "SELECT user_id, email, tax_id FROM users WHERE email = ? OR tax_id = ?";
+  db.query(checkSql, [email, taxId], async (checkErr, rows) => {
     if (checkErr) {
       console.error("User lookup failed:", checkErr);
       return res.status(500).json({ error: "Kayıt sırasında hata oluştu" });
     }
     if (rows.length > 0) {
-      return res.status(400).json({ error: "Bu email zaten kayıtlı" });
+      const emailMatch = rows.find((row) => row.email === email);
+      if (emailMatch) {
+        return res.status(400).json({ error: "Bu email zaten kayıtlı" });
+      }
+      return res.status(400).json({ error: "Bu tax ID zaten kayıtlı" });
     }
 
     try {
       const hashed = await bcrypt.hash(password, 10);
       const insertSql = `
-        INSERT INTO users (full_name, email, password_hash, home_address)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO users (full_name, email, password_hash, tax_id, home_address)
+        VALUES (?, ?, ?, ?, ?)
       `;
-      db.query(insertSql, [fullName, email, hashed, address || ""], (insErr, result) => {
+      db.query(insertSql, [fullName, email, hashed, taxId, address || ""], (insErr, result) => {
         if (insErr) {
           console.error("User insert failed:", insErr);
           return res.status(500).json({ error: "Kayıt başarısız" });
@@ -95,6 +100,7 @@ export function register(req, res) {
             email,
             name: fullName,
             address: address || "",
+            taxId,
             role: "customer",
           },
         });
@@ -114,7 +120,7 @@ export function login(req, res) {
   }
 
   const sql = `
-    SELECT user_id, full_name, email, password_hash, home_address
+    SELECT user_id, full_name, email, password_hash, home_address, tax_id
     FROM users
     WHERE email = ?
     LIMIT 1
@@ -132,14 +138,15 @@ export function login(req, res) {
           const created = await upsertDemoUser(email);
           return res.json({
             success: true,
-            user: {
-              id: created?.id ?? email,
-              email,
-              name: demo.name,
-              address: "",
-              role: demo.role,
-            },
-          });
+              user: {
+                id: created?.id ?? email,
+                email,
+                name: demo.name,
+                address: "",
+                taxId: "",
+                role: demo.role,
+              },
+            });
         } catch (createErr) {
           console.error("Demo user create failed:", createErr);
           return res.status(500).json({ error: "Giriş sırasında hata oluştu" });

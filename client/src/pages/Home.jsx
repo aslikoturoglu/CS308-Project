@@ -8,12 +8,12 @@ gsap.registerPlugin(ScrollTrigger);
 const highlights = [
   {
     title: "Living Room Moments",
-    desc: "Soft seating, warm lighting, and statement tables. Choose Living Room below to explore.",
+    desc: "Soft seating, warm lighting, and statement tables. click Living Room below to explore.",
     badge: "Living Room",
   },
   {
     title: "Bedroom Calm",
-    desc: "Beds, textiles, and storage that slow everything down. Tap Bedroom below to browse.",
+    desc: "Beds, textiles, and storage that slow everything down. click Bedroom below to browse.",
     badge: "Bedroom",
   },
   {

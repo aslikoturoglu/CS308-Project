@@ -12,7 +12,7 @@ CREATE TABLE users (
   full_name VARCHAR(150) NOT NULL,
   email VARCHAR(190) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
-  tax_id VARCHAR(50),
+  tax_id VARCHAR(50) NOT NULL UNIQUE,
   home_address VARCHAR(500)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

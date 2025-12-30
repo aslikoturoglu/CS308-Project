@@ -192,6 +192,7 @@ function Invoice() {
           <Info label="Status" value={order.status} />
           <Info label="Items" value={`${totalItems} pcs`} />
           <Info label="Total Paid" value={formatPrice(order.total)} />
+          <Info label="Tax ID" value={user?.taxId || "Not provided"} />
         </div>
 
         <div

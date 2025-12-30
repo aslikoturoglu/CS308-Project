@@ -48,7 +48,8 @@ export function generateInvoice(req, res) {
       o.billing_address,
       u.full_name AS customer_name,
       u.email AS customer_email,
-      u.home_address AS customer_address
+      u.home_address AS customer_address,
+      u.tax_id AS customer_tax_id
     FROM orders o
     LEFT JOIN users u ON u.user_id = o.user_id
     WHERE o.order_id = ?
@@ -178,6 +179,7 @@ function renderInvoice(doc, order, items, detailPayload = {}) {
   const sections = [
     { label: "Full Name", value: customerName },
     { label: "Email", value: email },
+    order.customer_tax_id ? { label: "Tax ID", value: normalizeTR(order.customer_tax_id) } : null,
     {
       label: "Address",
       value: addressLines.map((line) => normalizeTR(line)).join("\n"),
@@ -337,7 +339,8 @@ export async function sendInvoiceEmailForOrder(orderId) {
       o.billing_address,
       u.full_name AS customer_name,
       u.email AS customer_email,
-      u.home_address AS customer_address
+      u.home_address AS customer_address,
+      u.tax_id AS customer_tax_id
     FROM orders o
     LEFT JOIN users u ON u.user_id = o.user_id
     WHERE o.order_id = ?

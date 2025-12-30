@@ -52,6 +52,7 @@ export function AuthProvider({ children }) {
       email: payload.email,
       name: payload.name ?? "User",
       address: payload.address ?? "",
+      taxId: payload.taxId ?? "",
       role: payload.role ?? "customer",
       expiresAt: Date.now() + TOKEN_DURATION_MS,
     };
