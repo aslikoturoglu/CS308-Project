@@ -58,6 +58,7 @@ function AdminDashboard() {
   });
   const [priceUpdate, setPriceUpdate] = useState({ productId: "", price: "" });
   const [deliveryUpdate, setDeliveryUpdate] = useState({ id: "", status: "" });
+  const [isCompactLayout, setIsCompactLayout] = useState(false);
   const productListRef = useRef(null);
   const replyFileInputRef = useRef(null);
 
@@ -141,6 +142,15 @@ function AdminDashboard() {
       productListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
   };
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsCompactLayout(window.innerWidth < 1200);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     if (!activeConversationId) return undefined;
@@ -241,6 +251,7 @@ function AdminDashboard() {
   }, [orders]);
 
   const [orderTab, setOrderTab] = useState("Processing");
+  const ordersForActiveTab = groupedOrders[orderTab] || [];
 
   const handleAddProduct = () => {
     if (!newProduct.name || !newProduct.price) {
@@ -878,69 +889,120 @@ function AdminDashboard() {
                   })}
                 </div>
 
-                <div style={{ overflowX: "auto", width: "100%", maxWidth: "100%" }}>
-                  <table
-                    style={{
-                      width: "100%",
-                      borderCollapse: "collapse",
-                      tableLayout: "fixed",
-                    }}
-                  >
-                    <thead>
-                      <tr>
-                        {["Order No", "Customer / Address", "Shipping", "Amount", "Status", "Action"].map((heading) => (
-                          <th
-                            key={heading}
-                            style={{
-                              textAlign: "left",
-                              padding: "12px 10px",
-                              borderBottom: "1px solid #e5e7eb",
-                              color: "#475569",
-                              fontWeight: 700,
-                              fontSize: "0.9rem",
-                            }}
-                          >
-                            {heading}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(groupedOrders[orderTab] || []).map((order) => (
-                        <tr key={order.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                          <td style={{ padding: "12px 10px", fontWeight: 700, color: "#0f172a" }}>{formatOrderId(order.id)}</td>
-                          <td style={{ padding: "12px 10px", color: "#1f2937", whiteSpace: "normal", wordBreak: "break-word" }}>
-                            <div style={{ fontWeight: 700 }}>{order.customerName || "Customer"}</div>
-                            <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>{order.address}</div>
-                          </td>
-                          <td style={{ padding: "12px 10px", color: "#334155" }}>{order.shippingCompany}</td>
-                          <td style={{ padding: "12px 10px", fontWeight: 700, color: "#0f172a" }}>₺{order.total?.toLocaleString("tr-TR")}</td>
-                          <td style={{ padding: "12px 10px", color: order.status === "Delivered" ? "#22c55e" : "#0f172a", fontWeight: 700 }}>{order.status}</td>
-                          <td style={{ padding: "12px 10px" }}>
-                            {order.status === "Delivered" ? (
-                              <button type="button" style={{ ...primaryBtn, background: "#e5e7eb", color: "#9ca3af", border: "none", cursor: "not-allowed" }} disabled>
-                                Delivered
-                              </button>
-                            ) : user?.role === "sales_manager" ? (
-                              <button type="button" onClick={() => handleAdvanceOrder(order.id)} style={primaryBtn}>
-                                Advance status
-                              </button>
-                            ) : (
-                              <span style={{ color: "#94a3b8", fontWeight: 700 }}>Only sales manager can advance</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                      {(groupedOrders[orderTab] || []).length === 0 && (
+                {!isCompactLayout ? (
+                  <div style={{ overflowX: "auto", width: "100%", maxWidth: "100%" }}>
+                    <table
+                      style={{
+                        width: "100%",
+                        borderCollapse: "collapse",
+                        tableLayout: "fixed",
+                      }}
+                    >
+                      <thead>
                         <tr>
-                          <td colSpan={6} style={{ padding: 16, textAlign: "center", color: "#94a3b8" }}>
-                            No orders in this status.
-                          </td>
+                          {["Order No", "Customer / Address", "Shipping", "Amount", "Status", "Action"].map((heading) => (
+                            <th
+                              key={heading}
+                              style={{
+                                textAlign: "left",
+                                padding: "12px 10px",
+                                borderBottom: "1px solid #e5e7eb",
+                                color: "#475569",
+                                fontWeight: 700,
+                                fontSize: "0.9rem",
+                              }}
+                            >
+                              {heading}
+                            </th>
+                          ))}
                         </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {ordersForActiveTab.map((order) => (
+                          <tr key={order.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                            <td style={{ padding: "12px 10px", fontWeight: 700, color: "#0f172a" }}>{formatOrderId(order.id)}</td>
+                            <td style={{ padding: "12px 10px", color: "#1f2937", whiteSpace: "normal", wordBreak: "break-word" }}>
+                              <div style={{ fontWeight: 700 }}>{order.customerName || "Customer"}</div>
+                              <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>{order.address}</div>
+                            </td>
+                            <td style={{ padding: "12px 10px", color: "#334155" }}>{order.shippingCompany}</td>
+                            <td style={{ padding: "12px 10px", fontWeight: 700, color: "#0f172a" }}>₺{order.total?.toLocaleString("tr-TR")}</td>
+                            <td style={{ padding: "12px 10px", color: order.status === "Delivered" ? "#22c55e" : "#0f172a", fontWeight: 700 }}>{order.status}</td>
+                            <td style={{ padding: "12px 10px" }}>
+                              {order.status === "Delivered" ? (
+                                <button type="button" style={{ ...primaryBtn, background: "#e5e7eb", color: "#9ca3af", border: "none", cursor: "not-allowed" }} disabled>
+                                  Delivered
+                                </button>
+                              ) : user?.role === "sales_manager" ? (
+                                <button type="button" onClick={() => handleAdvanceOrder(order.id)} style={primaryBtn}>
+                                  Advance status
+                                </button>
+                              ) : (
+                                <span style={{ color: "#94a3b8", fontWeight: 700 }}>Only sales manager can advance</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                        {ordersForActiveTab.length === 0 && (
+                          <tr>
+                            <td colSpan={6} style={{ padding: 16, textAlign: "center", color: "#94a3b8" }}>
+                              No orders in this status.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div style={{ display: "grid", gap: 12 }}>
+                    {ordersForActiveTab.map((order) => (
+                      <div
+                        key={order.id}
+                        style={{
+                          border: "1px solid #e5e7eb",
+                          borderRadius: 12,
+                          padding: 12,
+                          background: "#f8fafc",
+                          display: "grid",
+                          gap: 8,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                            gap: 8,
+                          }}
+                        >
+                          <strong style={{ color: "#0f172a" }}>{formatOrderId(order.id)}</strong>
+                          <span style={{ fontWeight: 700, color: order.status === "Delivered" ? "#22c55e" : "#0f172a" }}>{order.status}</span>
+                        </div>
+                        <div style={{ display: "grid", gap: 4, color: "#475569", fontSize: "0.95rem" }}>
+                          <span style={{ fontWeight: 700, color: "#0f172a" }}>{order.customerName || "Customer"}</span>
+                          <span>{order.address}</span>
+                          <span>Shipping: {order.shippingCompany}</span>
+                          <span>Total: ₺{order.total?.toLocaleString("tr-TR")}</span>
+                        </div>
+                        <div>
+                          {order.status === "Delivered" ? (
+                            <button type="button" style={{ ...primaryBtn, background: "#e5e7eb", color: "#9ca3af", border: "none", cursor: "not-allowed" }} disabled>
+                              Delivered
+                            </button>
+                          ) : user?.role === "sales_manager" ? (
+                            <button type="button" onClick={() => handleAdvanceOrder(order.id)} style={primaryBtn}>
+                              Advance status
+                            </button>
+                          ) : (
+                            <span style={{ color: "#94a3b8", fontWeight: 700 }}>Only sales manager can advance</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {ordersForActiveTab.length === 0 && <p style={{ margin: 0, color: "#94a3b8" }}>No orders in this status.</p>}
+                  </div>
+                )}
               </div>
 
               <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
