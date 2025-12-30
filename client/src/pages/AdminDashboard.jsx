@@ -900,7 +900,7 @@ function AdminDashboard() {
                     >
                       <thead>
                         <tr>
-                          {["Order No", "Customer / Address", "Shipping", "Amount", "Status", "Action"].map((heading) => (
+                          {["Order No", "Customer / Address", "Shipping", "Amount", "Status", "Action"].map((heading, index) => (
                             <th
                               key={heading}
                               style={{
@@ -910,6 +910,7 @@ function AdminDashboard() {
                                 color: "#475569",
                                 fontWeight: 700,
                                 fontSize: "0.9rem",
+                                width: orderColumnWidths[index],
                               }}
                             >
                               {heading}
@@ -920,15 +921,15 @@ function AdminDashboard() {
                       <tbody>
                         {ordersForActiveTab.map((order) => (
                           <tr key={order.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                            <td style={{ padding: "12px 10px", fontWeight: 700, color: "#0f172a" }}>{formatOrderId(order.id)}</td>
-                            <td style={{ padding: "12px 10px", color: "#1f2937", whiteSpace: "normal", wordBreak: "break-word" }}>
+                            <td style={{ ...td, width: orderColumnWidths[0], fontWeight: 700, color: "#0f172a" }}>{formatOrderId(order.id)}</td>
+                            <td style={{ ...td, width: orderColumnWidths[1], color: "#1f2937" }}>
                               <div style={{ fontWeight: 700 }}>{order.customerName || "Customer"}</div>
                               <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>{order.address}</div>
                             </td>
-                            <td style={{ padding: "12px 10px", color: "#334155" }}>{order.shippingCompany}</td>
-                            <td style={{ padding: "12px 10px", fontWeight: 700, color: "#0f172a" }}>₺{order.total?.toLocaleString("tr-TR")}</td>
-                            <td style={{ padding: "12px 10px", color: order.status === "Delivered" ? "#22c55e" : "#0f172a", fontWeight: 700 }}>{order.status}</td>
-                            <td style={{ padding: "12px 10px" }}>
+                            <td style={{ ...td, width: orderColumnWidths[2], color: "#334155" }}>{order.shippingCompany}</td>
+                            <td style={{ ...td, width: orderColumnWidths[3], fontWeight: 700, color: "#0f172a" }}>₺{order.total?.toLocaleString("tr-TR")}</td>
+                            <td style={{ ...td, width: orderColumnWidths[4], color: order.status === "Delivered" ? "#22c55e" : "#0f172a", fontWeight: 700 }}>{order.status}</td>
+                            <td style={{ ...td, width: orderColumnWidths[5] }}>
                               {order.status === "Delivered" ? (
                                 <button type="button" style={{ ...primaryBtn, background: "#e5e7eb", color: "#9ca3af", border: "none", cursor: "not-allowed" }} disabled>
                                   Delivered
@@ -1510,6 +1511,8 @@ const linkBtn = {
   fontWeight: 700,
   cursor: "pointer",
 };
+
+const orderColumnWidths = ["14%", "32%", "14%", "14%", "12%", "14%"];
 
 const th = {
   padding: "10px 12px",
