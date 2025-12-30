@@ -7,19 +7,19 @@ gsap.registerPlugin(ScrollTrigger);
 
 const highlights = [
   {
-    title: "New Season Collection",
-    desc: "Discover the 2025 line blending Scandinavian minimalism with warm textures.",
-    badge: "New",
+    title: "Living Room Moments",
+    desc: "Soft seating, warm lighting, and statement tables. Choose Living Room below to explore.",
+    badge: "Living Room",
   },
   {
-    title: "Workspace Ideas",
-    desc: "Desks, chairs, and lighting to make working from home more comfortable.",
-    badge: "Inspiration",
+    title: "Bedroom Calm",
+    desc: "Beds, textiles, and storage that slow everything down. Tap Bedroom below to browse.",
+    badge: "Bedroom",
   },
   {
-    title: "Storage Solutions",
-    desc: "Smart shelves, closets, and organizers for a more orderly home.",
-    badge: "Favorite",
+    title: "Workspace Focus",
+    desc: "Desks, task lighting, and clean organization. Click Workspace below to start.",
+    badge: "Workspace",
   },
 ];
 

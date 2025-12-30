@@ -10,6 +10,9 @@ import { useAuth } from "../context/AuthContext";
 
 const categories = [
   { label: "All", keywords: [] },
+  { label: "Living Room", keywords: ["sofa", "armchair", "tv unit", "coffee table", "side table", "rug", "curtain", "pillow"] },
+  { label: "Bedroom", keywords: ["bed", "wardrobe", "pillow", "duvet", "blanket", "rug", "curtain"] },
+  { label: "Workspace", keywords: ["desk", "chair", "lamp", "lighting", "table", "shelf", "storage"] },
   { label: "Seating", keywords: ["chair", "sofa", "stool", "armchair"] },
   { label: "Tables", keywords: ["table", "desk", "coffee"] },
   { label: "Storage", keywords: ["shelf", "cabinet", "wardrobe", "bookshelf", "storage"] },
@@ -179,6 +182,10 @@ const handleWishlist = (product) => {
           "storage",
           "work",
         ];
+        const workspaceExclusions = [
+          "aero curve spoon",
+          "matte stone set",
+        ];
         list = list.filter((p) => {
           const haystack = [
             p.name,
@@ -189,12 +196,43 @@ const handleWishlist = (product) => {
             .filter(Boolean)
             .join(" ")
             .toLowerCase();
+          if (workspaceExclusions.some((kw) => haystack.includes(kw))) {
+            return false;
+          }
+          if (haystack.includes("wardrobe")) {
+            return false;
+          }
           return workspaceKeywords.some((kw) => haystack.includes(kw));
         });
       } else {
-        list = list.filter((p) =>
-          (p.mainCategory || "").toLowerCase().includes(normalizedRoom)
-        );
+        const roomExclusions = {
+          "living room": ["midnight silk pillow", "noir carry box"],
+          bedroom: [
+            "velour noir sectional sofa",
+            "lumin edge table",
+            "soft round table",
+            "velour executive desk",
+          ],
+        };
+        const exclusions = roomExclusions[normalizedRoom] || [];
+        list = list.filter((p) => {
+          const haystack = [
+            p.name,
+            p.category,
+            p.description,
+            p.mainCategory,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          if (normalizedRoom === "bedroom" && haystack.includes("box")) {
+            return false;
+          }
+          if (exclusions.some((kw) => haystack.includes(kw))) {
+            return false;
+          }
+          return (p.mainCategory || "").toLowerCase().includes(normalizedRoom);
+        });
       }
     }
     if (category !== "All") {
