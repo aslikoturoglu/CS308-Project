@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../context/ToastContext";
+import { useAuth } from "../../context/AuthContext";
 import { registerUser } from "../../services/authService";
 
 function RegisterForm({ onSuccess }) {
   const navigate = useNavigate();
   const { addToast } = useToast();
+  const { login } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -58,15 +60,18 @@ function RegisterForm({ onSuccess }) {
       taxId: taxId.trim(),
       address: address.trim(),
     })
-      .then(() => {
+      .then((data) => {
         setError("");
-        setInfo("Account created! Redirecting you to the login page...");
-        addToast("Account created, redirecting to login", "info");
+        if (data?.user) {
+          login(data.user);
+        }
+        setInfo("Account created! Redirecting you to the homepage...");
+        addToast("Account created, signing you in", "info");
         setTimeout(() => {
           if (typeof onSuccess === "function") {
             onSuccess();
           } else {
-            navigate("/login");
+            navigate("/");
           }
         }, 1200);
       })
