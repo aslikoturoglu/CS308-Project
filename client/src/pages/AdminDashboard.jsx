@@ -847,8 +847,16 @@ function AdminDashboard() {
           )}
 
           {activeSection === "sales" && (
-            <section style={{ display: "grid", gap: 18 }}>
-              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
+            <section style={{ display: "grid", gap: 18, width: "100%" }}>
+              <div
+                style={{
+                  background: "white",
+                  borderRadius: 14,
+                  padding: 18,
+                  boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
+                  width: "100%",
+                }}
+              >
                 <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Orders (sales manager)</h3>
                 <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
                   {["Processing", "In-transit", "Delivered"].map((status) => {
@@ -878,7 +886,7 @@ function AdminDashboard() {
                   })}
                 </div>
 
-                <div style={{ overflowX: "auto", width: "100%", maxWidth: "100vw" }}>
+                <div style={{ overflowX: "auto", width: "100%", maxWidth: "100%" }}>
                   <table
                     style={{
                       width: "100%",
@@ -943,7 +951,17 @@ function AdminDashboard() {
                 </div>
               </div>
 
-              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
+              <div
+                style={{
+                  background: "white",
+                  borderRadius: 14,
+                  padding: 18,
+                  boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
+                  display: "grid",
+                  gap: 12,
+                  width: "100%",
+                }}
+              >
                 <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Price & Discount</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
                   <select
@@ -1008,7 +1026,17 @@ function AdminDashboard() {
                 </div>
               </div>
 
-              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
+              <div
+                style={{
+                  background: "white",
+                  borderRadius: 14,
+                  padding: 18,
+                  boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
+                  display: "grid",
+                  gap: 12,
+                  width: "100%",
+                }}
+              >
                 <h3 style={{ margin: "0 0 6px", color: "#0f172a" }}>Invoices (filter)</h3>
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                   <input
@@ -1053,7 +1081,15 @@ function AdminDashboard() {
                 </div>
               </div>
 
-              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
+              <div
+                style={{
+                  background: "white",
+                  borderRadius: 14,
+                  padding: 18,
+                  boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
+                  width: "100%",
+                }}
+              >
                 <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Revenue</h3>
                 <div
                   style={{
