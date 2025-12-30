@@ -22,12 +22,20 @@ function enrichProduct(raw, adjustments) {
   const availableStock = Math.max(0, baseStock - consumed);
 
   const { averageRating, ratingCount } = normalizeRating(raw);
+  const price = Number(raw.price || 0);
+  const originalPrice = Number(raw.originalPrice || 0);
+  const hasDiscount = originalPrice > 0 && originalPrice > price;
+  const discountLabel = hasDiscount
+    ? `-${Math.round(((originalPrice - price) / originalPrice) * 100)}%`
+    : undefined;
 
   return {
     ...raw,
     availableStock,
     averageRating,
     ratingCount,
+    hasDiscount,
+    discountLabel,
   };
 }
 

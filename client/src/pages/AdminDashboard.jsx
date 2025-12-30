@@ -49,7 +49,12 @@ function AdminDashboard() {
   const [isSendingReply, setIsSendingReply] = useState(false);
   const [filters, setFilters] = useState({ invoiceFrom: "", invoiceTo: "" });
   const [newProduct, setNewProduct] = useState({ name: "", price: "", stock: "", category: "" });
-  const [discountForm, setDiscountForm] = useState({ productId: "", rate: 10 });
+  const [discountForm, setDiscountForm] = useState({
+    productId: "",
+    rate: 10,
+    startAt: "",
+    endAt: "",
+  });
   const [priceUpdate, setPriceUpdate] = useState({ productId: "", price: "" });
   const [deliveryUpdate, setDeliveryUpdate] = useState({ id: "", status: "" });
   const productListRef = useRef(null);
@@ -254,36 +259,66 @@ function AdminDashboard() {
     addToast("Product added (local only)", "info");
   };
 
-  const handlePriceUpdate = () => {
+  const handlePriceUpdate = async () => {
     if (!priceUpdate.productId || !priceUpdate.price) {
       addToast("Select product and price", "error");
       return;
     }
-    setProducts((prev) =>
-      prev.map((p) => (String(p.id) === String(priceUpdate.productId) ? { ...p, price: Number(priceUpdate.price) } : p))
-    );
-    addToast("Price updated (local only)", "info");
+    try {
+      const body = new URLSearchParams();
+      body.set("price", priceUpdate.price);
+      const res = await fetch(`/api/sales/products/${priceUpdate.productId}/price`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Price update failed");
+      }
+      await loadOrders();
+      const controller = new AbortController();
+      const refreshed = await fetchProductsWithMeta(controller.signal);
+      setProducts(refreshed);
+      addToast("Price updated", "info");
+    } catch (error) {
+      console.error("Price update failed:", error);
+      addToast(error.message || "Price update failed", "error");
+    }
   };
 
-  const handleDiscount = () => {
+  const handleDiscount = async () => {
     if (!discountForm.productId) {
       addToast("Select product", "error");
       return;
     }
-    setProducts((prev) =>
-      prev.map((p) =>
-        String(p.id) === String(discountForm.productId)
-          ? {
-              ...p,
-              hasDiscount: true,
-              discountLabel: `-${discountForm.rate}%`,
-              originalPrice: p.originalPrice || p.price,
-              price: Math.max(0, (p.price * (100 - discountForm.rate)) / 100),
-            }
-          : p
-      )
-    );
-    addToast("Discount applied (local only)", "info");
+    if (!discountForm.startAt || !discountForm.endAt) {
+      addToast("Start and end dates are required", "error");
+      return;
+    }
+    try {
+      const body = new URLSearchParams();
+      body.set("rate", String(discountForm.rate));
+      body.set("start_at", discountForm.startAt);
+      body.set("end_at", discountForm.endAt);
+      body.set("product_ids", String(discountForm.productId));
+      const res = await fetch("/api/sales/discounts/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Discount apply failed");
+      }
+      const controller = new AbortController();
+      const refreshed = await fetchProductsWithMeta(controller.signal);
+      setProducts(refreshed);
+      addToast(`Discount applied (${data?.notified || 0} notified)`, "info");
+    } catch (error) {
+      console.error("Discount apply failed:", error);
+      addToast(error.message || "Discount apply failed", "error");
+    }
   };
 
   const handleDeliveryStatus = async () => {
@@ -937,6 +972,18 @@ function AdminDashboard() {
                     placeholder="Discount %"
                     value={discountForm.rate}
                     onChange={(e) => setDiscountForm((p) => ({ ...p, rate: Number(e.target.value) }))}
+                    style={inputStyle}
+                  />
+                  <input
+                    type="datetime-local"
+                    value={discountForm.startAt}
+                    onChange={(e) => setDiscountForm((p) => ({ ...p, startAt: e.target.value }))}
+                    style={inputStyle}
+                  />
+                  <input
+                    type="datetime-local"
+                    value={discountForm.endAt}
+                    onChange={(e) => setDiscountForm((p) => ({ ...p, endAt: e.target.value }))}
                     style={inputStyle}
                   />
                   <button type="button" onClick={handleDiscount} style={primaryBtn}>
