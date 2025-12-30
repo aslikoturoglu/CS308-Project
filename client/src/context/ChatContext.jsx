@@ -78,15 +78,26 @@ export function ChatProvider({ children }) {
 
   const normalizeMessages = useCallback(
     (incoming) =>
-      (incoming || []).map((msg) => ({
-        id: msg.id ?? msg.message_id ?? `${msg.from}-${msg.timestamp}`,
-        from:
-          (msg.from === "support" ? "assistant" : msg.from) ??
-          (String(msg.sender_id ?? "") === String(activeUserId) ? "user" : "assistant"),
-        sender_id: msg.sender_id ?? activeUserId,
-        text: msg.text ?? msg.message_text ?? "",
-        timestamp: msg.timestamp ?? msg.created_at ?? Date.now(),
-      })),
+      (incoming || []).map((msg) => {
+        const senderId = msg.sender_id ?? msg.user_id ?? null;
+        const rawFrom =
+          msg.from ??
+          (senderId && String(senderId) === String(activeUserId) ? "user" : "assistant");
+        const resolvedFrom =
+          rawFrom === "support"
+            ? "assistant"
+            : rawFrom === "customer"
+            ? "user"
+            : rawFrom;
+
+        return {
+          id: msg.id ?? msg.message_id ?? `${resolvedFrom}-${msg.timestamp ?? Date.now()}`,
+          from: resolvedFrom,
+          sender_id: senderId ?? activeUserId,
+          text: msg.text ?? msg.message_text ?? "",
+          timestamp: msg.timestamp ?? msg.created_at ?? Date.now(),
+        };
+      }),
     [activeUserId]
   );
 

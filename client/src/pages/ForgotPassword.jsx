@@ -17,20 +17,20 @@ function ForgotPassword() {
     setInfo("");
     setDevToken("");
     if (!email.trim()) {
-      setError("Email gerekli");
+      setError("Email is required");
       return;
     }
     setLoading(true);
     requestPasswordReset(email.trim())
       .then((data) => {
         setInfo("If this email exists, we sent a reset link.");
-        addToast("Reset link gönderildi (eğer email kayıtlıysa).", "info");
+        addToast("Reset link sent if the email is registered.", "info");
         if (data?.token) {
           setDevToken(data.token);
         }
       })
       .catch((err) => {
-        const msg = err.message || "Reset isteği başarısız";
+        const msg = err.message || "Reset request failed";
         setError(msg);
         addToast(msg, "error");
       })
@@ -61,9 +61,9 @@ function ForgotPassword() {
           gap: 12,
         }}
       >
-        <h2 style={{ margin: 0, color: "#0f172a" }}>Şifremi Unuttum</h2>
+        <h2 style={{ margin: 0, color: "#0f172a" }}>Forgot Password</h2>
         <p style={{ margin: 0, color: "#475569" }}>
-          Email adresini yaz, sıfırlama bağlantısını göndereceğiz.
+          Enter your email and we’ll send you a reset link.
         </p>
         {error && <p style={{ color: "#b91c1c", margin: 0 }}>{error}</p>}
         {info && <p style={{ color: "#059669", margin: 0 }}>{info}</p>}
@@ -99,11 +99,11 @@ function ForgotPassword() {
               opacity: loading ? 0.8 : 1,
             }}
           >
-            {loading ? "Gönderiliyor..." : "Link Gönder"}
+            {loading ? "Sending..." : "Send reset link"}
           </button>
         </form>
         <Link to="/login" style={{ color: "#0058a3", fontWeight: 600 }}>
-          Girişe geri dön
+          Back to login
         </Link>
       </div>
     </section>

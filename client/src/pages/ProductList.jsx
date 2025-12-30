@@ -32,7 +32,7 @@ function ProductList() {
 
   const { addItem, items: cartItems, increment, decrement, removeItem } = useCart();
   const { toggleItem, inWishlist } = useWishlist();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const isProductManager = user?.role === "product_manager";
 
 // 🔹1) cartQty burada
@@ -108,6 +108,14 @@ const handleDecrease = async (p) => {
   );
 };
 
+const handleWishlist = (product) => {
+  if (!isAuthenticated) {
+    navigate("/login", { state: { from: location } });
+    return;
+  }
+  toggleItem(product);
+};
+
 
 
 
@@ -168,7 +176,12 @@ const handleDecrease = async (p) => {
     } else if (sort === "price-desc") {
       list = [...list].sort((a, b) => b.price - a.price);
     } else if (sort === "popularity") {
-      list = [...list].sort((a, b) => (b.ratingCount || 0) - (a.ratingCount || 0));
+      // Higher average rating first; tie-breaker: more ratings
+      list = [...list].sort((a, b) => {
+        const avgDiff = (b.averageRating || 0) - (a.averageRating || 0);
+        if (avgDiff !== 0) return avgDiff;
+        return (b.ratingCount || 0) - (a.ratingCount || 0);
+      });
     }
     return list;
   }, [category, products, searchTerm, sort]);
@@ -451,7 +464,7 @@ const handleDecrease = async (p) => {
                         )}
 
                         <button
-                          onClick={() => toggleItem(p)}
+                          onClick={() => handleWishlist(p)}
                           style={{
                             width:48,
                             borderRadius:10,

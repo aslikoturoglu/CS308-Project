@@ -247,6 +247,34 @@ export function listConversations(req, res) {
   });
 }
 
+export function deleteConversation(req, res) {
+  const conversationId = Number(req.params.conversation_id);
+  if (!conversationId) {
+    return res.status(400).json({ error: "conversation_id zorunlu" });
+  }
+
+  const deleteMessagesSql = "DELETE FROM support_messages WHERE conversation_id = ?";
+  const deleteConversationSql = "DELETE FROM support_conversations WHERE conversation_id = ?";
+
+  db.query(deleteMessagesSql, [conversationId], (msgErr) => {
+    if (msgErr) {
+      console.error("Support messages delete failed:", msgErr);
+      return res.status(500).json({ error: "Mesajlar silinemedi" });
+    }
+
+    db.query(deleteConversationSql, [conversationId], (convErr, result) => {
+      if (convErr) {
+        console.error("Support conversation delete failed:", convErr);
+        return res.status(500).json({ error: "Konuşma silinemedi" });
+      }
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: "Konuşma bulunamadı" });
+      }
+      return res.json({ success: true });
+    });
+  });
+}
+
 export function getConversationMessages(req, res) {
   const conversationId = Number(req.params.conversation_id);
   if (!conversationId) {

@@ -5,7 +5,6 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 gsap.registerPlugin(ScrollTrigger);
 
-
 const highlights = [
   {
     title: "New Season Collection",
@@ -25,13 +24,14 @@ const highlights = [
 ];
 
 const categories = [
-  { name: "Living Room", image: "https://raw.githubusercontent.com/aslikoturoglu/CS308-Project/main/project_pictures/10027.png" },
-  { name: "Bedroom", image: "https://raw.githubusercontent.com/aslikoturoglu/CS308-Project//main/project_pictures/10049.png" },
-  { name: "Workspace", image: "https://raw.githubusercontent.com/aslikoturoglu/CS308-Project//main/project_pictures/10019.png" },
+  { name: "Living Room", image: "https://cdn.thecoolist.com/wp-content/uploads/2025/07/Total-Eclipse-Vibes.jpg" },
+  { name: "Bedroom", image: "https://i.pinimg.com/originals/e7/9c/f4/e79cf4a8c6520c22ce2d2083be9f0dcf.jpg" },
+  { name: "Workspace", image: "https://woodpulse.com/cdn/shop/files/Small-Black-Vase-Black-Vase-Decor-Modern-Vases_57aa3ba1-fc05-4f53-b115-e65f6a7786d4.jpg?v=1691342414" },
 ];
 
 function Home() {
   const [featured, setFeatured] = useState([]);
+  const [lightPos, setLightPos] = useState({ x: "50%", y: "50%" });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -62,32 +62,70 @@ function Home() {
     });
   }, []);  
 
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+  
+    setLightPos({
+      x: `${x}%`,
+      y: `${y}%`,
+    });
+  };  
+  
+
   return (
     <main style={{ fontFamily: "Arial, sans-serif" }}>
       <section
+      onMouseMove={handleMouseMove}
+      style={{
+        minHeight: "60vh",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        textAlign: "center",
+        padding: "80px 16px",
+        color: "white",
+        gap: 24,
+        position: "relative",
+        overflow: "hidden",
+        background: "#14001f",
+      }}
+    >
+      {/* IŞIK KATMANI */}
+      <div
         style={{
-          minHeight: "60vh",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          textAlign: "center",
-          padding: "80px 16px",
-          background: "linear-gradient(120deg, rgba(0, 174, 255, 0.9), rgba(0, 14, 79, 0.95))",
-          color: "white",
-          gap: 24,
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          background: `radial-gradient(
+            circle at ${lightPos.x} ${lightPos.y},
+            rgba(255,255,255,0.22),
+            rgba(255,255,255,0.1) 25%,
+            rgba(20,0,31,0.95) 50%
+          )`,
+          transition: "background 0.05s linear",
         }}
-      >
+      />
+
+      {/* HERO CONTENT */}
+      <div style={{ position: "relative", zIndex: 1 }}>
         <p className="hero-item" style={{ letterSpacing: 2, fontSize: "0.95rem", margin: 0 }}>
           WELCOME
         </p>
+
         <h1 className="hero-item" style={{ fontSize: "3rem", maxWidth: 720, margin: 0 }}>
-          The SUHome experience that inspires your home starts here
+          The SUHome experience where refined living is shaped by timeless design and purpose
         </h1>
+
         <p className="hero-item" style={{ maxWidth: 540, lineHeight: 1.6, fontSize: "1.1rem" }}>
           From comfy sofas to smart storage, everything you are looking for is a click away.
           Don’t miss the new season offers.
         </p>
+      </div>
+
+
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
           <Link
             to="/products"
@@ -279,5 +317,7 @@ function Home() {
     </main>
   );
 }
+
+
 
 export default Home;

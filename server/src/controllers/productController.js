@@ -2,7 +2,22 @@
 import db from "../db.js";
 
 export function getAllProducts(req, res) {
-  const sql = "SELECT * FROM products";
+  const sql = `
+    SELECT 
+      p.*,
+      COALESCE(stats.avg_rating, 0)   AS avg_rating,
+      COALESCE(stats.rating_count, 0) AS rating_count
+    FROM products p
+    LEFT JOIN (
+      SELECT 
+        product_id,
+        AVG(rating)   AS avg_rating,
+        COUNT(*)      AS rating_count
+      FROM comments
+      WHERE rating IS NOT NULL AND (status IS NULL OR status <> 'rejected')
+      GROUP BY product_id
+    ) stats ON stats.product_id = p.product_id
+  `;
 
   db.query(sql, (err, results) => {
     if (err) {
@@ -22,8 +37,9 @@ export function getAllProducts(req, res) {
       material: p.product_material,
       color: p.product_color,
       image: p.product_image,
-      rating: p.product_rating ?? 0,
-      rating_count: p.rating_count ?? 0,
+      rating: p.avg_rating ?? p.product_rating ?? 0,
+      averageRating: p.avg_rating ?? p.product_rating ?? 0,
+      ratingCount: Number(p.rating_count ?? 0),
       warranty: p.product_warranty ?? p.warranty ?? null,
       distributor: p.product_distributor ?? p.distributor ?? null,
     }));
@@ -86,7 +102,23 @@ export function updateProductStock(req, res) {
 export function getProductById(req, res) {
   const { id } = req.params;
 
-  const sql = "SELECT * FROM products WHERE product_id = ?";
+  const sql = `
+    SELECT 
+      p.*,
+      COALESCE(stats.avg_rating, 0)   AS avg_rating,
+      COALESCE(stats.rating_count, 0) AS rating_count
+    FROM products p
+    LEFT JOIN (
+      SELECT 
+        product_id,
+        AVG(rating)   AS avg_rating,
+        COUNT(*)      AS rating_count
+      FROM comments
+      WHERE rating IS NOT NULL AND (status IS NULL OR status <> 'rejected')
+      GROUP BY product_id
+    ) stats ON stats.product_id = p.product_id
+    WHERE p.product_id = ?
+  `;
 
   db.query(sql, [id], (err, results) => {
     if (err) {
@@ -108,15 +140,16 @@ export function getProductById(req, res) {
       originalPrice: Number(p.product_originalprice),
       stock: Number(p.product_stock),
       category: p.product_category,
-    mainCategory: p.product_main_category,
-    material: p.product_material,
-    color: p.product_color,
-    image: p.product_image,
-    rating: p.product_rating ?? 0,
-    rating_count: p.rating_count ?? 0,
-    warranty: p.product_warranty ?? p.warranty ?? null,
-    distributor: p.product_distributor ?? p.distributor ?? null,
-  };
+      mainCategory: p.product_main_category,
+      material: p.product_material,
+      color: p.product_color,
+      image: p.product_image,
+      rating: p.avg_rating ?? p.product_rating ?? 0,
+      averageRating: p.avg_rating ?? p.product_rating ?? 0,
+      ratingCount: Number(p.rating_count ?? 0),
+      warranty: p.product_warranty ?? p.warranty ?? null,
+      distributor: p.product_distributor ?? p.distributor ?? null,
+    };
 
     res.json(normalized);
   });

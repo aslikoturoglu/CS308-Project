@@ -5,6 +5,7 @@ import {
   listConversations,
   postCustomerMessage,
   postSupportReply,
+  deleteConversation,
 } from "../controllers/supportController.js";
 
 const router = Router();
@@ -17,5 +18,6 @@ router.post("/message", postCustomerMessage);
 router.get("/inbox", listConversations);
 router.get("/conversations/:conversation_id/messages", getConversationMessages);
 router.post("/conversations/:conversation_id/reply", postSupportReply);
+router.delete("/conversations/:conversation_id", deleteConversation);
 
 export default router;

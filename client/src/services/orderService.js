@@ -41,47 +41,29 @@ export async function fetchUserOrders(userId, signal) {
   const numericId = Number(userId);
   if (!Number.isFinite(numericId)) return [];
 
-  const res = await fetch(`${API_BASE}/api/orders/history?user_id=${encodeURIComponent(numericId)}`, {
-    signal,
-  });
-  const data = await res.json().catch(() => []);
-  if (!res.ok) {
-    const msg = data?.error || "Orders could not be loaded";
-    throw new Error(msg);
+  // Prefer the orders endpoint (includes items); fall back to history.
+  const primaryUrl = `${API_BASE}/api/orders?user_id=${encodeURIComponent(numericId)}`;
+  const fallbackUrl = `${API_BASE}/api/orders/history?user_id=${encodeURIComponent(numericId)}`;
+
+  const tryFetch = async (url) => {
+    const res = await fetch(url, { signal });
+    const data = await res.json().catch(() => []);
+    return { ok: res.ok, data };
+  };
+
+  const primary = await tryFetch(primaryUrl);
+  if (primary.ok && Array.isArray(primary.data)) {
+    const mapped = mapOrderRows(primary.data);
+    const hasItems = mapped.some((o) => Array.isArray(o.items) && o.items.length > 0);
+    if (mapped.length && hasItems) return mapped;
   }
 
-  return (data || []).map((row) => {
-    const status = backendToFrontendStatus(row.delivery_status || row.status);
-    const items = Array.isArray(row.items)
-      ? row.items.map((it, idx) => ({
-          id: it.product_id ?? idx,
-          productId: it.product_id ?? idx,
-          name: it.name ?? it.product_name ?? "Item",
-          qty: it.quantity ?? it.qty ?? 1,
-          quantity: it.quantity ?? it.qty ?? 1,
-          price: Number(it.price ?? it.unit_price ?? 0),
-          image: it.image,
-        }))
-      : [];
-
-    return {
-      id: row.order_id ?? row.id,
-      formattedId: formatOrderId(row.order_id ?? row.id),
-      date: row.order_date || row.date,
-      status,
-      total: Number(row.total_amount ?? row.total ?? 0),
-      address: normalizeAddress(
-        row.shipping_address ??
-          row.shipping_adress /* some payloads use this typo */ ??
-          row.billing_address ??
-          row.address
-      ),
-      shippingCompany: row.shipping_company || "SUExpress",
-      estimate: row.estimate,
-      progressIndex: timelineIndex(status),
-      items,
-    };
-  });
+  const fallback = await tryFetch(fallbackUrl);
+  if (!fallback.ok) {
+    const msg = fallback.data?.error || "Orders could not be loaded";
+    throw new Error(msg);
+  }
+  return mapOrderRows(fallback.data);
 }
 
 function timelineIndex(status) {
@@ -131,6 +113,77 @@ function formatAddressObject(obj) {
   const parts = [mainAddress, city, postal].filter(Boolean);
   const line = parts.join(", ");
   return line || "Not provided";
+}
+
+function normalizeItems(row) {
+  const candidates = [
+    row?.items,
+    row?.order_items,
+    row?.orderItems,
+    row?.order_products,
+    row?.orderProducts,
+    row?.products,
+    row?.product_list,
+    row?.orderProduct,
+    row?.item_list,
+    row?.itemList,
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate;
+    if (candidate && typeof candidate === "object") {
+      const values = Object.values(candidate);
+      if (values.every((v) => typeof v === "object")) return values;
+    }
+    if (typeof candidate === "string") {
+      try {
+        const parsed = JSON.parse(candidate);
+        if (Array.isArray(parsed)) return parsed;
+        if (parsed?.items && Array.isArray(parsed.items)) return parsed.items;
+        if (parsed && typeof parsed === "object") {
+          const values = Object.values(parsed);
+          if (values.every((v) => typeof v === "object")) return values;
+        }
+      } catch {
+        // ignore parse errors
+      }
+    }
+  }
+  return [];
+}
+
+function mapOrderRows(data = []) {
+  return (data || []).map((row) => {
+    const status = backendToFrontendStatus(row.delivery_status || row.status || row.order_status);
+    const items = normalizeItems(row).map((it, idx) => ({
+      id: it.product_id ?? it.id ?? idx,
+      productId: it.product_id ?? it.id ?? idx,
+      name: it.name ?? it.product_name ?? it.title ?? "Item",
+      qty: it.quantity ?? it.qty ?? it.amount ?? 1,
+      quantity: it.quantity ?? it.qty ?? it.amount ?? 1,
+      price: Number(it.price ?? it.unit_price ?? it.total_price ?? 0),
+      image: it.image ?? it.product_image ?? it.thumbnail ?? it.productImage,
+      variant: it.variant ?? it.color ?? it.product_color,
+    }));
+
+    return {
+      id: row.order_id ?? row.id,
+      formattedId: formatOrderId(row.order_id ?? row.id),
+      date: row.order_date || row.date,
+      status,
+      total: Number(row.total_amount ?? row.total ?? 0),
+      address: normalizeAddress(
+        row.shipping_address ??
+          row.shipping_adress /* some payloads use this typo */ ??
+          row.billing_address ??
+          row.address
+      ),
+      shippingCompany: row.shipping_company || "SUExpress",
+      estimate: row.estimate,
+      progressIndex: timelineIndex(status),
+      items,
+    };
+  });
 }
 
 export function getOrderById(id) {
@@ -266,11 +319,11 @@ export async function fetchAllOrders(signal) {
       ? row.items.map((it, idx) => ({
           id: it.product_id ?? idx,
           productId: it.product_id ?? idx,
-          name: it.name ?? it.product_name ?? "Item",
+          name: it.name ?? it.product_name ?? it.title ?? "Item",
           variant: "",
-          qty: it.quantity ?? it.qty ?? 1,
-          price: Number(it.price ?? it.unit_price ?? 0),
-          image: it.image,
+          qty: it.quantity ?? it.qty ?? it.amount ?? 1,
+          price: Number(it.price ?? it.unit_price ?? it.total_price ?? 0),
+          image: it.image ?? it.product_image ?? it.thumbnail ?? it.productImage,
         }))
       : [];
 

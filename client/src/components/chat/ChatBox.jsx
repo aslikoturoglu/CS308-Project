@@ -59,15 +59,18 @@ function ChatBox() {
         {!isLoading && !hasMessages ? (
           <p className="placeholder">Type your question and we’ll jump in to help.</p>
         ) : (
-          messages.map((msg) => (
-            <div key={msg.id} className={`message-row ${msg.from}`}>
-              <div className="avatar">{msg.from === "assistant" ? "🤝" : "🙂"}</div>
-              <div className="bubble">
-                <p>{msg.text}</p>
-                <span className="meta">{formatTime(msg.timestamp)}</span>
+          messages.map((msg) => {
+            const alignment = msg.from === "user" ? "user" : "assistant";
+            return (
+              <div key={msg.id} className={`message-row ${alignment}`}>
+                <div className="avatar">{alignment === "assistant" ? "🤝" : "🙂"}</div>
+                <div className="bubble">
+                  <p>{msg.text}</p>
+                  <span className="meta">{formatTime(msg.timestamp)}</span>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
 
         {isSending && (

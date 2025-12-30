@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { addReview, getReviewMap } from "../services/localStorageHelpers";
+import {
+  addComment as addCommentApi,
+  fetchUserComments,
+} from "../services/commentService";
 import { formatOrderId, fetchUserOrders } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
 import { useAuth } from "../context/AuthContext";
@@ -16,7 +19,7 @@ const statusPills = {
 
 function OrderHistory() {
   const { user } = useAuth();
-  const [filter, setFilter] = useState("All");
+  const [filter, setFilter] = useState("Delivered");
   const [orders, setOrders] = useState([]);
   const [reviews, setReviews] = useState({});
 
@@ -29,10 +32,20 @@ function OrderHistory() {
           console.error("Order history load failed", err);
           setOrders([]);
         });
+      fetchUserComments(user.id, controller.signal)
+        .then((data) => {
+          const map = {};
+          data.forEach((row) => {
+            map[row.product_id] = map[row.product_id] || [];
+            map[row.product_id].push(row);
+          });
+          setReviews(map);
+        })
+        .catch(() => setReviews({}));
     } else {
       setOrders([]);
+      setReviews({});
     }
-    setReviews(getReviewMap());
     return () => controller.abort();
   }, [user]);
 
@@ -50,11 +63,48 @@ function OrderHistory() {
     [orders]
   );
 
-  const handleReviewSubmit = (productId, rating, comment) => {
-    const displayName = user?.name?.split(" ")[0] || "User";
-    const list = addReview(productId, rating, comment, displayName);
-    setReviews((prev) => ({ ...prev, [productId]: list }));
-    alert("Thanks for sharing your feedback!");
+  const handleReviewSubmit = async (productId, rating, comment, canReview) => {
+    if (!canReview) {
+      alert("You can only review delivered items.");
+      return;
+    }
+    if (!user?.id) {
+      alert("Please sign in.");
+      return;
+    }
+
+    try {
+      const response = await addCommentApi({
+        userId: user.id,
+        productId,
+        rating,
+        text: comment,
+      });
+
+      // Refresh user comments for this product
+      setReviews((prev) => {
+        const entry = prev[productId] || [];
+        const updated = [
+          ...entry,
+          {
+            product_id: productId,
+            rating,
+            comment_text: comment,
+            status: response?.status || "pending",
+            created_at: new Date().toISOString(),
+          },
+        ];
+        return { ...prev, [productId]: updated };
+      });
+
+      if (response?.status === "approved") {
+        alert("Your rating was applied immediately.");
+      } else {
+        alert("Your review was sent for approval (status: in review).");
+      }
+    } catch (err) {
+      alert(err.message || "Review could not be submitted.");
+    }
   };
 
   return (
@@ -250,6 +300,9 @@ function OrderHistory() {
                       const productId = item.productId ?? item.id;
                       const userReviews = reviews[productId] ?? [];
                       const latestReview = userReviews[userReviews.length - 1];
+                      const approvedReview = [...userReviews]
+                        .reverse()
+                        .find((r) => (r.status ?? "approved") === "approved" || r.approved);
 
                       return (
                         <div
@@ -258,31 +311,98 @@ function OrderHistory() {
                             border: "1px solid #e2e8f0",
                             borderRadius: 12,
                             padding: 12,
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 10,
+                            display: "grid",
+                            gridTemplateColumns: "auto 1fr auto",
+                            alignItems: "center",
+                            gap: 12,
                             backgroundColor: "#f8fafc",
                           }}
                         >
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <div>
-                              <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>{item.name}</p>
-                              <p style={{ margin: 0, color: "#475569" }}>
-                                {item.variant} · Qty: {item.qty}
-                              </p>
-                            </div>
+                          <div
+                            style={{
+                              width: 64,
+                              height: 64,
+                              borderRadius: 10,
+                              overflow: "hidden",
+                              background: "#e2e8f0",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              />
+                            ) : (
+                              <span style={{ color: "#94a3b8", fontWeight: 700 }}>No image</span>
+                            )}
+                          </div>
+
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>{item.name}</p>
+                            <p style={{ margin: 0, color: "#475569" }}>Qty: {item.qty}</p>
+                            {item.variant && (
+                              <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.9rem" }}>{item.variant}</p>
+                            )}
+                          </div>
+
+                          <div style={{ textAlign: "right" }}>
                             <p style={{ margin: 0, fontWeight: 800, color: "#0f172a" }}>
                               {formatPrice(item.price * item.qty)}
+                            </p>
+                            <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.9rem" }}>
+                              {formatPrice(item.price)} each
                             </p>
                           </div>
 
                           {order.status === "Delivered" && (
-                            <ReviewForm
-                              productId={productId}
-                              latestReview={latestReview}
-                              onSubmit={handleReviewSubmit}
-                              isDelivered
-                            />
+                            <div style={{ gridColumn: "1 / -1", marginTop: 4, display: "grid", gap: 6 }}>
+                              {latestReview && (
+                                <div
+                                  style={{
+                                    padding: 10,
+                                    borderRadius: 10,
+                                    background: "#ffffff",
+                                    border: "1px dashed #e2e8f0",
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  <div>
+                                    <p style={{ margin: 0, color: "#0f172a", fontWeight: 700 }}>
+                                      Your rating: {latestReview.rating}/5
+                                    </p>
+                                    {approvedReview?.comment_text ? (
+                                      <p style={{ margin: "4px 0 0", color: "#475569" }}>
+                                        {approvedReview.comment_text}
+                                      </p>
+                                    ) : latestReview.status === "rejected" ? (
+                                      <p style={{ margin: "4px 0 0", color: "#b91c1c" }}>
+                                        Comment rejected by manager.
+                                      </p>
+                                    ) : latestReview.comment_text ? (
+                                      <p style={{ margin: "4px 0 0", color: "#94a3b8" }}>
+                                        Comment pending manager approval
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                  <span style={{ color: "#94a3b8", fontSize: "0.9rem" }}>
+                                    {new Date(latestReview.created_at ?? latestReview.date).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              )}
+
+                              <ReviewForm
+                                productId={productId}
+                                latestReview={latestReview}
+                                onSubmit={handleReviewSubmit}
+                                isDelivered={order.status === "Delivered"}
+                              />
+                            </div>
                           )}
                         </div>
                       );
@@ -347,7 +467,7 @@ function ReviewForm({ productId, latestReview, onSubmit, isDelivered }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(productId, rating, comment);
+    onSubmit(productId, rating, comment, isDelivered);
     setComment("");
   };
 
@@ -383,15 +503,17 @@ function ReviewForm({ productId, latestReview, onSubmit, isDelivered }) {
         ))}
       </div>
 
-      <input
-        type="text"
-        placeholder="Add a short comment (optional)"
+      <textarea
+        rows={2}
+        placeholder="Add a short comment (goes to manager approval)"
         value={comment}
         onChange={(e) => setComment(e.target.value)}
         style={{
           padding: "10px 12px",
           borderRadius: 10,
           border: "1px solid #cbd5e1",
+          resize: "vertical",
+          minHeight: 44,
         }}
       />
 
@@ -411,7 +533,9 @@ function ReviewForm({ productId, latestReview, onSubmit, isDelivered }) {
         {latestReview ? "Update review" : "Submit"}
       </button>
       <p style={{ gridColumn: "1 / -1", margin: "6px 0 0", color: "#94a3b8", fontSize: "0.85rem" }}>
-        {isDelivered ? "Reviews may appear after approval." : "Only delivered items can be reviewed."}
+        {isDelivered
+          ? "Ratings are saved instantly. Comments appear after manager approval."
+          : "Only delivered items can be reviewed."}
       </p>
     </form>
   );

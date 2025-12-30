@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useWishlist } from "../../context/WishlistContext";
 import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext";
 import "../../styles/product.css";
 import { fetchProductsWithMeta } from "../../services/productService";
 
@@ -10,6 +11,9 @@ function ProductGrid() {
   const [error, setError] = useState("");
   const { toggleItem, inWishlist } = useWishlist();
   const { addItem, items: cartItems } = useCart();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -77,6 +81,10 @@ function ProductGrid() {
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
+              if (!isAuthenticated) {
+                navigate("/login", { state: { from: location } });
+                return;
+              }
               toggleItem(p);
             }}
           >

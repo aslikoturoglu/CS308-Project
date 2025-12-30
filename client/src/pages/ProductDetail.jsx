@@ -5,11 +5,7 @@ import { fetchProductById } from "../services/productService";
 import { useWishlist } from "../context/WishlistContext";
 import { useAuth } from "../context/AuthContext";
 
-import {
-  addComment,
-  fetchApprovedComments,
-  hasDelivered,
-} from "../services/commentService";
+import { addComment, fetchProductComments, hasDelivered } from "../services/commentService";
 
 function ProductDetail() {
   const { id } = useParams();          // productId as string
@@ -23,7 +19,6 @@ function ProductDetail() {
   const [product, setProduct] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [activeImage, setActiveImage] = useState("");
 
   // COMMENTS
   const [comments, setComments] = useState([]);
@@ -33,6 +28,16 @@ function ProductDetail() {
 
   // Delivery check
   const [delivered, setDelivered] = useState(false);
+
+  const approvedComments = useMemo(
+    () => comments.filter((c) => (c.status || "approved") === "approved"),
+    [comments]
+  );
+
+  const reviewCount = useMemo(
+    () => (product?.ratingCount ?? approvedComments.length),
+    [product, approvedComments]
+  );
 
   /* ---------------------------
      LOAD PRODUCT
@@ -62,7 +67,7 @@ function ProductDetail() {
   --------------------------- */
   async function loadComments() {
     try {
-      const list = await fetchApprovedComments(productId);
+      const list = await fetchProductComments(productId, { userId: user?.id });
       setComments(list || []);
     } catch {
       setComments([]);
@@ -71,13 +76,25 @@ function ProductDetail() {
 
   useEffect(() => {
     loadComments();
-  }, [productId]);
+  }, [productId, user?.id]);
+
+  async function refreshProductMeta() {
+    try {
+      const updated = await fetchProductById(productId);
+      setProduct(updated);
+    } catch (err) {
+      console.error("Product refresh failed", err);
+    }
+  }
 
   /* ---------------------------
      CHECK IF USER HAS DELIVERY
   --------------------------- */
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setDelivered(false);
+      return;
+    }
 
     async function checkDelivery() {
       try {
@@ -91,18 +108,7 @@ function ProductDetail() {
     checkDelivery();
   }, [productId, user]);
 
-  /* ---------------------------
-     GALLERY
-  --------------------------- */
-  const gallery = useMemo(() => {
-    if (!product) return [];
-    return [product.image, product.image + "?v=2", product.image + "?gray"];
-  }, [product]);
-
-  useEffect(() => {
-    if (gallery.length) setActiveImage(gallery[0]);
-  }, [gallery]);
-
+  
   /* ---------------------------
      ADD TO CART
   --------------------------- */
@@ -140,12 +146,11 @@ function ProductDetail() {
   const handleSubmitComment = async () => {
     if (!user) return alert("You must log in to leave a review.");
     if (!delivered) return alert("You can only comment after delivery.");
-    if (!commentInput.trim()) return alert("Please write a comment.");
 
     setSubmitting(true);
 
     try {
-      await addComment({
+      const response = await addComment({
         userId: user.id,
         productId,
         rating: ratingInput,
@@ -153,7 +158,32 @@ function ProductDetail() {
         name: user.name,
       });
 
-      alert("Your comment has been submitted for approval.");
+      if (response?.status === "approved") {
+        alert("Your rating has been submitted and applied.");
+      } else {
+        alert("Your comment has been submitted for approval.");
+      }
+
+      await refreshProductMeta();
+
+      // update product rating locally if backend sent aggregates
+      if (response?.averageRating !== undefined || response?.ratingCount !== undefined) {
+        setProduct((prev) =>
+          prev
+            ? {
+                ...prev,
+                averageRating:
+                  response.averageRating !== undefined
+                    ? Number(response.averageRating)
+                    : prev.averageRating,
+                ratingCount:
+                  response.ratingCount !== undefined
+                    ? Number(response.ratingCount)
+                    : prev.ratingCount,
+              }
+            : prev
+        );
+      }
 
       // reset form
       setRatingInput(5);
@@ -201,9 +231,9 @@ function ProductDetail() {
 
           <div style={{ display: "flex", gap: 8 }}>
             <strong style={{ color: "#f59e0b" }}>
-              ⭐ {product.averageRating ?? "0.0"}
+              ⭐ {Number(product.averageRating ?? product.rating ?? 0).toFixed(1)}
             </strong>
-            <span>({comments.length} reviews)</span>
+            <span>({reviewCount} reviews)</span>
             <span
               style={{ color: product.availableStock ? "green" : "red" }}
             >
@@ -219,22 +249,28 @@ function ProductDetail() {
         </Link>
       </div>
 
-      {/* CONTENT GRID */}
+      {/* CONTENT */}
       <div style={contentGrid}>
-        {/* IMAGE */}
+        {/* 🔴 CHANGE — SINGLE IMAGE + ZOOM */}
         <div style={imageCard}>
-          <img src={activeImage} alt="" style={mainImage} />
-          <div style={thumbRow}>
-            {gallery.map((img) => (
-              <button
-                key={img}
-                onClick={() => setActiveImage(img)}
-                style={img === activeImage ? activeThumb : thumb}
-              >
-                <img src={img} style={thumbImg} />
-              </button>
-            ))}
-          </div>
+        <img
+          src={product.image}
+          alt={product.name}
+          style={mainImage}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(2)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.transformOrigin = "center center";
+          }}
+          onMouseMove={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            e.currentTarget.style.transformOrigin = `${x}% ${y}%`;
+          }}
+        />
         </div>
 
         {/* PRODUCT INFO */}
@@ -336,67 +372,65 @@ function ProductDetail() {
 
         {comments.length === 0 && <p>No reviews yet.</p>}
 
-        {comments.map((c) => (
-          <div key={c.comment_id} style={reviewBlock}>
-            <strong style={{ display: "block", marginBottom: 4 }}>
-              {c.display_name || "Verified buyer"}
-            </strong>
-            <div style={stars}>
-              {"★".repeat(c.rating)}
-              {"☆".repeat(5 - c.rating)}
+        {comments.map((c) => {
+          const status = c.status || "approved";
+          const statusColor = statusColors[status] || "#475569";
+          const createdLabel = c.created_at
+            ? new Date(c.created_at).toLocaleString()
+            : "";
+          const hasText = (c.comment_text || "").trim().length > 0;
+
+      return (
+        <div key={c.comment_id} style={reviewBlock}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 10,
+              marginBottom: 6,
+            }}
+          >
+            <strong>{c.display_name || "Verified buyer"}</strong>
+            {hasText && user?.id === c.user_id && status !== "approved" && (
+              <span
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 12,
+                  backgroundColor: `${statusColor}1a`,
+                      color: statusColor,
+                      fontWeight: 700,
+                      fontSize: "0.85rem",
+                      textTransform: "capitalize",
+                    }}
+                  >
+                    {status}
+                  </span>
+                )}
+              </div>
+
+              <div style={stars}>
+                {"★".repeat(Number(c.rating) || 0)}
+                {"☆".repeat(5 - (Number(c.rating) || 0))}
+              </div>
+
+              {c.comment_text ? (
+                <p style={{ margin: "4px 0" }}>{c.comment_text}</p>
+              ) : (
+                <p style={{ margin: "4px 0", color: "#94a3b8" }}>
+                  No comment text provided.
+                </p>
+              )}
+
+              {createdLabel && (
+                <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>
+                  {createdLabel}
+                </span>
+              )}
             </div>
-            <p style={{ margin: "4px 0" }}>{c.comment_text}</p>
-            <small>{new Date(c.created_at).toLocaleDateString()}</small>
-          </div>
-        ))}
+          );
+        })}
 
-        {/* REVIEW FORM */}
-        {user ? (
-          <div style={{ marginTop: 20 }}>
-            {!delivered && (
-              <p style={{ color: "#b91c1c" }}>
-                You can only leave a review after delivery.
-              </p>
-            )}
-
-            {delivered && (
-              <>
-                <h3>Leave a Review</h3>
-
-                <select
-                  value={ratingInput}
-                  onChange={(e) => setRatingInput(Number(e.target.value))}
-                  style={select}
-                >
-                  {[1, 2, 3, 4, 5].map((r) => (
-                    <option key={r} value={r}>
-                      {r} ★
-                    </option>
-                  ))}
-                </select>
-
-                <textarea
-                  value={commentInput}
-                  onChange={(e) => setCommentInput(e.target.value)}
-                  placeholder="Write your review..."
-                  style={textarea}
-                />
-
-                <button
-                  onClick={handleSubmitComment}
-                  disabled={submitting}
-                  style={submitBtn}
-                >
-                  {submitting ? "Sending..." : "Submit Review"}
-                </button>
-              </>
-            )}
-          </div>
-        ) : (
-          <p>
-            You must <Link to="/login">log in</Link> to review.
-          </p>
-        )}
       </section>
     </section>
   );
@@ -411,9 +445,7 @@ function Info({ label, value }) {
   );
 }
 
-/* ---------------------------
-   STYLES (FULL, NO CUTS)
---------------------------- */
+
 const pageStyle = {
   padding: "40px 24px",
   background: "#f5f7fb",
@@ -445,36 +477,14 @@ const imageCard = {
   padding: 16,
   borderRadius: 12,
   border: "1px solid #e5e7eb",
+  overflow: "hidden",
 };
 
 const mainImage = {
   width: "100%",
   borderRadius: 12,
-};
-
-const thumbRow = {
-  display: "flex",
-  gap: 10,
-  marginTop: 10,
-};
-
-const thumb = {
-  border: "1px solid #ccc",
-  padding: 4,
-  borderRadius: 8,
-  background: "white",
-};
-
-const activeThumb = {
-  ...thumb,
-  border: "2px solid #0058a3",
-};
-
-const thumbImg = {
-  width: 70,
-  height: 70,
-  borderRadius: 6,
-  objectFit: "cover",
+  transition: "transform 0.2s ease",
+  cursor: "zoom-in",
 };
 
 const infoCard = {
@@ -549,6 +559,12 @@ const reviewBlock = {
   border: "1px solid #e2e8f0",
   marginBottom: 12,
   background: "#f8fafc",
+};
+
+const statusColors = {
+  approved: "#15803d",
+  pending: "#d97706",
+  rejected: "#b91c1c",
 };
 
 const stars = {

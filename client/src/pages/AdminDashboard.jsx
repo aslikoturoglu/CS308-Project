@@ -6,6 +6,7 @@ import {
   fetchSupportInbox,
   fetchSupportMessages,
   sendSupportMessage,
+  deleteConversation as deleteConversationApi,
 } from "../services/supportService";
 import {
   advanceOrderStatus,
@@ -15,7 +16,11 @@ import {
   getOrders,
   updateBackendOrderStatus,
 } from "../services/orderService";
-import { approveReview, getReviewMap } from "../services/localStorageHelpers";
+import {
+  fetchPendingComments,
+  approveComment as approveCommentApi,
+  rejectComment as rejectCommentApi,
+} from "../services/commentService";
 
 const rolesToSections = {
   admin: ["dashboard", "product", "sales", "support"],
@@ -34,6 +39,8 @@ function AdminDashboard() {
   const [deliveries, setDeliveries] = useState([]);
   const [pendingReviews, setPendingReviews] = useState([]);
   const [chats, setChats] = useState([]);
+  const [chatPage, setChatPage] = useState(1);
+  const CHAT_PAGE_SIZE = 6;
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [replyDraft, setReplyDraft] = useState("");
@@ -55,27 +62,16 @@ function AdminDashboard() {
     return () => controller.abort();
   }, [addToast]);
 
-  const refreshPendingReviews = useCallback(() => {
-    const map = getReviewMap();
-    const list = [];
-    Object.entries(map).forEach(([pid, reviews]) => {
-      if (!Array.isArray(reviews)) return;
-      reviews.forEach((rev) => {
-        if (rev.approved === false) {
-          list.push({
-            productId: Number(pid),
-            id: rev.id,
-            rating: rev.rating,
-            comment: rev.comment,
-            displayName: rev.displayName,
-            date: rev.date,
-          });
-        }
-      });
-    });
-    list.sort((a, b) => Date.parse(b.date || 0) - Date.parse(a.date || 0));
-    setPendingReviews(list);
-  }, []);
+  const refreshPendingReviews = useCallback(async () => {
+    try {
+      const list = await fetchPendingComments();
+      setPendingReviews(list);
+    } catch (error) {
+      console.error("Pending reviews load failed", error);
+      setPendingReviews([]);
+      addToast("Pending reviews could not be loaded", "error");
+    }
+  }, [addToast]);
 
   const loadOrders = useCallback(async () => {
     try {
@@ -157,6 +153,24 @@ function AdminDashboard() {
     const interval = setInterval(() => fetchThread({ showSpinner: false }), 3000);
     return () => clearInterval(interval);
   }, [activeConversationId, addToast]);
+
+  const handleDeleteConversation = async (conversationId) => {
+    if (!conversationId) return;
+    if (!window.confirm("Delete this conversation and all its messages?")) return;
+    try {
+      await deleteConversationApi(conversationId);
+      setChats((prev) => prev.filter((c) => c.id !== conversationId));
+      if (activeConversationId === conversationId) {
+        const remaining = chats.filter((c) => c.id !== conversationId);
+        setActiveConversationId(remaining[0]?.id ?? null);
+        setChatMessages([]);
+      }
+      addToast("Conversation deleted", "info");
+    } catch (error) {
+      console.error("Conversation delete failed", error);
+      addToast("Conversation could not be deleted", "error");
+    }
+  };
 
   const permittedSections = rolesToSections[user?.role] || [];
   useEffect(() => {
@@ -348,10 +362,26 @@ function AdminDashboard() {
     addToast("Order advanced to next status", "info");
   };
 
-  const handleApproveReview = (productId, reviewId) => {
-    approveReview(productId, reviewId, true);
-    refreshPendingReviews();
-    addToast("Review approved", "info");
+  const handleApproveReview = async (commentId) => {
+    try {
+      await approveCommentApi(commentId);
+      await refreshPendingReviews();
+      addToast("Review approved", "info");
+    } catch (error) {
+      console.error("Review approve failed", error);
+      addToast("Review approve failed", "error");
+    }
+  };
+
+  const handleRejectReview = async (commentId) => {
+    try {
+      await rejectCommentApi(commentId);
+      await refreshPendingReviews();
+      addToast("Review rejected", "info");
+    } catch (error) {
+      console.error("Review reject failed", error);
+      addToast("Review reject failed", "error");
+    }
   };
 
   const handleSendReply = async () => {
@@ -456,31 +486,33 @@ function AdminDashboard() {
             minWidth: 0,
           }}
         >
-          <header
-            style={{
-              background: "white",
-              borderRadius: 16,
-              padding: 18,
-              boxShadow: "0 18px 40px rgba(0,0,0,0.06)",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <div>
-              <p style={{ margin: "0 0 6px", color: "#6b7280", fontWeight: 700 }}>
-                Admin workspace / {activeSection}
-              </p>
-              <h1 style={{ margin: 0, color: "#0f172a" }}>Dashboard</h1>
-              <p style={{ margin: "6px 0 0", color: "#475569" }}>Role: {user?.role || "customer"}</p>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <p style={{ margin: 0, color: "#6b7280" }}>Today&apos;s revenue</p>
-              <strong style={{ fontSize: "1.4rem", color: "#0058a3" }}>
-                ₺{totals.revenue.toLocaleString("tr-TR")}
-              </strong>
-            </div>
-          </header>
+          {activeSection !== "support" && (
+            <header
+              style={{
+                background: "white",
+                borderRadius: 16,
+                padding: 18,
+                boxShadow: "0 18px 40px rgba(0,0,0,0.06)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div>
+                <p style={{ margin: "0 0 6px", color: "#6b7280", fontWeight: 700 }}>
+                  Admin workspace / {activeSection}
+                </p>
+                <h1 style={{ margin: 0, color: "#0f172a" }}>Dashboard</h1>
+                <p style={{ margin: "6px 0 0", color: "#475569" }}>Role: {user?.role || "customer"}</p>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <p style={{ margin: 0, color: "#6b7280" }}>Today&apos;s revenue</p>
+                <strong style={{ fontSize: "1.4rem", color: "#0058a3" }}>
+                  ₺{totals.revenue.toLocaleString("tr-TR")}
+                </strong>
+              </div>
+            </header>
+          )}
 
           {activeSection === "dashboard" && (
             <section
@@ -643,10 +675,13 @@ function AdminDashboard() {
                 ) : (
                   <div style={{ display: "grid", gap: 8 }}>
                     {pendingReviews.map((rev) => {
-                      const productName = products.find((p) => Number(p.id) === Number(rev.productId))?.name || `Product #${rev.productId}`;
+                      const productName =
+                        rev.product_name ||
+                        products.find((p) => Number(p.id) === Number(rev.product_id))?.name ||
+                        `Product #${rev.product_id}`;
                       return (
                         <div
-                          key={rev.id}
+                          key={rev.comment_id}
                           style={{
                             border: "1px solid #e5e7eb",
                             borderRadius: 12,
@@ -659,17 +694,30 @@ function AdminDashboard() {
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <div>
                               <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>{productName}</p>
-                              <small style={{ color: "#64748b" }}>{rev.displayName || "User"}</small>
+                              <small style={{ color: "#64748b" }}>{rev.user_name || "User"}</small>
                             </div>
                             <div style={{ color: "#f59e0b", fontWeight: 800 }}>
                               {"★".repeat(Number(rev.rating) || 0)}
                               {"☆".repeat(Math.max(0, 5 - (Number(rev.rating) || 0)))}
                             </div>
                           </div>
-                          <p style={{ margin: 0, color: "#0f172a" }}>{rev.comment}</p>
-                          <button type="button" onClick={() => handleApproveReview(rev.productId, rev.id)} style={primaryBtn}>
-                            Approve
-                          </button>
+                          <p style={{ margin: 0, color: "#0f172a" }}>{rev.comment_text}</p>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button
+                              type="button"
+                              onClick={() => handleApproveReview(rev.comment_id)}
+                              style={{ ...primaryBtn, flex: 1 }}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRejectReview(rev.comment_id)}
+                              style={{ ...secondaryBtn, flex: 1 }}
+                            >
+                              Reject
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
@@ -987,7 +1035,9 @@ function AdminDashboard() {
                   {isLoadingChats && <span style={{ color: "#0ea5e9", fontWeight: 700 }}>Syncing…</span>}
                 </div>
                 <div style={{ display: "grid", gap: 12 }}>
-                  {chats.map((chat) => {
+                  {chats
+                    .slice((chatPage - 1) * CHAT_PAGE_SIZE, chatPage * CHAT_PAGE_SIZE)
+                    .map((chat) => {
                     const isActive = chat.id === activeConversationId;
                     return (
                       <button
@@ -1029,9 +1079,80 @@ function AdminDashboard() {
                         <small style={{ color: "#6b7280" }}>
                           Last update: {new Date(chat.last_message_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
                         </small>
+                        <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectConversation(chat.id)}
+                            style={{
+                              padding: "6px 10px",
+                              borderRadius: 8,
+                              border: "1px solid #e5e7eb",
+                              background: "white",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Open
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteConversation(chat.id);
+                            }}
+                            style={{
+                              padding: "6px 10px",
+                              borderRadius: 8,
+                              border: "1px solid #fca5a5",
+                              background: "#fef2f2",
+                              color: "#b91c1c",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </button>
                     );
                   })}
+                  {chats.length > CHAT_PAGE_SIZE && (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+                      <button
+                        type="button"
+                        onClick={() => setChatPage((p) => Math.max(1, p - 1))}
+                        disabled={chatPage === 1}
+                        style={{
+                          padding: "6px 12px",
+                          borderRadius: 10,
+                          border: "1px solid #e5e7eb",
+                          background: chatPage === 1 ? "#f8fafc" : "white",
+                          cursor: chatPage === 1 ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        ‹ Prev
+                      </button>
+                      <span style={{ color: "#475569", fontWeight: 600 }}>
+                        Page {chatPage} / {Math.max(1, Math.ceil(chats.length / CHAT_PAGE_SIZE))}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setChatPage((p) => Math.min(Math.ceil(chats.length / CHAT_PAGE_SIZE), p + 1))
+                        }
+                        disabled={chatPage >= Math.ceil(chats.length / CHAT_PAGE_SIZE)}
+                        style={{
+                          padding: "6px 12px",
+                          borderRadius: 10,
+                          border: "1px solid #e5e7eb",
+                          background:
+                            chatPage >= Math.ceil(chats.length / CHAT_PAGE_SIZE) ? "#f8fafc" : "white",
+                          cursor:
+                            chatPage >= Math.ceil(chats.length / CHAT_PAGE_SIZE) ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        Next ›
+                      </button>
+                    </div>
+                  )}
                   {!chats.length && !isLoadingChats && (
                     <p style={{ margin: 0, color: "#6b7280" }}>No active chats yet.</p>
                   )}
@@ -1157,6 +1278,16 @@ const primaryBtn = {
   padding: "10px 12px",
   borderRadius: 10,
   fontWeight: 800,
+  cursor: "pointer",
+};
+
+const secondaryBtn = {
+  border: "1px solid #e5e7eb",
+  background: "#ffffff",
+  color: "#0f172a",
+  padding: "10px 12px",
+  borderRadius: 10,
+  fontWeight: 700,
   cursor: "pointer",
 };
 

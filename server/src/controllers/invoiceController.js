@@ -1,5 +1,6 @@
 import db from "../db.js";
 import PDFDocument from "pdfkit";
+import nodemailer from "nodemailer";
 
 // Türkçe karakter düzeltme
 function normalizeTR(text) {
@@ -114,17 +115,7 @@ function formatAddressLines(details) {
   return lines;
 }
 
-function createPdf(order, items, res, detailPayload = {}) {
-  const doc = new PDFDocument({ margin: 40 });
-
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader(
-    "Content-Disposition",
-    `inline; filename=invoice_${order.order_id}.pdf`
-  );
-
-  doc.pipe(res);
-
+function renderInvoice(doc, order, items, detailPayload = {}) {
   const blue = "#0058a3";
   const greyLight = "#f2f4f7";
   const greyBorder = "#d0d7de";
@@ -265,6 +256,124 @@ function createPdf(order, items, res, detailPayload = {}) {
     .font("Helvetica")
     .fontSize(12)
     .text("Thank you for choosing SUHOME.", 0, totalY + 60, { align: "center" });
+}
 
+function createPdf(order, items, res, detailPayload = {}) {
+  const doc = new PDFDocument({ margin: 40 });
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader(
+    "Content-Disposition",
+    `inline; filename=invoice_${order.order_id}.pdf`
+  );
+
+  doc.pipe(res);
+  renderInvoice(doc, order, items, detailPayload);
   doc.end();
+}
+
+function createPdfBuffer(order, items, detailPayload = {}) {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ margin: 40 });
+      const chunks = [];
+      doc.on("data", (chunk) => chunks.push(chunk));
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", (err) => reject(err));
+
+      renderInvoice(doc, order, items, detailPayload);
+      doc.end();
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+async function sendInvoiceEmail(order, items, detailPayload = {}) {
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env;
+  if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS) {
+    console.warn("SMTP config missing; skipping invoice email.");
+    return;
+  }
+
+  const recipient = detailPayload?.shippingDetails?.email || detailPayload?.billingDetails?.email || order.customer_email;
+  if (!recipient) {
+    console.warn("No recipient email found; skipping invoice email.");
+    return;
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: Number(SMTP_PORT) || 587,
+    secure: Number(SMTP_PORT) === 465,
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+  });
+
+  const pdfBuffer = await createPdfBuffer(order, items, detailPayload);
+  const formattedInvoiceId = `ORD-${String(order.order_id).padStart(5, "0")}`;
+
+  await transporter.sendMail({
+    from: SMTP_FROM || SMTP_USER,
+    to: recipient,
+    subject: `Your SUHOME invoice ${formattedInvoiceId}`,
+    text: `Hello ${order.customer_name || "Customer"},\n\nAttached is your invoice ${formattedInvoiceId}.\n\nThank you for choosing SUHOME.`,
+    attachments: [
+      {
+        filename: `invoice_${formattedInvoiceId}.pdf`,
+        content: pdfBuffer,
+      },
+    ],
+  });
+}
+
+export async function sendInvoiceEmailForOrder(orderId) {
+  const sqlOrder = `
+    SELECT 
+      o.order_id,
+      o.user_id,
+      o.order_date,
+      o.total_amount,
+      o.shipping_address,
+      o.billing_address,
+      u.full_name AS customer_name,
+      u.email AS customer_email,
+      u.home_address AS customer_address
+    FROM orders o
+    LEFT JOIN users u ON u.user_id = o.user_id
+    WHERE o.order_id = ?
+    LIMIT 1
+  `;
+
+  const sqlItems = `
+    SELECT 
+      oi.order_item_id,
+      oi.order_id,
+      oi.product_id,
+      oi.quantity,
+      oi.unit_price,
+      COALESCE(p.product_name, CONCAT('Product #', oi.product_id)) AS product_name
+    FROM order_items oi
+    LEFT JOIN products p ON p.product_id = oi.product_id
+    WHERE oi.order_id = ?
+  `;
+
+  return new Promise((resolve) => {
+    db.query(sqlOrder, [orderId], (orderErr, orderRows) => {
+      if (orderErr || !orderRows.length) return resolve();
+      const order = orderRows[0];
+      db.query(sqlItems, [orderId], async (itemErr, items = []) => {
+        if (itemErr) items = [];
+
+        const shippingDetails = parseAddressPayload(order.shipping_address);
+        const billingDetails = parseAddressPayload(order.billing_address);
+
+        try {
+          await sendInvoiceEmail(order, items, { shippingDetails, billingDetails });
+        } catch (error) {
+          console.error("Invoice email failed:", error);
+        }
+        resolve();
+      });
+    });
+  });
 }

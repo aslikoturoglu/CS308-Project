@@ -39,7 +39,7 @@ function Header() {
             display: inline-flex;
             gap: 60px;
             font-weight: 600;
-            color: #003f7f;
+            color: #ffffff;
             padding-right: 60px;
             animation: scrollLeft 40s linear infinite;
           }
@@ -57,8 +57,8 @@ function Header() {
 
       <header
         style={{
-          background: "#ffcc00",
-          color: "#0058a3",
+          background: "#140020",
+          color: "#ffffff",
           padding: "10px 18px 0px",
           textAlign: "center",
           fontWeight: "bold",
@@ -88,26 +88,24 @@ function Header() {
             width: "100%",
             overflow: "hidden",
             whiteSpace: "nowrap",
-            background: "#ffcc00",
+            background: "#140020",
             padding: "4px 0",
           }}
         >
           <div className="ticker-track">
-            <span style={{ marginRight: 60 }}>🛋️ Modern Furniture </span>
-            <span style={{ marginRight: 60 }}>📦 Fast Delivery</span>
-            <span style={{ marginRight: 60 }}>🤗 Friendly Support </span>
-            <span style={{ marginRight: 60 }}>🔥 Big Sale Week! 250₺ Off! </span>
-            <span style={{ marginRight: 60 }}>🎁 New Arrivals Just Landed — Check Them Out!</span>
-            <span style={{ marginRight: 60 }}>🚚 Only 89₺ Shipping!</span>
+    
+            <span style={{ marginRight: 60 }}>Masterfully Coordinated Luxury Delivery</span>
+            <span style={{ marginRight: 60 }}>Private, Invitation-Only Support Service </span>
+            <span style={{ marginRight: 60 }}>Introducing Newly Released Masterpieces — Reserved for Refined Tastes</span>
+            <span style={{ marginRight: 60 }}>Designed for those who notice details.</span>
           </div>
           
           <div className="ticker-track">
-            <span style={{ marginRight: 60 }}>🛋️ Modern Furniture </span>
-            <span style={{ marginRight: 60 }}>📦 Fast Delivery</span>
-            <span style={{ marginRight: 60 }}>🤗 Friendly Support </span>
-            <span style={{ marginRight: 60 }}>🔥 Big Sale Week! 250₺ Off! </span>
-            <span style={{ marginRight: 60 }}>🎁 New Arrivals Just Landed — Check Them Out!</span>
-            <span style={{ marginRight: 60 }}>🚚 Only 89₺ Shipping!</span>
+            <span style={{ marginRight: 60 }}>Masterfully Coordinated Luxury Delivery</span>
+            <span style={{ marginRight: 60 }}>Private, Invitation-Only Support Service </span>
+            <span style={{ marginRight: 60 }}>Introducing Newly Released Masterpieces — Reserved for Refined Tastes</span>
+            <span style={{ marginRight: 60 }}>Designed for those who notice details.</span>
+          
           </div>
 
         </div>

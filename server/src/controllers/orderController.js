@@ -1,5 +1,6 @@
 // server/src/controllers/orderController.js
 import db from "../db.js";
+import { sendInvoiceEmailForOrder } from "./invoiceController.js";
 
 /**
  * POST /orders/checkout
@@ -122,6 +123,11 @@ export function checkout(req, res) {
                       console.error("Sepet temizlenemedi:", err);
                     }
 
+                    // Invoice email (fire-and-forget)
+                    sendInvoiceEmailForOrder(order_id).catch((e) =>
+                      console.error("Invoice email error:", e)
+                    );
+
                     return res.json({
                       success: true,
                       order_id,
@@ -231,16 +237,16 @@ export function getOrderHistory(req, res) {
     const orderIds = rows.map((r) => r.order_id);
     if (!orderIds.length) return res.json([]);
 
-    const itemSql = `
+      const itemSql = `
       SELECT 
         oi.order_id,
         oi.product_id,
         oi.quantity,
         oi.unit_price,
-        p.product_name,
+        COALESCE(p.product_name, CONCAT('Product #', oi.product_id)) AS product_name,
         p.product_image
       FROM order_items oi
-      LEFT JOIN Products p ON p.product_id = oi.product_id
+      LEFT JOIN products p ON p.product_id = oi.product_id
       WHERE oi.order_id IN (?)
     `;
 
@@ -312,10 +318,10 @@ export function getAllOrders(req, res) {
       oi.product_id,
       oi.quantity,
       oi.unit_price,
-      p.product_name,
+      COALESCE(p.product_name, CONCAT('Product #', oi.product_id)) AS product_name,
       p.product_image
     FROM order_items oi
-    LEFT JOIN Products p ON p.product_id = oi.product_id
+    LEFT JOIN products p ON p.product_id = oi.product_id
   `;
 
   const normalizeStatus = (value) => {
