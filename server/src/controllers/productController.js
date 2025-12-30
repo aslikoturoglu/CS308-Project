@@ -6,7 +6,9 @@ export function getAllProducts(req, res) {
     SELECT 
       p.*,
       COALESCE(stats.avg_rating, 0)   AS avg_rating,
-      COALESCE(stats.rating_count, 0) AS rating_count
+      COALESCE(stats.rating_count, 0) AS rating_count,
+      COALESCE(disc.discount_amount, 0) AS discount_amount,
+      GREATEST(p.product_price - COALESCE(disc.discount_amount, 0), 0) AS discounted_price
     FROM products p
     LEFT JOIN (
       SELECT 
@@ -17,6 +19,23 @@ export function getAllProducts(req, res) {
       WHERE rating IS NOT NULL AND (status IS NULL OR status <> 'rejected')
       GROUP BY product_id
     ) stats ON stats.product_id = p.product_id
+    LEFT JOIN (
+      SELECT 
+        dp.product_id,
+        MAX(
+          CASE d.type
+            WHEN 'rate' THEN p2.product_price * d.value / 100
+            WHEN 'amount' THEN d.value
+            ELSE 0
+          END
+        ) AS discount_amount
+      FROM discount_products dp
+      JOIN discounts d ON d.discount_id = dp.discount_id
+      JOIN products p2 ON p2.product_id = dp.product_id
+      WHERE d.status = 'active'
+        AND NOW() BETWEEN d.start_at AND d.end_at
+      GROUP BY dp.product_id
+    ) disc ON disc.product_id = p.product_id
   `;
 
   db.query(sql, (err, results) => {
@@ -25,12 +44,15 @@ export function getAllProducts(req, res) {
       return res.status(500).json({ error: "Veritabanı hatası" });
     }
 
-    const normalized = results.map((p) => ({
-      id: p.product_id,
-      name: p.product_name,
-      description: p.product_features,
-      price: Number(p.product_price),
-      originalPrice: Number(p.product_originalprice),
+    const normalized = results.map((p) => {
+      const basePrice = Number(p.product_price);
+      const discountedPrice = Number(p.discounted_price ?? basePrice);
+      return {
+        id: p.product_id,
+        name: p.product_name,
+        description: p.product_features,
+        price: discountedPrice,
+        originalPrice: basePrice,
       stock: Number(p.product_stock),
       category: p.product_category,
       mainCategory: p.product_main_category,
@@ -41,8 +63,9 @@ export function getAllProducts(req, res) {
       averageRating: p.avg_rating ?? p.product_rating ?? 0,
       ratingCount: Number(p.rating_count ?? 0),
       warranty: p.product_warranty ?? p.warranty ?? null,
-      distributor: p.product_distributor ?? p.distributor ?? null,
-    }));
+        distributor: p.product_distributor ?? p.distributor ?? null,
+      };
+    });
 
     res.json(normalized);
   });
@@ -106,7 +129,9 @@ export function getProductById(req, res) {
     SELECT 
       p.*,
       COALESCE(stats.avg_rating, 0)   AS avg_rating,
-      COALESCE(stats.rating_count, 0) AS rating_count
+      COALESCE(stats.rating_count, 0) AS rating_count,
+      COALESCE(disc.discount_amount, 0) AS discount_amount,
+      GREATEST(p.product_price - COALESCE(disc.discount_amount, 0), 0) AS discounted_price
     FROM products p
     LEFT JOIN (
       SELECT 
@@ -117,6 +142,23 @@ export function getProductById(req, res) {
       WHERE rating IS NOT NULL AND (status IS NULL OR status <> 'rejected')
       GROUP BY product_id
     ) stats ON stats.product_id = p.product_id
+    LEFT JOIN (
+      SELECT 
+        dp.product_id,
+        MAX(
+          CASE d.type
+            WHEN 'rate' THEN p2.product_price * d.value / 100
+            WHEN 'amount' THEN d.value
+            ELSE 0
+          END
+        ) AS discount_amount
+      FROM discount_products dp
+      JOIN discounts d ON d.discount_id = dp.discount_id
+      JOIN products p2 ON p2.product_id = dp.product_id
+      WHERE d.status = 'active'
+        AND NOW() BETWEEN d.start_at AND d.end_at
+      GROUP BY dp.product_id
+    ) disc ON disc.product_id = p.product_id
     WHERE p.product_id = ?
   `;
 
@@ -132,12 +174,14 @@ export function getProductById(req, res) {
 
     const p = results[0];
 
+    const basePrice = Number(p.product_price);
+    const discountedPrice = Number(p.discounted_price ?? basePrice);
     const normalized = {
       id: p.product_id,
       name: p.product_name,
       description: p.product_features,
-      price: Number(p.product_price),
-      originalPrice: Number(p.product_originalprice),
+      price: discountedPrice,
+      originalPrice: basePrice,
       stock: Number(p.product_stock),
       category: p.product_category,
       mainCategory: p.product_main_category,

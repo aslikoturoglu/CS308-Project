@@ -20,7 +20,9 @@ function ChatBox() {
     closeChat,
   } = useChat();
   const [draft, setDraft] = useState("");
+  const [attachments, setAttachments] = useState([]);
   const endRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const hasMessages = useMemo(() => messages?.length > 0, [messages]);
 
@@ -29,14 +31,29 @@ function ChatBox() {
   }, [messages, isSending]);
 
   const handleSend = (text = draft) => {
-    if (!text.trim()) return;
-    sendMessage(text);
+    const trimmed = text.trim();
+    if (!trimmed && attachments.length === 0) return;
+    sendMessage({ text, attachments });
     setDraft("");
+    setAttachments([]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     handleSend();
+  };
+
+  const handleFilesSelected = (e) => {
+    const selected = Array.from(e.target.files || []).slice(0, 3);
+    setAttachments(selected);
+  };
+
+  const handleRemoveAttachment = (name) => {
+    setAttachments((prev) => prev.filter((file) => file.name !== name));
+    if (fileInputRef.current && fileInputRef.current.files?.length) {
+      fileInputRef.current.value = "";
+    }
   };
 
   return (
@@ -66,6 +83,21 @@ function ChatBox() {
                 <div className="avatar">{alignment === "assistant" ? "🤝" : "🙂"}</div>
                 <div className="bubble">
                   <p>{msg.text}</p>
+                  {msg.attachments?.length > 0 && (
+                    <div className="attachment-list">
+                      {msg.attachments.map((att) => (
+                        <a
+                          key={att.id}
+                          href={att.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="attachment-chip"
+                        >
+                          📎 {att.file_name}
+                        </a>
+                      ))}
+                    </div>
+                  )}
                   <span className="meta">{formatTime(msg.timestamp)}</span>
                 </div>
               </div>
@@ -93,6 +125,17 @@ function ChatBox() {
       )}
 
       <form className="chat-input" onSubmit={handleSubmit}>
+        <label className="attach-btn" title="Dosya ekle">
+          📎
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*,.pdf,.doc,.docx,.txt"
+            onChange={handleFilesSelected}
+            style={{ display: "none" }}
+          />
+        </label>
         <input
           type="text"
           placeholder="Write a message..."
@@ -100,6 +143,18 @@ function ChatBox() {
           onChange={(e) => setDraft(e.target.value)}
           disabled={isSending}
         />
+        {attachments.length > 0 && (
+          <div className="selected-attachments">
+            {attachments.map((file) => (
+              <span key={file.name} className="attachment-chip removable">
+                {file.name}
+                <button type="button" onClick={() => handleRemoveAttachment(file.name)} aria-label="Remove attachment">
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
         <button type="submit" disabled={isSending}>
           {isSending ? "Sending..." : "Send"}
         </button>

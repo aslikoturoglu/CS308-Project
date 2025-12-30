@@ -8,6 +8,68 @@ const DEFAULT_AGENT_ID = Number(
 const SUPPORT_INBOX_EMAIL =
   process.env.SUPPORT_INBOX_EMAIL || process.env.SMTP_FROM || process.env.SMTP_USER;
 
+function groupAttachments(rows) {
+  const map = new Map();
+  (rows || []).forEach((row) => {
+    const bucket = map.get(row.message_id) || [];
+    bucket.push({
+      id: row.attachment_id,
+      file_name: row.file_name,
+      mime_type: row.mime_type,
+      url: row.url,
+      uploaded_at: row.uploaded_at,
+    });
+    map.set(row.message_id, bucket);
+  });
+  return map;
+}
+
+function fetchAttachmentsForMessages(messageIds, callback) {
+  if (!Array.isArray(messageIds) || messageIds.length === 0) {
+    return callback(null, new Map());
+  }
+  const sql = `
+    SELECT attachment_id, message_id, file_name, mime_type, url, uploaded_at
+    FROM support_attachments
+    WHERE message_id IN (?)
+    ORDER BY uploaded_at ASC
+  `;
+  db.query(sql, [messageIds], (err, rows) => {
+    if (err) return callback(err);
+    callback(null, groupAttachments(rows));
+  });
+}
+
+function saveAttachments(files, messageId) {
+  if (!Array.isArray(files) || files.length === 0) {
+    return Promise.resolve([]);
+  }
+  const insertSql = `
+    INSERT INTO support_attachments (message_id, file_name, mime_type, url)
+    VALUES (?, ?, ?, ?)
+  `;
+
+  const attachments = [];
+  return Promise.all(
+    files.map(
+      (file) =>
+        new Promise((resolve, reject) => {
+          const url = `/uploads/support/${file.filename}`;
+          db.query(insertSql, [messageId, file.originalname, file.mimetype, url], (err, result) => {
+            if (err) return reject(err);
+            attachments.push({
+              id: result.insertId,
+              file_name: file.originalname,
+              mime_type: file.mimetype,
+              url,
+            });
+            resolve();
+          });
+        })
+    )
+  ).then(() => attachments);
+}
+
 function pickUserId(rawId) {
   const asNumber = Number(rawId);
   if (Number.isFinite(asNumber) && asNumber > 0) return asNumber;
@@ -91,13 +153,14 @@ function ensureConversation(userId, orderId, callback) {
   });
 }
 
-function mapMessages(rows, userId) {
+function mapMessages(rows, userId, attachmentMap = new Map()) {
   return rows.map((row) => ({
     id: row.message_id,
     text: row.message_text,
     sender_id: row.sender_id,
     from: row.sender_id === userId ? "customer" : "support",
     timestamp: row.created_at,
+    attachments: attachmentMap.get(row.message_id) || [],
   }));
 }
 
@@ -129,11 +192,18 @@ export function getConversation(req, res) {
           return res.status(500).json({ error: "Mesajlar alınamadı" });
         }
 
-        res.json({
-          conversation_id: conversationId,
-          user_id: userId,
-          order_id: orderId,
-          messages: mapMessages(rows, userId),
+        const messageIds = rows.map((row) => row.message_id);
+        fetchAttachmentsForMessages(messageIds, (attErr, attachmentMap) => {
+          if (attErr) {
+            console.error("Support attachments fetch failed:", attErr);
+            return res.status(500).json({ error: "Mesajlar alınamadı" });
+          }
+          res.json({
+            conversation_id: conversationId,
+            user_id: userId,
+            order_id: orderId,
+            messages: mapMessages(rows, userId, attachmentMap),
+          });
         });
       });
     });
@@ -143,9 +213,11 @@ export function getConversation(req, res) {
 export function postCustomerMessage(req, res) {
   const orderId = req.body.order_id ? Number(req.body.order_id) : null;
   const { text, email, name } = req.body;
+  const files = Array.isArray(req.files) ? req.files : [];
+  const trimmedText = text && typeof text === "string" ? text.trim() : "";
 
-  if (!text || !text.trim()) {
-    return res.status(400).json({ error: "Mesaj metni boş olamaz" });
+  if (!trimmedText && files.length === 0) {
+    return res.status(400).json({ error: "Mesaj veya dosya ekleyin" });
   }
 
   ensureUser({ user_id: req.body.user_id, email, name }, (userErr, userId) => {
@@ -163,38 +235,54 @@ export function postCustomerMessage(req, res) {
         VALUES (?, ?, ?, NOW())
       `;
 
-      db.query(insertSql, [conversationId, userId, text.trim()], (msgErr, result) => {
+      const messageText = trimmedText || "Dosya eklendi";
+
+      db.query(insertSql, [conversationId, userId, messageText], (msgErr, result) => {
         if (msgErr) {
           console.error("Support message insert failed:", msgErr);
           return res.status(500).json({ error: "Mesaj kaydedilemedi" });
         }
 
-        // Arka planda destek ekibine e-posta bildirimi gönder.
-        if (SUPPORT_INBOX_EMAIL) {
-          sendMail({
-            to: SUPPORT_INBOX_EMAIL,
-            subject: `New support message #${conversationId}`,
-            html: `
-              <p><strong>User ID:</strong> ${userId}</p>
-              ${email ? `<p><strong>Email:</strong> ${email}</p>` : ""}
-              ${orderId ? `<p><strong>Order:</strong> ${orderId}</p>` : ""}
-              <p><strong>Message:</strong></p>
-              <p>${text.trim()}</p>
-            `,
-          }).catch((err) => console.error("Support email failed:", err));
-        }
+        const finalize = (attachments = []) => {
+          res.json({
+            conversation_id: conversationId,
+            message: {
+              id: result.insertId,
+              text: messageText,
+              sender_id: userId,
+              from: "customer",
+              timestamp: new Date().toISOString(),
+              attachments,
+            },
+            user_id: userId,
+          });
 
-        res.json({
-          conversation_id: conversationId,
-          message: {
-            id: result.insertId,
-            text: text.trim(),
-            sender_id: userId,
-            from: "customer",
-            timestamp: new Date().toISOString(),
-          },
-          user_id: userId,
-        });
+          // Arka planda destek ekibine e-posta bildirimi gönder.
+          if (SUPPORT_INBOX_EMAIL) {
+            const attachmentLine = attachments.length
+              ? `<p><strong>Attachments:</strong> ${attachments.map((a) => a.file_name).join(", ")}</p>`
+              : "";
+            sendMail({
+              to: SUPPORT_INBOX_EMAIL,
+              subject: `New support message #${conversationId}`,
+              html: `
+                <p><strong>User ID:</strong> ${userId}</p>
+                ${email ? `<p><strong>Email:</strong> ${email}</p>` : ""}
+                ${orderId ? `<p><strong>Order:</strong> ${orderId}</p>` : ""}
+                <p><strong>Message:</strong></p>
+                <p>${messageText}</p>
+                ${attachmentLine}
+              `,
+            }).catch((err) => console.error("Support email failed:", err));
+          }
+        };
+
+        saveAttachments(files, result.insertId)
+          .then((attachments) => finalize(attachments))
+          .catch((err) => {
+            console.error("Support attachments save failed:", err);
+            finalize([]);
+          });
       });
     });
   });
@@ -311,11 +399,19 @@ export function getConversationMessages(req, res) {
         return res.status(500).json({ error: "Mesajlar okunamadı" });
       }
 
-      res.json({
-        conversation_id: conversationId,
-        user_id: conversation.user_id,
-        order_id: conversation.order_id,
-        messages: mapMessages(rows, conversation.user_id),
+      const messageIds = rows.map((row) => row.message_id);
+      fetchAttachmentsForMessages(messageIds, (attErr, attachmentMap) => {
+        if (attErr) {
+          console.error("Support attachments fetch failed:", attErr);
+          return res.status(500).json({ error: "Mesajlar okunamadı" });
+        }
+
+        res.json({
+          conversation_id: conversationId,
+          user_id: conversation.user_id,
+          order_id: conversation.order_id,
+          messages: mapMessages(rows, conversation.user_id, attachmentMap),
+        });
       });
     });
   });
@@ -325,12 +421,14 @@ export function postSupportReply(req, res) {
   const conversationId = Number(req.params.conversation_id);
   const agentId = pickAgentId(req.body.agent_id);
   const { text } = req.body;
+  const files = Array.isArray(req.files) ? req.files : [];
+  const trimmedText = text && typeof text === "string" ? text.trim() : "";
 
   if (!conversationId) {
     return res.status(400).json({ error: "conversation_id zorunlu" });
   }
-  if (!text || !text.trim()) {
-    return res.status(400).json({ error: "Mesaj metni boş olamaz" });
+  if (!trimmedText && files.length === 0) {
+    return res.status(400).json({ error: "Mesaj veya dosya ekleyin" });
   }
 
   const convoSql = `
@@ -358,9 +456,10 @@ export function postSupportReply(req, res) {
       INSERT INTO support_messages (conversation_id, sender_id, message_text, created_at)
       VALUES (?, ?, ?, NOW())
     `;
+    const messageText = trimmedText || "Dosya eklendi";
 
     const doInsert = (senderId, attemptFallback) => {
-      db.query(insertSql, [conversationId, senderId, text.trim()], (err, result) => {
+      db.query(insertSql, [conversationId, senderId, messageText], (err, result) => {
         if (err) {
           // If agent user_id is missing, retry with conversation owner id to satisfy FK.
           if (attemptFallback && senderId !== fallbackSender) {
@@ -371,29 +470,43 @@ export function postSupportReply(req, res) {
           return res.status(500).json({ error: "Mesaj kaydedilemedi" });
         }
 
-        res.json({
-          conversation_id: conversationId,
-          message: {
-            id: result.insertId,
-            sender_id: senderId,
-            from: "support",
-            text: text.trim(),
-            timestamp: new Date().toISOString(),
-          },
-        });
+        const finalize = (attachments = []) => {
+          res.json({
+            conversation_id: conversationId,
+            message: {
+              id: result.insertId,
+              sender_id: senderId,
+              from: "support",
+              text: messageText,
+              timestamp: new Date().toISOString(),
+              attachments,
+            },
+          });
 
-        // Arka planda müşteriye e-posta bildirimi gönder.
-        if (customerEmail) {
-          sendMail({
-            to: customerEmail,
-            subject: "New reply from support",
-            html: `
-              <p>We replied to your support conversation #${conversationId}:</p>
-              <p>${text.trim()}</p>
-              <p>If you have more details, just reply here in chat.</p>
-            `,
-          }).catch((err) => console.error("Customer email failed:", err));
-        }
+          // Arka planda müşteriye e-posta bildirimi gönder.
+          if (customerEmail) {
+            const attachmentLine = attachments.length
+              ? `<p><strong>Attachments:</strong> ${attachments.map((a) => a.file_name).join(", ")}</p>`
+              : "";
+            sendMail({
+              to: customerEmail,
+              subject: "New reply from support",
+              html: `
+                <p>We replied to your support conversation #${conversationId}:</p>
+                <p>${messageText}</p>
+                ${attachmentLine}
+                <p>If you have more details, just reply here in chat.</p>
+              `,
+            }).catch((err) => console.error("Customer email failed:", err));
+          }
+        };
+
+        saveAttachments(files, result.insertId)
+          .then((attachments) => finalize(attachments))
+          .catch((attErr) => {
+            console.error("Support reply attachment save failed:", attErr);
+            finalize([]);
+          });
       });
     };
 
