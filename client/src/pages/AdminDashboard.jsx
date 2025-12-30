@@ -487,7 +487,6 @@ function AdminDashboard() {
       <div
         style={{
           width: "100%",
-          maxWidth: 1180,
           boxSizing: "border-box",
           margin: "0 auto",
           display: "flex",

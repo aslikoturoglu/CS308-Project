@@ -1,3 +1,10 @@
+/* Global resets */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 /* Login Page */
 
 body {
@@ -273,4 +280,3 @@ body {
     position: static;
   }
 }
-
