@@ -31,6 +31,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+const uploadsRoot = path.resolve(__dirname, "../uploads");
+fs.mkdirSync(uploadsRoot, { recursive: true });
+app.use("/uploads", express.static(uploadsRoot));
+
 // API ROUTES (keep under /api to avoid SPA clashes)
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
