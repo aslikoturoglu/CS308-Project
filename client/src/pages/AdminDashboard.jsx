@@ -429,6 +429,7 @@ function AdminDashboard() {
         background: "#f3f4f6",
         minHeight: "calc(100vh - 160px)",
         padding: "28px 16px 72px",
+        overflowX: "hidden",
       }}
     >
       <div
