@@ -847,16 +847,8 @@ function AdminDashboard() {
           )}
 
           {activeSection === "sales" && (
-            <section style={{ display: "grid", gap: 18, width: "100%" }}>
-              <div
-                style={{
-                  background: "white",
-                  borderRadius: 14,
-                  padding: 18,
-                  boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
-                  width: "100%",
-                }}
-              >
+            <section style={{ display: "grid", gap: 18 }}>
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
                 <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Orders (sales manager)</h3>
                 <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
                   {["Processing", "In-transit", "Delivered"].map((status) => {
@@ -951,17 +943,7 @@ function AdminDashboard() {
                 </div>
               </div>
 
-              <div
-                style={{
-                  background: "white",
-                  borderRadius: 14,
-                  padding: 18,
-                  boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
-                  display: "grid",
-                  gap: 12,
-                  width: "100%",
-                }}
-              >
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
                 <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Price & Discount</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
                   <select
@@ -1026,17 +1008,7 @@ function AdminDashboard() {
                 </div>
               </div>
 
-              <div
-                style={{
-                  background: "white",
-                  borderRadius: 14,
-                  padding: 18,
-                  boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
-                  display: "grid",
-                  gap: 12,
-                  width: "100%",
-                }}
-              >
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
                 <h3 style={{ margin: "0 0 6px", color: "#0f172a" }}>Invoices (filter)</h3>
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                   <input
@@ -1081,15 +1053,7 @@ function AdminDashboard() {
                 </div>
               </div>
 
-              <div
-                style={{
-                  background: "white",
-                  borderRadius: 14,
-                  padding: 18,
-                  boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
-                  width: "100%",
-                }}
-              >
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
                 <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Revenue</h3>
                 <div
                   style={{
@@ -1485,7 +1449,12 @@ const linkBtn = {
   cursor: "pointer",
 };
 
-const th = { padding: "10px 12px", borderBottom: "1px solid #e5e7eb" };
-const td = { padding: "10px 12px" };
+const th = {
+  padding: "10px 12px",
+  borderBottom: "1px solid #e5e7eb",
+  whiteSpace: "normal",
+  wordBreak: "break-word",
+};
+const td = { padding: "10px 12px", whiteSpace: "normal", wordBreak: "break-word" };
 
 export default AdminDashboard;
