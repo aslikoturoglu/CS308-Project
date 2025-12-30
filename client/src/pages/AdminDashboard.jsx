@@ -826,8 +826,14 @@ function AdminDashboard() {
                   })}
                 </div>
 
-                <div style={{ overflowX: "auto", width: "100%" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760, whiteSpace: "nowrap" }}>
+                <div style={{ overflowX: "auto", width: "100%", maxWidth: "100vw" }}>
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      tableLayout: "fixed",
+                    }}
+                  >
                     <thead>
                       <tr>
                         {["Order No", "Customer / Address", "Shipping", "Amount", "Status", "Action"].map((heading) => (
@@ -851,7 +857,7 @@ function AdminDashboard() {
                       {(groupedOrders[orderTab] || []).map((order) => (
                         <tr key={order.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                           <td style={{ padding: "12px 10px", fontWeight: 700, color: "#0f172a" }}>{formatOrderId(order.id)}</td>
-                          <td style={{ padding: "12px 10px", color: "#1f2937" }}>
+                          <td style={{ padding: "12px 10px", color: "#1f2937", whiteSpace: "normal", wordBreak: "break-word" }}>
                             <div style={{ fontWeight: 700 }}>{order.customerName || "Customer"}</div>
                             <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>{order.address}</div>
                           </td>
