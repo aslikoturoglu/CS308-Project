@@ -19,6 +19,8 @@ const orderRoutes = (await import("./routes/orderRoutes.js")).default;
 const supportRoutes = (await import("./routes/supportRoutes.js")).default;
 const authRoutes = (await import("./routes/authRoutes.js")).default;
 const commentRoutes = (await import("./routes/commentRoutes.js")).default;
+const salesRoutes = (await import("./routes/salesRoutes.js")).default;
+const paymentRoutes = (await import("./routes/paymentRoutes.js")).default;
 const dbModule = await import("./db.js");
 const db = dbModule.default; // DB bağlantısı burada load ediliyor
 
@@ -27,6 +29,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 // API ROUTES (keep under /api to avoid SPA clashes)
 app.use("/api/products", productRoutes);
@@ -35,6 +38,8 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/support", supportRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/comments", commentRoutes);
+app.use("/api/sales", salesRoutes);
+app.use("/api/payments", paymentRoutes);
 
 // Static serve for built client
 const publicDir = path.resolve(__dirname, "../public");
