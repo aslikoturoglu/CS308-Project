@@ -19,12 +19,25 @@ export async function fetchUserConversation({ userId, orderId, email, name }) {
   return handleResponse(res);
 }
 
-export async function sendUserMessage({ userId, text, orderId, email, name }) {
-  const res = await fetch(`${SUPPORT_BASE}/message`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_id: userId, text, order_id: orderId, email, name }),
-  });
+export async function sendUserMessage({ userId, text, orderId, email, name, attachments = [] }) {
+  const hasFiles = Array.isArray(attachments) && attachments.length > 0;
+  const options = { method: "POST" };
+
+  if (hasFiles) {
+    const formData = new FormData();
+    if (userId) formData.append("user_id", userId);
+    if (orderId) formData.append("order_id", orderId);
+    if (email) formData.append("email", email);
+    if (name) formData.append("name", name);
+    formData.append("text", text || "");
+    attachments.forEach((file) => formData.append("attachments", file));
+    options.body = formData;
+  } else {
+    options.headers = { "Content-Type": "application/json" };
+    options.body = JSON.stringify({ user_id: userId, text, order_id: orderId, email, name });
+  }
+
+  const res = await fetch(`${SUPPORT_BASE}/message`, options);
   return handleResponse(res);
 }
 
@@ -38,12 +51,22 @@ export async function fetchSupportMessages(conversationId) {
   return handleResponse(res);
 }
 
-export async function sendSupportMessage({ conversationId, agentId, text }) {
-  const res = await fetch(`${SUPPORT_BASE}/conversations/${conversationId}/reply`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ agent_id: agentId, text }),
-  });
+export async function sendSupportMessage({ conversationId, agentId, text, attachments = [] }) {
+  const hasFiles = Array.isArray(attachments) && attachments.length > 0;
+  const options = { method: "POST" };
+
+  if (hasFiles) {
+    const formData = new FormData();
+    formData.append("text", text || "");
+    if (agentId) formData.append("agent_id", agentId);
+    attachments.forEach((file) => formData.append("attachments", file));
+    options.body = formData;
+  } else {
+    options.headers = { "Content-Type": "application/json" };
+    options.body = JSON.stringify({ agent_id: agentId, text });
+  }
+
+  const res = await fetch(`${SUPPORT_BASE}/conversations/${conversationId}/reply`, options);
   return handleResponse(res);
 }
 

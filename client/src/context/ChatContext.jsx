@@ -16,12 +16,22 @@ const ChatContext = createContext(undefined);
 
 const seedMessages = [];
 
-const buildMessage = (text, from) => ({
+const buildMessage = (text, from, attachments = []) => ({
   id: `${from}-${Date.now()}-${Math.round(Math.random() * 1000)}`,
   from,
   text,
   timestamp: Date.now(),
+  attachments,
 });
+
+const normalizeAttachments = (incoming = [], fallbackFrom) =>
+  (incoming || []).map((att) => ({
+    id: att.id ?? att.attachment_id ?? `${fallbackFrom}-att-${Math.random().toString(16).slice(2)}`,
+    file_name: att.file_name ?? att.filename ?? att.name ?? "Attachment",
+    mime_type: att.mime_type ?? att.type ?? "",
+    url: att.url ?? att.path ?? att.preview ?? "",
+    isLocal: Boolean(att.isLocal),
+  }));
 
 const safeStorage = {
   get(key) {
@@ -96,6 +106,7 @@ export function ChatProvider({ children }) {
           sender_id: senderId ?? activeUserId,
           text: msg.text ?? msg.message_text ?? "",
           timestamp: msg.timestamp ?? msg.created_at ?? Date.now(),
+          attachments: normalizeAttachments(msg.attachments, resolvedFrom),
         };
       }),
     [activeUserId]
@@ -162,11 +173,21 @@ export function ChatProvider({ children }) {
     if (isOpen) setUnreadCount(0);
   }, [isOpen]);
 
-  const sendMessage = (text) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
+  const sendMessage = (input) => {
+    const payload = typeof input === "string" ? { text: input } : input || {};
+    const files = Array.isArray(payload.attachments) ? payload.attachments : [];
+    const trimmed = payload.text && typeof payload.text === "string" ? payload.text.trim() : "";
+    if (!trimmed && files.length === 0) return;
 
-    const optimistic = buildMessage(trimmed, "user");
+    const optimisticAttachments = files.map((file) => ({
+      id: `local-${file.name}-${Math.random().toString(16).slice(2)}`,
+      file_name: file.name,
+      mime_type: file.type,
+      url: URL.createObjectURL(file),
+      isLocal: true,
+    }));
+
+    const optimistic = buildMessage(trimmed || "Gönderiliyor...", "user", optimisticAttachments);
     setMessages((prev) => [...prev, optimistic]);
     setIsSending(true);
 
@@ -175,21 +196,20 @@ export function ChatProvider({ children }) {
       text: trimmed,
       email: identityEmail,
       name: identityName,
+      attachments: files,
     })
-      .then((payload) => {
-        if (payload?.conversation_id) {
-          setConversationId(payload.conversation_id);
+      .then((serverPayload) => {
+        if (serverPayload?.conversation_id) {
+          setConversationId(serverPayload.conversation_id);
         }
-        if (payload?.message) {
-          const [confirmed] = normalizeMessages([payload.message]);
+        if (serverPayload?.message) {
+          const [confirmed] = normalizeMessages([serverPayload.message]);
           setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === optimistic.id ? confirmed : msg
-            )
+            prev.map((msg) => (msg.id === optimistic.id ? confirmed : msg))
           );
         }
-        if (payload?.user_id) {
-          setServerUserId(payload.user_id);
+        if (serverPayload?.user_id) {
+          setServerUserId(serverPayload.user_id);
         }
         setSyncError(null);
       })

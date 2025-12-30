@@ -44,6 +44,7 @@ function AdminDashboard() {
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [replyDraft, setReplyDraft] = useState("");
+  const [replyFiles, setReplyFiles] = useState([]);
   const [isLoadingChats, setIsLoadingChats] = useState(false);
   const [isLoadingThread, setIsLoadingThread] = useState(false);
   const [isSendingReply, setIsSendingReply] = useState(false);
@@ -58,6 +59,7 @@ function AdminDashboard() {
   const [priceUpdate, setPriceUpdate] = useState({ productId: "", price: "" });
   const [deliveryUpdate, setDeliveryUpdate] = useState({ id: "", status: "" });
   const productListRef = useRef(null);
+  const replyFileInputRef = useRef(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -420,8 +422,10 @@ function AdminDashboard() {
   };
 
   const handleSendReply = async () => {
-    if (!replyDraft.trim() || !activeConversationId) {
-      addToast("Mesaj boş olamaz", "error");
+    const hasText = replyDraft.trim().length > 0;
+    const hasFiles = replyFiles.length > 0;
+    if ((!hasText && !hasFiles) || !activeConversationId) {
+      addToast("Mesaj veya dosya ekleyin", "error");
       return;
     }
 
@@ -432,12 +436,15 @@ function AdminDashboard() {
         conversationId: activeConversationId,
         agentId: Number.isFinite(agentId) && agentId > 0 ? agentId : undefined,
         text: replyDraft,
+        attachments: replyFiles,
       });
 
       if (payload?.message) {
         setChatMessages((prev) => [...prev, payload.message]);
       }
       setReplyDraft("");
+      setReplyFiles([]);
+      if (replyFileInputRef.current) replyFileInputRef.current.value = "";
       loadInbox();
       // thread hemen güncellensin
       fetchSupportMessages(activeConversationId)
@@ -449,6 +456,16 @@ function AdminDashboard() {
     } finally {
       setIsSendingReply(false);
     }
+  };
+
+  const handleSelectReplyFiles = (event) => {
+    const selected = Array.from(event.target.files || []).slice(0, 4);
+    setReplyFiles(selected);
+  };
+
+  const handleRemoveReplyFile = (name) => {
+    setReplyFiles((prev) => prev.filter((file) => file.name !== name));
+    if (replyFileInputRef.current) replyFileInputRef.current.value = "";
   };
 
   const sections = [
@@ -1250,6 +1267,31 @@ function AdminDashboard() {
                           }}
                         >
                           <p style={{ margin: 0 }}>{msg.text}</p>
+                          {msg.attachments?.length > 0 && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "8px 0" }}>
+                              {msg.attachments.map((att) => (
+                                <a
+                                  key={att.id}
+                                  href={att.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    padding: "6px 8px",
+                                    borderRadius: 10,
+                                    background: msg.from === "support" ? "rgba(255,255,255,0.18)" : "#e0f2fe",
+                                    color: msg.from === "support" ? "white" : "#0f172a",
+                                    textDecoration: "none",
+                                    border: msg.from === "support" ? "1px solid rgba(255,255,255,0.2)" : "1px solid #bae6fd",
+                                  }}
+                                >
+                                  📎 <span style={{ fontWeight: 700 }}>{att.file_name}</span>
+                                </a>
+                              ))}
+                            </div>
+                          )}
                           <small style={{ opacity: 0.8 }}>
                             {new Date(msg.timestamp).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
                           </small>
@@ -1270,6 +1312,61 @@ function AdminDashboard() {
                         placeholder="Write a reply..."
                         style={{ ...inputStyle, minHeight: 90 }}
                       />
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <label
+                          style={{
+                            ...secondaryBtn,
+                            margin: 0,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            padding: "8px 10px",
+                          }}
+                        >
+                          📎 Add attachment
+                          <input
+                            ref={replyFileInputRef}
+                            type="file"
+                            multiple
+                            accept="image/*,.pdf,.doc,.docx,.txt"
+                            onChange={handleSelectReplyFiles}
+                            style={{ display: "none" }}
+                          />
+                        </label>
+                        {replyFiles.length > 0 && (
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            {replyFiles.map((file) => (
+                              <span
+                                key={file.name}
+                                style={{
+                                  ...secondaryBtn,
+                                  padding: "6px 10px",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 6,
+                                }}
+                              >
+                                {file.name}
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveReplyFile(file.name)}
+                                  style={{
+                                    border: "none",
+                                    background: "transparent",
+                                    cursor: "pointer",
+                                    color: "#b91c1c",
+                                    fontWeight: 900,
+                                  }}
+                                  aria-label="Remove attachment"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                       <button
                         type="button"
                         onClick={handleSendReply}
