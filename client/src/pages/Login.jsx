@@ -11,10 +11,25 @@ function Login() {
         padding: "60px 16px",
         flexWrap: "wrap",
         gap: 32,
-        background: "linear-gradient(135deg, #f8f9fa 0%, #eef2f7 100%)",
+        background: "#14001f",
         fontFamily: "Arial, sans-serif",
       }}
-    >
+      >
+       <div
+       style={{
+         position: "absolute",
+         inset: 0,
+         pointerEvents: "none",
+         background: `radial-gradient(
+           circle at ${lightPos.x} ${lightPos.y},
+           rgba(255,255,255,0.22),
+           rgba(255,255,255,0.1) 25%,
+           rgba(66, 41, 80, 0.95) 50%
+         )`,
+         transition: "background 0.05s linear",
+       }}
+     />
+    
       <div
         style={{
           display: "flex",
