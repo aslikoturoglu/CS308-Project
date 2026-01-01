@@ -11,7 +11,7 @@ function Register() {
         padding: "60px 16px",
         flexWrap: "wrap",
         gap: 32,
-        background: "linear-gradient(135deg, #fff9db 0%, #f0f6ff 100%)",
+        background: "#f8fafc",
         fontFamily: "Arial, sans-serif",
       }}
     >
