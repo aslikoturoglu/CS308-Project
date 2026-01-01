@@ -28,7 +28,6 @@ function Login() {
         <h1 style={{ color: "#0058a3", fontSize: "2rem", margin: 0 }}>
           Welcome back 👋
         </h1>
-
         <p style={{ color: "#4b5563", maxWidth: 360 }}>
           Sign in to browse your favorite SUHome products, manage your cart, and catch special offers.
         </p>

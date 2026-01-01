@@ -146,7 +146,7 @@ function LoginForm({ onSuccess }) {
             borderRadius: 8,
             border: "none",
             backgroundColor: "#0058a3",
-            color: "#1a1a1a",
+            color: "#f8fafc",
             fontWeight: 700,
             cursor: "pointer",
             fontSize: "1rem",
