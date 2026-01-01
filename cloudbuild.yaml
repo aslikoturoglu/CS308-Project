@@ -3,6 +3,10 @@ substitutions:
   _SERVICE: cs308
   _IMAGE: europe-west1-docker.pkg.dev/suhomenew/cs308/cs308
 
+options:
+  logging: CLOUD_LOGGING_ONLY
+  default_logs_bucket_behavior: REGIONAL_USER_OWNED_BUCKET
+
 steps:
   - name: gcr.io/cloud-builders/docker
     args: ["build", "-t", "${_IMAGE}:${SHORT_SHA}", "."]
