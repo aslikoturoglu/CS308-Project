@@ -1,6 +1,6 @@
 substitutions:
   _REGION: europe-west1
-  _SERVICE: cs308
+  _SERVICE: suhome
   _IMAGE: europe-west1-docker.pkg.dev/suhomenew/cs308/cs308
 
 options:
