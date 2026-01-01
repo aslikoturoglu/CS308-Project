@@ -22,7 +22,7 @@ const categories = [
 
 const PAGE_SIZE = 12;
 
-function ProductList() {
+function ProductList({openMiniCart}) {
   const location = useLocation();
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
@@ -39,18 +39,17 @@ function ProductList() {
   const { user, isAuthenticated } = useAuth();
   const isProductManager = user?.role === "product_manager";
 
-// 🔹1) cartQty burada
 const cartQty = (id) => {
   const item = cartItems.find((i) => i.id === id);
   return item ? item.quantity : 0;
 };
 
-
-// 🔥 İlk kez sepete ekleme
 const handleAddFirst = async (p) => {
   if (p.availableStock <= 0) return;
 
   addItem(p, 1);
+  openMiniCart(p); 
+
   await updateStock(p.id, -1);
 
   setProducts(prev =>
@@ -60,11 +59,12 @@ const handleAddFirst = async (p) => {
   );
 };
 
-// 🔥 + butonu
+
 const handleIncrease = async (p) => {
   if (p.availableStock <= 0) return;
 
   increment(p.id);
+  openMiniCart(p);
   await updateStock(p.id, -1);
 
   setProducts(prev =>
@@ -76,15 +76,12 @@ const handleIncrease = async (p) => {
 const handleDecrease = async (p) => {
   const current = cartQty(p.id);
 
-  // 0'ın altına inme
   if (current <= 0) return;
 
-  // 1 ise: ürünü sepetten tamamen KALDIR
   if (current === 1) {
-    // 1 → 0 : sepetten sil
-    removeItem(p.id);              // 🔥 ürün cartItems'tan tamamen yok oluyor
 
-    // stok 1 artmalı
+    removeItem(p.id);            
+
     await updateStock(p.id, +1);
 
     setProducts((prev) =>
@@ -94,12 +91,10 @@ const handleDecrease = async (p) => {
           : pr
       )
     );
-
-    // burada dur → tekrar - işlemeyecek
     return;
   }
 
-  // 1'den büyükse: normal azalt
+
   decrement(p.id);
   await updateStock(p.id, +1);
 

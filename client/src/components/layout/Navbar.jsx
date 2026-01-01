@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
-import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react"; 
+import { NavLink, useNavigate } from "react-router-dom";
 import { useChat } from "../../context/ChatContext";
 import "../../styles/navbar.css";
 import { useAuth } from "../../context/AuthContext";
+import MiniCartPreview from "./MiniCartPreview"; 
 
 const baseLinks = [
   { to: "/", label: "Home", end: true },
@@ -13,7 +14,7 @@ const baseLinks = [
   { to: "/login", label: "Login" },
 ];
 
-function Navbar() {
+function Navbar({ miniCartItem, showMiniCart, setShowMiniCart }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -63,7 +64,8 @@ function Navbar() {
           {[...baseLinks, ...(canAccessAdmin ? [{ to: "/admin", label: "Admin" }] : [])]
             .filter((link) => {
               if (userLoggedIn && link.to === "/login") return false;
-              if (isProductManager && (link.to === "/cart" || link.to === "/wishlist")) return false;
+              if (isProductManager && (link.to === "/cart" || link.to === "/wishlist"))
+                return false;
               if (isProductManager && link.to === "/profile") return false;
               return true;
             })
@@ -114,6 +116,13 @@ function Navbar() {
           </button>
         </div>
       </div>
+
+      {showMiniCart && (
+        <MiniCartPreview
+          item={miniCartItem}
+          onClose={() => setShowMiniCart(false)}
+        />
+      )}
     </nav>
   );
 }

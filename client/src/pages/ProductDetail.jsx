@@ -7,9 +7,9 @@ import { useAuth } from "../context/AuthContext";
 
 import { addComment, fetchProductComments, hasDelivered } from "../services/commentService";
 
-function ProductDetail() {
-  const { id } = useParams();          // productId as string
-  const productId = Number(id);        // convert to number for backend
+function ProductDetail({ openMiniCart }) {
+  const { id } = useParams();          
+  const productId = Number(id);        
   const navigate = useNavigate();
   const { addItem, items: cartItems } = useCart();
   const { toggleItem, inWishlist } = useWishlist();
@@ -20,13 +20,11 @@ function ProductDetail() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // COMMENTS
   const [comments, setComments] = useState([]);
   const [ratingInput, setRatingInput] = useState(5);
   const [commentInput, setCommentInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Delivery check
   const [delivered, setDelivered] = useState(false);
 
   const approvedComments = useMemo(
@@ -39,9 +37,6 @@ function ProductDetail() {
     [product, approvedComments]
   );
 
-  /* ---------------------------
-     LOAD PRODUCT
-  --------------------------- */
   useEffect(() => {
     const controller = new AbortController();
 
@@ -62,9 +57,6 @@ function ProductDetail() {
     return () => controller.abort();
   }, [productId]);
 
-  /* ---------------------------
-     LOAD APPROVED COMMENTS
-  --------------------------- */
   async function loadComments() {
     try {
       const list = await fetchProductComments(productId, { userId: user?.id });
@@ -87,9 +79,6 @@ function ProductDetail() {
     }
   }
 
-  /* ---------------------------
-     CHECK IF USER HAS DELIVERY
-  --------------------------- */
   useEffect(() => {
     if (!user) {
       setDelivered(false);
@@ -108,10 +97,7 @@ function ProductDetail() {
     checkDelivery();
   }, [productId, user]);
 
-  
-  /* ---------------------------
-     ADD TO CART
-  --------------------------- */
+
   const handleAddToCart = () => {
     if (!product) return;
 
@@ -123,6 +109,7 @@ function ProductDetail() {
     }
 
     addItem(product, 1);
+    openMiniCart(product); 
     alert("Added to cart.");
   };
 
@@ -140,9 +127,6 @@ function ProductDetail() {
     });
   };
 
-  /* ---------------------------
-     SUBMIT COMMENT
-  --------------------------- */
   const handleSubmitComment = async () => {
     if (!user) return alert("You must log in to leave a review.");
     if (!delivered) return alert("You can only comment after delivery.");
@@ -166,7 +150,6 @@ function ProductDetail() {
 
       await refreshProductMeta();
 
-      // update product rating locally if backend sent aggregates
       if (response?.averageRating !== undefined || response?.ratingCount !== undefined) {
         setProduct((prev) =>
           prev
@@ -185,11 +168,9 @@ function ProductDetail() {
         );
       }
 
-      // reset form
       setRatingInput(5);
       setCommentInput("");
 
-      // reload comments so UI updates
       loadComments();
     } catch (err) {
       alert("Failed to submit comment.");
@@ -198,9 +179,6 @@ function ProductDetail() {
     }
   };
 
-  /* ---------------------------
-     LOADING & ERROR
-  --------------------------- */
   if (loading) {
     return (
       <section style={pageStyle}>
@@ -218,9 +196,6 @@ function ProductDetail() {
     );
   }
 
-  /* ---------------------------
-     HTML
-  --------------------------- */
   return (
     <section style={pageStyle}>
       {/* HEADER */}
@@ -249,9 +224,7 @@ function ProductDetail() {
         </Link>
       </div>
 
-      {/* CONTENT */}
       <div style={contentGrid}>
-        {/* 🔴 CHANGE — SINGLE IMAGE + ZOOM */}
         <div style={imageCard}>
         <img
           src={product.image}
@@ -273,7 +246,6 @@ function ProductDetail() {
         />
         </div>
 
-        {/* PRODUCT INFO */}
         <div style={infoCard}>
           <h2>₺{product.price.toLocaleString("tr-TR")}</h2>
 
@@ -291,7 +263,6 @@ function ProductDetail() {
              </section>
            )}
 
-           {/* CHANGE #2 — MATERIAL + COLOR ALANI */}
           <section
             style={{
               background: "#fff",
@@ -366,7 +337,6 @@ function ProductDetail() {
         </div>
       </div>
 
-      {/* REVIEWS */}
       <section style={reviewCard}>
         <h2>Customer Reviews</h2>
 
@@ -505,7 +475,7 @@ const wishlistBtn = (active) => ({
   justifyContent: "center",
   alignItems: "center",
 
-  background: active ? "#ffe4e6" : "#ffffff", // aktifken açık pembe, değilken beyaz
+  background: active ? "#ffe4e6" : "#ffffff", 
   border: active ? "1px solid #e11d48" : "1px solid #e2e8f0",
 
   cursor: "pointer",
