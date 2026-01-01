@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { BrowserRouter as Router, useLocation, useNavigate } from "react-router-dom";
 import Header from "./components/layout/Header";
 import Navbar from "./components/layout/Navbar";
@@ -77,6 +77,13 @@ function AdminTopbar() {
 function AppChrome() {
   const location = useLocation();
   const hideShell = location.pathname.startsWith("/admin");
+  const [miniCartItem, setMiniCartItem] = useState(null);
+  const [showMiniCart, setShowMiniCart] = useState(false);
+
+  const openMiniCart = (product) => {
+    setMiniCartItem(product);
+    setShowMiniCart(true);
+  };
 
   return (
     <>
@@ -90,10 +97,15 @@ function AppChrome() {
       ) : (
         <div className="app-shell">
           <Header />
-          <Navbar />
+
+          <Navbar
+            miniCartItem={miniCartItem}
+            showMiniCart={showMiniCart}
+            setShowMiniCart={setShowMiniCart}
+          />
 
           <div className="app-content">
-            <AppRouter />
+            <AppRouter openMiniCart={openMiniCart} />
           </div>
 
           <ChatButton />
