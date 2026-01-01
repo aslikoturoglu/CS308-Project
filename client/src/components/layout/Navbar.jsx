@@ -14,7 +14,11 @@ const baseLinks = [
   { to: "/login", label: "Login" },
 ];
 
-function Navbar({ miniCartItem, showMiniCart, setShowMiniCart }) {
+function Navbar({
+  miniCartItem = null,
+  showMiniCart = false,
+  setShowMiniCart = () => {}, 
+}) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
