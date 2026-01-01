@@ -1,6 +1,6 @@
-import "./MiniCartPreview.css";
+import "./MiniPreview.css";
 
-export default function MiniCartPreview({ item, onClose }) {
+export default function MiniPreview({ item, onClose }) {
   if (!item) return null;
 
   return (

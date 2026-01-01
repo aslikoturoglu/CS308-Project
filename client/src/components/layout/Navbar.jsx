@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useChat } from "../../context/ChatContext";
 import "../../styles/navbar.css";
 import { useAuth } from "../../context/AuthContext";
-import MiniCartPreview from "../cart/MiniCartPreview";
+import MiniCartPreview from "../cart/MiniPreview";
 
 const baseLinks = [
   { to: "/", label: "Home", end: true },
