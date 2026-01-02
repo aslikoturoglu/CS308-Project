@@ -19,7 +19,7 @@ const statusPills = {
 
 function OrderHistory() {
   const { user } = useAuth();
-  const [filter, setFilter] = useState("Delivered");
+  const [filter, setFilter] = useState("All");
   const [orders, setOrders] = useState([]);
   const [reviews, setReviews] = useState({});
 
