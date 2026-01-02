@@ -78,6 +78,7 @@ function AppChrome() {
   const location = useLocation();
   const hideShell = location.pathname.startsWith("/admin");
   const [showMiniCart, setShowMiniCart] = useState(false);
+  const openMiniCart = () => setShowMiniCart(true);
 
 
   return (
