@@ -77,7 +77,6 @@ function AdminTopbar() {
 function AppChrome() {
   const location = useLocation();
   const hideShell = location.pathname.startsWith("/admin");
-  const [miniCartItem, setMiniCartItem] = useState(null);
   const [showMiniCart, setShowMiniCart] = useState(false);
 
   const openMiniCart = (product) => {
