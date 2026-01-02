@@ -12,6 +12,8 @@ export function formatOrderId(id) {
   return asString.startsWith("#ORD-") ? asString : `#ORD-${asString}`;
 }
 
+
+
 const readOrders = () => {
   if (typeof window === "undefined") return [];
   try {
@@ -151,6 +153,27 @@ function normalizeItems(row) {
   }
   return [];
 }
+
+
+export async function cancelOrder(orderId) {
+  const res = await fetch(
+    `${API_BASE}/api/orders/${orderId}/cancel`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error("Cancel failed");
+  }
+
+  return res.json();
+}
+
+
+
 
 function mapOrderRows(data = []) {
   return (data || []).map((row) => {

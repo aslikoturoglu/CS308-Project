@@ -333,6 +333,8 @@ export function getAllOrders(req, res) {
     return "Processing";
   };
 
+  
+
   db.query(orderSql, hasUserFilter ? [userIdParam] : [], (orderErr, orderRows) => {
     if (orderErr) {
       console.error("All orders fetch failed:", orderErr);
@@ -441,5 +443,82 @@ export function updateDeliveryStatus(req, res) {
         }
       );
     });
+  });
+}
+/**
+ * PUT /orders/:order_id/cancel
+ * Only allowed if order is still processing/preparing
+ */
+export function cancelOrder(req, res) {
+  const orderId = Number(req.params.order_id);
+
+  if (!Number.isFinite(orderId)) {
+    return res.status(400).json({ error: "Invalid order id" });
+  }
+
+  // 1️⃣ Order + delivery status çek
+  const sql = `
+    SELECT 
+      o.status AS order_status,
+      d.delivery_status
+    FROM orders o
+    LEFT JOIN deliveries d ON d.order_id = o.order_id
+    WHERE o.order_id = ?
+  `;
+
+  db.query(sql, [orderId], (err, rows) => {
+    if (err) {
+      console.error("Cancel check failed:", err);
+      return res.status(500).json({ error: "Cancel check failed" });
+    }
+
+    if (!rows.length) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    const { order_status, delivery_status } = rows[0];
+
+    // 🔒 SADECE PROCESSING / PREPARING
+    if (delivery_status !== "preparing") {
+  return res.status(400).json({
+    error: "Only processing orders can be cancelled",
+  });
+}
+
+
+    // 2️⃣ Order status = cancelled
+    db.query(
+      "UPDATE orders SET status = 'cancelled' WHERE order_id = ?",
+      [orderId],
+      (orderErr) => {
+        if (orderErr) {
+          console.error("Order cancel failed:", orderErr);
+          return res.status(500).json({ error: "Order cancel failed" });
+        }
+
+        // 3️⃣ Delivery status = cancelled
+        db.query(
+          "UPDATE deliveries SET delivery_status = 'cancelled' WHERE order_id = ?",
+          [orderId],
+          () => {
+            // 4️⃣ (Opsiyonel ama çok iyi) stok geri ekle
+            const stockSql = `
+              UPDATE products p
+              JOIN order_items oi ON oi.product_id = p.product_id
+              SET p.product_stock = p.product_stock + oi.quantity
+              WHERE oi.order_id = ?
+            `;
+
+            db.query(stockSql, [orderId], () => {
+              return res.json({
+                success: true,
+                order_id: orderId,
+                status: "cancelled",
+              });
+            });
+          }
+        );
+      }
+    );
   });
 }

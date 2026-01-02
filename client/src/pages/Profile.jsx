@@ -37,21 +37,22 @@ function Profile() {
   const [draft, setDraft] = useState(profile || {});
   const [orders, setOrders] = useState([]);
 
-  const handleCancelOrder = async (orderId) => {
+const handleCancelOrder = async (orderId) => {
   if (!window.confirm("Cancel this order?")) return;
 
   try {
     await cancelOrder(orderId);
 
     setOrders((prev) =>
-      prev.map((o) =>
-        o.id === orderId ? { ...o, status: "Cancelled" } : o
-      )
+      prev.filter((o) => o.id !== orderId)
     );
-  } catch {
+  } catch (err) {
     alert("Order cancel failed");
   }
 };
+
+
+
 
   useEffect(() => {
     if (!user) {
@@ -224,7 +225,7 @@ function Profile() {
             boxShadow: "0 18px 35px rgba(0,0,0,0.05)",
           }}
         >
-          <h2 style={{ marginTop: 0, color: "#0058a3" }}>Recent ordersssss</h2>
+          <h2 style={{ marginTop: 0, color: "#0058a3" }}>Recent orders</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {orders.slice(0, 3).map((order) => {
               console.log("RAW STATUS >>>", order.status);
