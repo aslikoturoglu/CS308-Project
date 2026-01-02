@@ -79,10 +79,6 @@ function AppChrome() {
   const hideShell = location.pathname.startsWith("/admin");
   const [showMiniCart, setShowMiniCart] = useState(false);
 
-  const openMiniCart = (product) => {
-    setMiniCartItem(product);
-    setShowMiniCart(true);
-  };
 
   return (
     <>
@@ -98,11 +94,10 @@ function AppChrome() {
           <Header />
 
           <Navbar
-            miniCartItem={miniCartItem}
-            showMiniCart={showMiniCart}
-            setShowMiniCart={setShowMiniCart}
-            openMiniCart={openMiniCart}
+          showMiniCart={showMiniCart}
+          setShowMiniCart={setShowMiniCart}
           />
+
 
           <div className="app-content">
             <AppRouter openMiniCart={openMiniCart} />

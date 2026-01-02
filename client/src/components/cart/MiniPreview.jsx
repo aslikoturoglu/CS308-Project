@@ -2,45 +2,34 @@ import { Link } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import "./MiniPreview.css";
 
-export default function MiniCartPreview({ isOpen, onClose }) {
-  const { items, totalPrice } = useCart();
+export default function MiniCartPreview({ onClose }) {
+  const { items } = useCart();
+
+  if (items.length === 0) return null;
 
   return (
-    <div className={`mini-cart ${isOpen ? "open" : ""}`}>
-      <div className="mini-cart-header">
-        <h3>Your Cart</h3>
+    <div className="miniCart">
+      <div className="miniCartHeader">
+        <span>Cart</span>
         <button onClick={onClose}>✕</button>
       </div>
-
-      <div className="mini-cart-body">
-        {items.length === 0 && <p>Your cart is empty</p>}
-
+  
+      <div className="miniCartBody">
         {items.map((item) => (
-          <div key={item.id} className="mini-cart-item">
+          <div key={item.id} className="miniCartRow">
             <img src={item.image} alt={item.name} />
             <div>
-              <p className="name">{item.name}</p>
-              <p className="price">
-                {item.quantity} × ₺{item.price.toLocaleString("tr-TR")}
-              </p>
+              <div>{item.name}</div>
+              <div>{item.quantity} × ₺{item.price}</div>
             </div>
           </div>
         ))}
       </div>
-
-      <div className="mini-cart-footer">
-        <div className="total">
-          <span>Total</span>
-          <strong>₺{totalPrice.toLocaleString("tr-TR")}</strong>
-        </div>
-
-        <Link to="/cart" onClick={onClose} className="btn">
-          View Cart
-        </Link>
-        <Link to="/checkout" onClick={onClose} className="btn primary">
-          Checkout
-        </Link>
-      </div>
+  
+      <a href="/cart" className="miniCartBtn">
+        View Cart
+      </a>
     </div>
   );
+  
 }

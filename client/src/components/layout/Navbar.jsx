@@ -14,7 +14,7 @@ const baseLinks = [
   { to: "/login", label: "Login" },
 ];
 
-function Navbar({ miniCartItem, showMiniCart, setShowMiniCart, openMiniCart }) {
+function Navbar({showMiniCart, setShowMiniCart }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -117,9 +117,8 @@ function Navbar({ miniCartItem, showMiniCart, setShowMiniCart, openMiniCart }) {
         </div>
       </div>
 
-      {showMiniCart && miniCartItem && (
+      {showMiniCart && (
   <MiniCartPreview
-    item={miniCartItem}
     onClose={() => setShowMiniCart(false)}
   />
 )}
