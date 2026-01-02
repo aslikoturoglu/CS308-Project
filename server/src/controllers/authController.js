@@ -63,23 +63,24 @@ function hashToken(rawToken) {
 
 export function register(req, res) {
   const { fullName, email, password, taxId } = req.body;
+  const normalizedTaxId = typeof taxId === "string" ? taxId.trim() : "";
 
-  if (!fullName || !email || !password || !taxId) {
+  if (!fullName || !email || !password || !normalizedTaxId) {
     return res.status(400).json({ error: "fullname, email, password ve tax_id zorunlu" });
   }
 
   const checkSql = "SELECT user_id, email, tax_id FROM users WHERE email = ? OR tax_id = ?";
-  db.query(checkSql, [email, taxId], async (checkErr, rows) => {
+  db.query(checkSql, [email, normalizedTaxId], async (checkErr, rows) => {
     if (checkErr) {
       console.error("User lookup failed:", checkErr);
-      return res.status(500).json({ error: "Kayıt sırasında hata oluştu" });
+      return res.status(500).json({ error: "Kay??t s??ras??nda hata olu?Ytu" });
     }
     if (rows.length > 0) {
       const emailMatch = rows.find((row) => row.email === email);
       if (emailMatch) {
-        return res.status(400).json({ error: "Bu email zaten kayıtlı" });
+        return res.status(400).json({ error: "Bu email zaten kay??tl??" });
       }
-      return res.status(400).json({ error: "Bu tax ID zaten kayıtlı" });
+      return res.status(400).json({ error: "Bu tax ID zaten kay??tl??" });
     }
 
     try {
@@ -88,10 +89,10 @@ export function register(req, res) {
         INSERT INTO users (full_name, email, password_hash, tax_id, home_address)
         VALUES (?, ?, ?, ?, ?)
       `;
-      db.query(insertSql, [fullName, email, hashed, taxId, ""], (insErr, result) => {
+      db.query(insertSql, [fullName, email, hashed, normalizedTaxId, ""], (insErr, result) => {
         if (insErr) {
           console.error("User insert failed:", insErr);
-          return res.status(500).json({ error: "Kayıt başarısız" });
+          return res.status(500).json({ error: "Kay??t ba?Yar??s??z" });
         }
         return res.json({
           success: true,
@@ -100,14 +101,14 @@ export function register(req, res) {
             email,
             name: fullName,
             address: "",
-            taxId,
+            taxId: normalizedTaxId,
             role: "customer",
           },
         });
       });
     } catch (hashErr) {
       console.error("Password hash failed:", hashErr);
-      return res.status(500).json({ error: "Kayıt başarısız" });
+      return res.status(500).json({ error: "Kay??t ba?Yar??s??z" });
     }
   });
 }

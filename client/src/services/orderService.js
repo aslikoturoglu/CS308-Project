@@ -12,6 +12,8 @@ export function formatOrderId(id) {
   return asString.startsWith("#ORD-") ? asString : `#ORD-${asString}`;
 }
 
+
+
 const readOrders = () => {
   if (typeof window === "undefined") return [];
   try {
@@ -152,6 +154,27 @@ function normalizeItems(row) {
   return [];
 }
 
+
+export async function cancelOrder(orderId) {
+  const res = await fetch(
+    `${API_BASE}/api/orders/${orderId}/cancel`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error("Cancel failed");
+  }
+
+  return res.json();
+}
+
+
+
+
 function mapOrderRows(data = []) {
   return (data || []).map((row) => {
     const status = backendToFrontendStatus(row.delivery_status || row.status || row.order_status);
@@ -248,6 +271,29 @@ export function addOrder({ items, total, id: providedId, contact }) {
   const next = [newOrder, ...orders];
   writeOrders(next);
   return newOrder;
+}
+
+export async function cancelOrder(orderId) {
+  const orders = readOrders();
+  const targetNumeric = Number(orderId);
+  const targetFormatted = formatOrderId(orderId);
+  const idx = orders.findIndex((order) => {
+    if (order.order_id && Number.isFinite(targetNumeric)) {
+      return Number(order.order_id) === targetNumeric;
+    }
+    return formatOrderId(order.id) === targetFormatted;
+  });
+
+  if (idx >= 0) {
+    orders[idx] = {
+      ...orders[idx],
+      status: "Cancelled",
+      cancelledAt: new Date().toISOString(),
+    };
+    writeOrders(orders);
+  }
+
+  return true;
 }
 
 export function advanceOrderStatus(id, actor) {
