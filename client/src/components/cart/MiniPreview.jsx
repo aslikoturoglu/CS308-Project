@@ -7,9 +7,11 @@ export default function MiniCartPreview({ onClose, open }) {
 
   if (!open) return null;
 
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  
   return (
     <>
-      <div className="mini-cart-overlay" onClick={onClose} />
+      <div className="mini-cart-overlay"/>
 
       <div
         className={`mini-cart ${open ? "open" : ""}`}
@@ -40,6 +42,11 @@ export default function MiniCartPreview({ onClose, open }) {
         </div>
 
         <div className="mini-cart-footer">
+          <div className="total">
+            <span>Total</span>
+            <span>₺{subtotal.toLocaleString("tr-TR")}</span>
+          </div>
+
           <Link to="/cart" className="btn primary" onClick={onClose}>
             View Cart
           </Link>

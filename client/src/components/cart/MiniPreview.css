@@ -5,6 +5,8 @@
   background: rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(2px);
   z-index: 1500;
+
+  pointer-events: none; /* 🔥 KRİTİK SATIR */
 }
 
 /* === Mini Cart Container === */
