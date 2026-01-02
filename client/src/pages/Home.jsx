@@ -105,7 +105,6 @@ function Home() {
         background: "#14001f",
       }}
     >
-      {/* IŞIK KATMANI */}
       <div
         style={{
           position: "absolute",
@@ -121,7 +120,6 @@ function Home() {
         }}
       />
 
-      {/* HERO CONTENT */}
       <div style={{ position: "relative", zIndex: 1 }}>
         <p className="hero-item" style={{ letterSpacing: 2, fontSize: "0.95rem", margin: 0 }}>
           WELCOME
@@ -131,7 +129,7 @@ function Home() {
           The SUHome experience where refined living is shaped by timeless design and purpose
         </h1>
 
-        <p className="hero-item" style={{ maxWidth: 540, lineHeight: 1.6, fontSize: "1.1rem" }}>
+        <p className="hero-item" style={{ maxWidth: 720, lineHeight: 1.6, fontSize: "1.1rem" }}>
           From comfy sofas to smart storage, everything you are looking for is a click away.
           Don’t miss the new season offers.
         </p>

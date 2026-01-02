@@ -1,18 +1,16 @@
-/* === Overlay (arka plan) === */
 .mini-cart-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(2px);
+
   z-index: 1500;
 
-  pointer-events: none; /* 🔥 KRİTİK SATIR */
+  pointer-events: none; 
 }
 
-/* === Mini Cart Container === */
 .mini-cart {
   position: fixed;
-  top: 88px;                 /* navbar altı */
+  top: 88px;                 
   right: 24px;
   width: 360px;
   max-height: 70vh;
@@ -31,14 +29,12 @@
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
-/* Açık hali */
 .mini-cart.open {
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
 }
 
-/* === Header === */
 .mini-cart-header {
   padding: 16px 18px;
   border-bottom: 1px solid #e5e7eb;
@@ -68,7 +64,6 @@
   color: #111827;
 }
 
-/* === Body === */
 .mini-cart-body {
   flex: 1;
   overflow-y: auto;
@@ -85,7 +80,6 @@
   font-size: 0.9rem;
 }
 
-/* === Item === */
 .mini-cart-item {
   display: flex;
   gap: 12px;
@@ -116,7 +110,6 @@
   color: #374151;
 }
 
-/* === Footer === */
 .mini-cart-footer {
   border-top: 1px solid #e5e7eb;
   padding: 14px 16px;
@@ -160,7 +153,6 @@
   background: #004a8a;
 }
 
-/* === Scrollbar (subtle) === */
 .mini-cart-body::-webkit-scrollbar {
   width: 6px;
 }
