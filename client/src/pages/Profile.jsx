@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { updateUserAddress } from "../services/userService";
+import { updateUserProfile } from "../services/userService";
 import { formatOrderId, getOrders, fetchUserOrders } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
 import { cancelOrder } from "../services/orderService";
@@ -111,19 +111,24 @@ const handleCancelOrder = async (orderId) => {
   }
 
   const handleSave = async () => {
+    if (!String(draft?.name || "").trim()) {
+      alert("Please enter your name.");
+      return;
+    }
     const next = {
       ...profile,
       ...draft,
     };
     setProfile(next);
     if (storageKey) saveProfile(storageKey, next);
-    if (user?.id && typeof next.address === "string") {
+    if (user?.id) {
       try {
-        await updateUserAddress({ userId: user.id, address: next.address });
-        updateUser({ address: next.address });
+        const nextAddress = typeof next.address === "string" ? next.address : "";
+        await updateUserProfile({ userId: user.id, name: next.name, address: nextAddress });
+        updateUser({ name: next.name, address: nextAddress });
       } catch (error) {
-        console.error("Profile address update failed", error);
-        alert("Profile address update failed.");
+        console.error("Profile update failed", error);
+        alert("Profile update failed.");
       }
     }
     setEditing(false);
@@ -235,7 +240,7 @@ const handleCancelOrder = async (orderId) => {
             boxShadow: "0 18px 35px rgba(0,0,0,0.05)",
           }}
         >
-          <h2 style={{ marginTop: 0, color: "#0058a3" }}>Recent order</h2>
+          <h2 style={{ marginTop: 0, color: "#0058a3" }}>Recent ordersss</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {orders.slice(0, 3).map((order) => {
               console.log("RAW STATUS >>>", order.status);

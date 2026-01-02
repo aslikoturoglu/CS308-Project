@@ -468,14 +468,14 @@ export function cancelOrder(req, res) {
 
     const { delivery_status } = rows[0];
 
-    // ❗ SADECE PREPARING İPTAL EDİLEBİLİR
-    if (delivery_status !== "preparing") {
+    // ❗ SADECE PREPARING
+    if (String(delivery_status).toLowerCase() !== "preparing") {
       return res.status(400).json({
         error: "Only processing orders can be cancelled",
       });
     }
 
-    // 1️⃣ ORDERS → CANCELLED (EN KRİTİK ADIM)
+    // 1️⃣ orders → cancelled
     db.query(
       "UPDATE orders SET status = 'cancelled' WHERE order_id = ?",
       [orderId],
@@ -485,19 +485,17 @@ export function cancelOrder(req, res) {
           return res.status(500).json({ error: "Order cancel failed" });
         }
 
-        // 2️⃣ DELIVERIES VARSA CANCEL
+        // 2️⃣ deliveries varsa → cancel (HATA KONTROLLÜ)
         db.query(
-          "SELECT 1 FROM deliveries WHERE order_id = ?",
+          "UPDATE deliveries SET delivery_status = 'cancelled' WHERE order_id = ?",
           [orderId],
-          (_, dRows) => {
-            if (dRows.length) {
-              db.query(
-                "UPDATE deliveries SET delivery_status = 'cancelled' WHERE order_id = ?",
-                [orderId]
-              );
+          (dErr) => {
+            if (dErr) {
+              console.warn("Delivery cancel skipped:", dErr.message);
+              // devam et
             }
 
-            // 3️⃣ STOCK GERİ EKLE
+            // 3️⃣ stock geri ekle
             const stockSql = `
               UPDATE products p
               JOIN order_items oi ON oi.product_id = p.product_id
