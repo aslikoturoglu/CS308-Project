@@ -446,7 +446,7 @@ export function updateDeliveryStatus(req, res) {
   });
 }
 export function cancelOrder(req, res) {
-  const orderId = Number(req.params.order_id);
+  const orderId = Number(req.params.id);
 
   if (!Number.isFinite(orderId)) {
     return res.status(400).json({ error: "Invalid order id" });
@@ -460,7 +460,6 @@ export function cancelOrder(req, res) {
 
   db.query(checkSql, [orderId], (err, rows) => {
     if (err) {
-      console.error("Cancel check failed:", err);
       return res.status(500).json({ error: "Cancel check failed" });
     }
 
@@ -470,42 +469,33 @@ export function cancelOrder(req, res) {
 
     const { delivery_status } = rows[0];
 
-    const cancellableStatuses = [
-  "preparing",
-  "processing",
-  "pending"
-];
+    const cancellableStatuses = ["preparing", "processing", "pending"];
 
-if (!cancellableStatuses.includes(delivery_status)) {
-  return res.status(400).json({
-    error: "Only processing (preparing) orders can be cancelled"
-  });
-}
+    if (!cancellableStatuses.includes(delivery_status)) {
+      return res.status(400).json({
+        error: "Only processing (preparing) orders can be cancelled"
+      });
+    }
 
-
-
-    // orders → cancelled
-    db.query(
-      "UPDATE orders SET status = 'cancelled' WHERE order_id = ?",
-      [orderId],
-      () => {
-        db.query(
-          "UPDATE deliveries SET delivery_status = 'cancelled' WHERE order_id = ?",
-          [orderId],
-          () => {
-            const stockSql = `
-              UPDATE products p
-              JOIN order_items oi ON oi.product_id = p.product_id
-              SET p.product_stock = p.product_stock + oi.quantity
-              WHERE oi.order_id = ?
-            `;
-
-            db.query(stockSql, [orderId], () => {
+    db.query("UPDATE orders SET status = 'cancelled' WHERE order_id = ?", [orderId], () => {
+      db.query(
+        "UPDATE deliveries SET delivery_status = 'cancelled' WHERE order_id = ?",
+        [orderId],
+        () => {
+          db.query(
+            `
+            UPDATE products p
+            JOIN order_items oi ON oi.product_id = p.product_id
+            SET p.product_stock = p.product_stock + oi.quantity
+            WHERE oi.order_id = ?
+            `,
+            [orderId],
+            () => {
               res.json({ success: true, order_id: orderId });
-            });
-          }
-        );
-      }
-    );
+            }
+          );
+        }
+      );
+    });
   });
 }
