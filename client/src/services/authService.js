@@ -6,11 +6,11 @@ async function handle(res) {
   return data;
 }
 
-export async function registerUser({ fullName, email, password, address, taxId }) {
+export async function registerUser({ fullName, email, password }) {
   const res = await fetch("/api/auth/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fullName, email, password, address, taxId }),
+    body: JSON.stringify({ fullName, email, password }),
   });
   return handle(res);
 }

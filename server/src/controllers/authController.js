@@ -64,12 +64,20 @@ function hashToken(rawToken) {
 export function register(req, res) {
   const { fullName, email, password, address, taxId } = req.body;
 
-  if (!fullName || !email || !password || !taxId) {
-    return res.status(400).json({ error: "fullname, email, password ve tax_id zorunlu" });
+  if (!fullName || !email || !password) {
+    return res.status(400).json({ error: "fullname, email ve password zorunlu" });
   }
 
-  const checkSql = "SELECT user_id, email, tax_id FROM users WHERE email = ? OR tax_id = ?";
-  db.query(checkSql, [email, taxId], async (checkErr, rows) => {
+  const normalizedTaxId = typeof taxId === "string" ? taxId.trim() : "";
+  const taxIdValue = normalizedTaxId ? normalizedTaxId : null;
+  const normalizedAddress = typeof address === "string" ? address.trim() : "";
+
+  const checkSql = taxIdValue
+    ? "SELECT user_id, email, tax_id FROM users WHERE email = ? OR tax_id = ?"
+    : "SELECT user_id, email, tax_id FROM users WHERE email = ?";
+  const checkParams = taxIdValue ? [email, taxIdValue] : [email];
+
+  db.query(checkSql, checkParams, async (checkErr, rows) => {
     if (checkErr) {
       console.error("User lookup failed:", checkErr);
       return res.status(500).json({ error: "Kayıt sırasında hata oluştu" });
@@ -79,7 +87,10 @@ export function register(req, res) {
       if (emailMatch) {
         return res.status(400).json({ error: "Bu email zaten kayıtlı" });
       }
-      return res.status(400).json({ error: "Bu tax ID zaten kayıtlı" });
+      if (taxIdValue) {
+        return res.status(400).json({ error: "Bu tax ID zaten kayıtlı" });
+      }
+      return res.status(400).json({ error: "Kayıt sırasında hata oluştu" });
     }
 
     try {
@@ -88,23 +99,27 @@ export function register(req, res) {
         INSERT INTO users (full_name, email, password_hash, tax_id, home_address)
         VALUES (?, ?, ?, ?, ?)
       `;
-      db.query(insertSql, [fullName, email, hashed, taxId, address || ""], (insErr, result) => {
-        if (insErr) {
-          console.error("User insert failed:", insErr);
-          return res.status(500).json({ error: "Kayıt başarısız" });
+      db.query(
+        insertSql,
+        [fullName, email, hashed, taxIdValue, normalizedAddress || null],
+        (insErr, result) => {
+          if (insErr) {
+            console.error("User insert failed:", insErr);
+            return res.status(500).json({ error: "Kayıt başarısız" });
+          }
+          return res.json({
+            success: true,
+            user: {
+              id: result.insertId,
+              email,
+              name: fullName,
+              address: normalizedAddress || "",
+              taxId: normalizedTaxId || "",
+              role: "customer",
+            },
+          });
         }
-        return res.json({
-          success: true,
-          user: {
-            id: result.insertId,
-            email,
-            name: fullName,
-            address: address || "",
-            taxId,
-            role: "customer",
-          },
-        });
-      });
+      );
     } catch (hashErr) {
       console.error("Password hash failed:", hashErr);
       return res.status(500).json({ error: "Kayıt başarısız" });

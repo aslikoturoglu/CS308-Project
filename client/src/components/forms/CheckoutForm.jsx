@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useAuth } from "../../context/AuthContext";
 
 const shippingOptions = [
   { id: "standard", label: "Standard Delivery (2-4 days)", fee: 49.9 },
@@ -7,7 +6,6 @@ const shippingOptions = [
 ];
 
 function CheckoutForm({ cartTotal = 0, onSubmit }) {
-  const { user } = useAuth();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -25,7 +23,6 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
 
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
-  const [useDefaultAddress, setUseDefaultAddress] = useState(false);
 
   const shippingFee = useMemo(() => {
     const selected = shippingOptions.find((option) => option.id === formData.shipping);
@@ -47,15 +44,6 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
     const titleCaseFields = ["firstName", "lastName", "city"];
     const value = titleCaseFields.includes(field) ? toTitleCase(raw) : raw;
     setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleDefaultAddressToggle = (event) => {
-    const nextValue = event.target.checked;
-    setUseDefaultAddress(nextValue);
-    setFormData((prev) => ({
-      ...prev,
-      address: nextValue ? user?.address || "" : "",
-    }));
   };
 
   const handleSubmit = (event) => {
@@ -226,23 +214,6 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
                 style={inputStyle}
               />
             </label>
-            <label
-              style={{
-                display: "flex",
-                gap: 8,
-                alignItems: "center",
-                fontSize: "0.85rem",
-                fontWeight: 600,
-                color: "#1e293b",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={useDefaultAddress}
-                onChange={handleDefaultAddressToggle}
-              />
-              Use default address
-            </label>
             <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
               Address*
               <textarea
@@ -250,12 +221,10 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
                 onChange={handleChange("address")}
                 placeholder="Street, number, district"
                 required
-                disabled={useDefaultAddress}
                 rows={3}
                 style={{
                   ...inputStyle,
                   resize: "vertical",
-                  background: useDefaultAddress ? "#e2e8f0" : inputStyle.background,
                 }}
               />
             </label>
