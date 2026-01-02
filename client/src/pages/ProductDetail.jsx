@@ -109,7 +109,7 @@ function ProductDetail({ openMiniCart }) {
     }
 
     addItem(product, 1);
-    openMiniCart(product); 
+    openMiniCart?.(product);
     alert("Added to cart.");
   };
 

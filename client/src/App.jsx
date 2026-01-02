@@ -102,6 +102,7 @@ function AppChrome() {
             miniCartItem={miniCartItem}
             showMiniCart={showMiniCart}
             setShowMiniCart={setShowMiniCart}
+            openMiniCart={openMiniCart}
           />
 
           <div className="app-content">
