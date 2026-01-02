@@ -470,12 +470,18 @@ export function cancelOrder(req, res) {
 
     const { delivery_status } = rows[0];
 
-    // ❗ SADECE preparing
-    if (delivery_status !== "preparing") {
-      return res.status(400).json({
-        error: "Only processing (preparing) orders can be cancelled",
-      });
-    }
+    const cancellableStatuses = [
+  "preparing",
+  "processing",
+  "pending"
+];
+
+if (!cancellableStatuses.includes(order.status)) {
+  return res.status(400).json({
+    error: "Only processing (preparing) orders can be cancelled"
+  });
+}
+
 
     // orders → cancelled
     db.query(
