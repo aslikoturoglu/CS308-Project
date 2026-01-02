@@ -476,11 +476,12 @@ export function cancelOrder(req, res) {
   "pending"
 ];
 
-if (!cancellableStatuses.includes(order.status)) {
+if (!cancellableStatuses.includes(delivery_status)) {
   return res.status(400).json({
     error: "Only processing (preparing) orders can be cancelled"
   });
 }
+
 
 
     // orders → cancelled
