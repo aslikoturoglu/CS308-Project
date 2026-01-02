@@ -2,34 +2,49 @@ import { Link } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import "./MiniPreview.css";
 
-export default function MiniCartPreview({ onClose }) {
+export default function MiniCartPreview({ onClose, open }) {
   const { items } = useCart();
 
-  if (items.length === 0) return null;
+  if (!open) return null;
 
   return (
-    <div className="miniCart">
-      <div className="miniCartHeader">
-        <span>Cart</span>
-        <button onClick={onClose}>✕</button>
+    <>
+      <div className="mini-cart-overlay" onClick={onClose} />
+
+      <div
+        className={`mini-cart ${open ? "open" : ""}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mini-cart-header">
+          <h3>Cart</h3>
+          <button onClick={onClose}>✕</button>
+        </div>
+
+        <div className="mini-cart-body">
+          {items.length === 0 ? (
+            <p>Your cart is empty</p>
+          ) : (
+            items.map((item) => (
+              <div key={item.id} className="mini-cart-item">
+                <img src={item.image} alt={item.name} />
+
+                <div className="info">
+                  <p className="name">{item.name}</p>
+                  <p className="price">
+                    {item.quantity} × ₺{item.price}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="mini-cart-footer">
+          <Link to="/cart" className="btn primary" onClick={onClose}>
+            View Cart
+          </Link>
+        </div>
       </div>
-  
-      <div className="miniCartBody">
-        {items.map((item) => (
-          <div key={item.id} className="miniCartRow">
-            <img src={item.image} alt={item.name} />
-            <div>
-              <div>{item.name}</div>
-              <div>{item.quantity} × ₺{item.price}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-  
-      <a href="/cart" className="miniCartBtn">
-        View Cart
-      </a>
-    </div>
+    </>
   );
-  
 }
