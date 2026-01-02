@@ -453,9 +453,10 @@ export function cancelOrder(req, res) {
   }
 
   const checkSql = `
-    SELECT d.delivery_status
-    FROM deliveries d
-    WHERE d.order_id = ?
+    SELECT o.status AS order_status, d.delivery_status
+    FROM orders o
+    LEFT JOIN deliveries d ON d.order_id = o.order_id
+    WHERE o.order_id = ?
   `;
 
   db.query(checkSql, [orderId], (err, rows) => {
@@ -467,35 +468,39 @@ export function cancelOrder(req, res) {
       return res.status(404).json({ error: "Order not found" });
     }
 
-    const { delivery_status } = rows[0];
+    const { order_status } = rows[0];
 
-    const cancellableStatuses = ["preparing", "processing", "pending"];
-
-    if (!cancellableStatuses.includes(delivery_status)) {
+    // 🔥 ASIL KURAL
+    if (order_status !== "processing") {
       return res.status(400).json({
-        error: "Only processing (preparing) orders can be cancelled"
+        error: "Only processing orders can be cancelled"
       });
     }
 
-    db.query("UPDATE orders SET status = 'cancelled' WHERE order_id = ?", [orderId], () => {
-      db.query(
-        "UPDATE deliveries SET delivery_status = 'cancelled' WHERE order_id = ?",
-        [orderId],
-        () => {
-          db.query(
-            `
-            UPDATE products p
-            JOIN order_items oi ON oi.product_id = p.product_id
-            SET p.product_stock = p.product_stock + oi.quantity
-            WHERE oi.order_id = ?
-            `,
-            [orderId],
-            () => {
-              res.json({ success: true, order_id: orderId });
-            }
-          );
-        }
-      );
-    });
+    // orders → cancelled
+    db.query(
+      "UPDATE orders SET status = 'cancelled' WHERE order_id = ?",
+      [orderId],
+      () => {
+        db.query(
+          "UPDATE deliveries SET delivery_status = 'cancelled' WHERE order_id = ?",
+          [orderId],
+          () => {
+            db.query(
+              `
+              UPDATE products p
+              JOIN order_items oi ON oi.product_id = p.product_id
+              SET p.product_stock = p.product_stock + oi.quantity
+              WHERE oi.order_id = ?
+              `,
+              [orderId],
+              () => {
+                res.json({ success: true, order_id: orderId });
+              }
+            );
+          }
+        );
+      }
+    );
   });
 }
