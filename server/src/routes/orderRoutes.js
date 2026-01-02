@@ -18,7 +18,7 @@ router.post("/checkout", checkout);
 router.get("/", getAllOrders);
 router.get("/history", getOrderHistory);
 router.put("/:order_id/status", updateDeliveryStatus);
-router.put("/:order_id/cancel", cancelOrder);
+router.put("/:id/cancel", cancelOrder);
 router.get("/:order_id/invoice", generateInvoice);
 
 export default router;
