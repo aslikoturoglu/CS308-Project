@@ -22,6 +22,7 @@ function OrderHistory() {
   const [filter, setFilter] = useState("All");
   const [orders, setOrders] = useState([]);
   const [reviews, setReviews] = useState({});
+  const [openOrderId, setOpenOrderId] = useState(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -231,14 +232,19 @@ function OrderHistory() {
                 }}
               >
                 <header
+                  onClick={() =>
+                    setOpenOrderId(openOrderId === formattedId ? null : formattedId)
+                  }
                   style={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
                     gap: 12,
                     flexWrap: "wrap",
+                    cursor: "pointer",
                   }}
                 >
+
                   <div>
                     <p style={{ margin: 0, color: "#94a3b8", letterSpacing: 1 }}>ORDER</p>
                     <h3 style={{ margin: "4px 0", color: "#0f172a" }}>{formattedId}</h3>
@@ -261,6 +267,7 @@ function OrderHistory() {
                   </div>
                 </header>
 
+                {openOrderId === formattedId && (<>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
                   <Info label="Shipping" value={order.shippingCompany || "SUExpress"} />
                   <Info label="Address" value={order.address || "Not provided"} />
@@ -452,6 +459,8 @@ function OrderHistory() {
                     View invoice
                   </Link>
                 </div>
+                </>
+              )}
               </article>
             );
           })}
