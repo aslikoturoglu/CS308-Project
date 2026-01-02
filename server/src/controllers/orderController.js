@@ -446,7 +446,7 @@ export function updateDeliveryStatus(req, res) {
   });
 }
 export function cancelOrder(req, res) {
-  const orderId = Number(req.params.id);
+  const orderId = Number(req.params.order_id); // ✅ BURASI
 
   if (!Number.isFinite(orderId)) {
     return res.status(400).json({ error: "Invalid order id" });
@@ -470,37 +470,27 @@ export function cancelOrder(req, res) {
 
     const { order_status } = rows[0];
 
-    // 🔥 ASIL KURAL
     if (order_status !== "processing") {
       return res.status(400).json({
         error: "Only processing orders can be cancelled"
       });
     }
 
-    // orders → cancelled
-    db.query(
-      "UPDATE orders SET status = 'cancelled' WHERE order_id = ?",
-      [orderId],
-      () => {
+    db.query("UPDATE orders SET status = 'cancelled' WHERE order_id = ?", [orderId], () => {
+      db.query("UPDATE deliveries SET delivery_status = 'cancelled' WHERE order_id = ?", [orderId], () => {
         db.query(
-          "UPDATE deliveries SET delivery_status = 'cancelled' WHERE order_id = ?",
+          `
+          UPDATE products p
+          JOIN order_items oi ON oi.product_id = p.product_id
+          SET p.product_stock = p.product_stock + oi.quantity
+          WHERE oi.order_id = ?
+          `,
           [orderId],
           () => {
-            db.query(
-              `
-              UPDATE products p
-              JOIN order_items oi ON oi.product_id = p.product_id
-              SET p.product_stock = p.product_stock + oi.quantity
-              WHERE oi.order_id = ?
-              `,
-              [orderId],
-              () => {
-                res.json({ success: true, order_id: orderId });
-              }
-            );
+            res.json({ success: true, order_id: orderId });
           }
         );
-      }
-    );
+      });
+    });
   });
 }
