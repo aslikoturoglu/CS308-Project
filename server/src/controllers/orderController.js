@@ -384,10 +384,6 @@ export function getAllOrders(req, res) {
   });
 }
 
-/**
- * PUT /orders/:order_id/status
- * Body: { status } â†’ Ã¶rn: "preparing" | "shipped" | "in_transit" | "delivered"
- */
 
 export function updateDeliveryStatus(req, res) {
   const { order_id } = req.params;
@@ -445,10 +441,6 @@ export function updateDeliveryStatus(req, res) {
     });
   });
 }
-/**
- * PUT /orders/:order_id/cancel
- * Only allowed if order is still processing/preparing
- */
 export function cancelOrder(req, res) {
   const orderId = Number(req.params.order_id);
 
@@ -456,7 +448,6 @@ export function cancelOrder(req, res) {
     return res.status(400).json({ error: "Invalid order id" });
   }
 
-  // 1️⃣ Order + delivery status çek
   const sql = `
     SELECT 
       o.status AS order_status,
@@ -476,23 +467,17 @@ export function cancelOrder(req, res) {
       return res.status(404).json({ error: "Order not found" });
     }
 
-    const { order_status, delivery_status } = rows[0];
+    const { delivery_status } = rows[0];
 
-    // 🔒 SADECE PROCESSING / PREPARING
-   // 🚫 Kargoya verildiyse veya teslim edildiyse iptal edilemez
-if (
-  delivery_status === "shipped" ||
-  delivery_status === "in_transit" ||
-  delivery_status === "delivered"
-) {
+    if (delivery_status !== "preparing") {
   return res.status(400).json({
-    error: "Order can no longer be cancelled",
+    error: "Only processing orders can be cancelled",
   });
 }
 
+  
 
-
-    // 2️⃣ Order status = cancelled
+    // 1️⃣ ORDER STATUS = CANCELLED
     db.query(
       "UPDATE orders SET status = 'cancelled' WHERE order_id = ?",
       [orderId],
@@ -502,12 +487,12 @@ if (
           return res.status(500).json({ error: "Order cancel failed" });
         }
 
-        // 3️⃣ Delivery status = cancelled
+        // 2️⃣ DELIVERY (varsa) CANCEL
         db.query(
           "UPDATE deliveries SET delivery_status = 'cancelled' WHERE order_id = ?",
           [orderId],
           () => {
-            // 4️⃣ (Opsiyonel ama çok iyi) stok geri ekle
+            // 3️⃣ STOCK GERİ EKLE
             const stockSql = `
               UPDATE products p
               JOIN order_items oi ON oi.product_id = p.product_id
