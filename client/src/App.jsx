@@ -6,6 +6,7 @@ import Footer from "./components/layout/Footer";
 import ChatButton from "./components/chat/ChatButton";
 import AppRouter from "./router/AppRouter";
 import { useAuth } from "./context/AuthContext";
+import MiniCartPreview from "./components/cart/MiniPreview";
 
 import "./styles/globals.css";
 
@@ -99,6 +100,10 @@ function AppChrome() {
           setShowMiniCart={setShowMiniCart}
           />
 
+          <MiniCartPreview
+            open={showMiniCart}
+            onClose={() => setShowMiniCart(false)}
+          />
 
           <div className="app-content">
             <AppRouter openMiniCart={openMiniCart} />

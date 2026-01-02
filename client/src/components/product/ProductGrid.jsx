@@ -69,7 +69,7 @@ function ProductGrid({openMiniCart}) {
                   return;
                 }
                 addItem(p, 1);
-                openMiniCart?.(p);
+                openMiniCart?.();
               }}
               disabled={p.availableStock <= 0}
             >
