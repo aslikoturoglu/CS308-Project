@@ -225,7 +225,9 @@ export function getOrderHistory(req, res) {
     FROM orders o
     LEFT JOIN deliveries d ON d.order_id = o.order_id
     WHERE o.user_id = ?
+    AND o.status != 'cancelled'
     ORDER BY o.order_date DESC
+
   `;
 
   db.query(sql, [user_id], (err, rows) => {
