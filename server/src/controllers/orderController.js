@@ -479,11 +479,17 @@ export function cancelOrder(req, res) {
     const { order_status, delivery_status } = rows[0];
 
     // 🔒 SADECE PROCESSING / PREPARING
-    if (delivery_status !== "preparing") {
+   // 🚫 Kargoya verildiyse veya teslim edildiyse iptal edilemez
+if (
+  delivery_status === "shipped" ||
+  delivery_status === "in_transit" ||
+  delivery_status === "delivered"
+) {
   return res.status(400).json({
-    error: "Only processing orders can be cancelled",
+    error: "Order can no longer be cancelled",
   });
 }
+
 
 
     // 2️⃣ Order status = cancelled

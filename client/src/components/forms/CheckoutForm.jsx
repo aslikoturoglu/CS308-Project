@@ -25,9 +25,12 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
 
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
-  const [useDefaultAddress, setUseDefaultAddress] = useState(false);
+  const [useFavoriteAddress, setUseFavoriteAddress] = useState(false);
+  const [useProfileName, setUseProfileName] = useState(false);
   const favoriteAddress = String(user?.address || "").trim();
   const hasFavoriteAddress = Boolean(favoriteAddress);
+  const profileName = String(user?.name || "").trim();
+  const hasProfileName = Boolean(profileName);
 
   const shippingFee = useMemo(() => {
     const selected = shippingOptions.find((option) => option.id === formData.shipping);
@@ -51,26 +54,40 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleDefaultAddressToggle = (event) => {
-    const nextValue = event.target.checked;
-    setUseDefaultAddress(nextValue);
-    setFormData((prev) => ({
-      ...prev,
-      address: nextValue ? user?.address || "" : "",
-    }));
-  };
-
   const handleFavoriteAddressClick = () => {
     if (!hasFavoriteAddress) {
       setInfo("First set favorite address from profile screen.");
       return;
     }
     setInfo("");
-    setUseDefaultAddress(true);
-    setFormData((prev) => ({
-      ...prev,
-      address: favoriteAddress,
-    }));
+    setUseFavoriteAddress((prev) => {
+      const nextValue = !prev;
+      setFormData((state) => ({
+        ...state,
+        address: nextValue ? favoriteAddress : "",
+      }));
+      return nextValue;
+    });
+  };
+
+  const handleProfileNameClick = () => {
+    if (!hasProfileName) {
+      setInfo("First set your name from profile screen.");
+      return;
+    }
+    const parts = profileName.split(/\s+/).filter(Boolean);
+    const lastName = parts.length > 1 ? parts.pop() : "";
+    const firstName = parts.join(" ");
+    setInfo("");
+    setUseProfileName((prev) => {
+      const nextValue = !prev;
+      setFormData((state) => ({
+        ...state,
+        firstName: nextValue ? firstName : "",
+        lastName: nextValue ? lastName : "",
+      }));
+      return nextValue;
+    });
   };
 
   const handleSubmit = (event) => {
@@ -215,6 +232,7 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
                   onChange={handleChange("firstName")}
                   placeholder="e.g. Alex"
                   required
+                  disabled={useProfileName}
                   style={inputStyle}
                 />
               </label>
@@ -226,9 +244,34 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
                   onChange={handleChange("lastName")}
                   placeholder="e.g. Morgan"
                   required
+                  disabled={useProfileName}
                   style={inputStyle}
                 />
               </label>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <button
+                type="button"
+                onClick={handleProfileNameClick}
+                disabled={!hasProfileName}
+                style={{
+                  alignSelf: "flex-start",
+                  background: hasProfileName ? "#0f172a" : "#e2e8f0",
+                  color: hasProfileName ? "white" : "#64748b",
+                  border: "none",
+                  borderRadius: 10,
+                  padding: "8px 12px",
+                  fontWeight: 700,
+                  cursor: hasProfileName ? "pointer" : "not-allowed",
+                }}
+              >
+                {useProfileName ? "Use custom name" : "Use profile name"}
+              </button>
+              {!hasProfileName && (
+                <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                  First set your name from profile screen.
+                </span>
+              )}
             </div>
             <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
               Phone*
@@ -240,23 +283,6 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
                 required
                 style={inputStyle}
               />
-            </label>
-            <label
-              style={{
-                display: "flex",
-                gap: 8,
-                alignItems: "center",
-                fontSize: "0.85rem",
-                fontWeight: 600,
-                color: "#1e293b",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={useDefaultAddress}
-                onChange={handleDefaultAddressToggle}
-              />
-              Use default address
             </label>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <button
@@ -274,7 +300,7 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
                   cursor: hasFavoriteAddress ? "pointer" : "not-allowed",
                 }}
               >
-                Use favorite address
+                {useFavoriteAddress ? "Use custom address" : "Use favorite address"}
               </button>
               {!hasFavoriteAddress && (
                 <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
@@ -289,12 +315,12 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
                 onChange={handleChange("address")}
                 placeholder="Street, number, district"
                 required
-                disabled={useDefaultAddress}
+                disabled={useFavoriteAddress}
                 rows={3}
                 style={{
                   ...inputStyle,
                   resize: "vertical",
-                  background: useDefaultAddress ? "#e2e8f0" : inputStyle.background,
+                  background: useFavoriteAddress ? "#e2e8f0" : inputStyle.background,
                 }}
               />
             </label>
