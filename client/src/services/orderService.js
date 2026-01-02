@@ -156,21 +156,26 @@ function normalizeItems(row) {
 
 
 export async function cancelOrder(orderId) {
-  if (!orderId && orderId !== 0) {
-    throw new Error("orderId is required");
-  }
-
   const res = await fetch(
     `${API_BASE}/api/orders/${orderId}/cancel`,
-    { method: "PUT" }
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status: "preparing", // 🔥 ÖNEMLİ
+      }),
+    }
   );
 
+  const data = await res.json().catch(() => ({}));
+
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
     throw new Error(data.error || "Cancel failed");
   }
 
-  return res.json();
+  return data;
 }
 
 
