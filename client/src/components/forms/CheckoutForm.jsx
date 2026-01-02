@@ -26,6 +26,8 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [useDefaultAddress, setUseDefaultAddress] = useState(false);
+  const favoriteAddress = String(user?.address || "").trim();
+  const hasFavoriteAddress = Boolean(favoriteAddress);
 
   const shippingFee = useMemo(() => {
     const selected = shippingOptions.find((option) => option.id === formData.shipping);
@@ -55,6 +57,19 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
     setFormData((prev) => ({
       ...prev,
       address: nextValue ? user?.address || "" : "",
+    }));
+  };
+
+  const handleFavoriteAddressClick = () => {
+    if (!hasFavoriteAddress) {
+      setInfo("First set favorite address from profile screen.");
+      return;
+    }
+    setInfo("");
+    setUseDefaultAddress(true);
+    setFormData((prev) => ({
+      ...prev,
+      address: favoriteAddress,
     }));
   };
 
@@ -243,6 +258,30 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
               />
               Use default address
             </label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <button
+                type="button"
+                onClick={handleFavoriteAddressClick}
+                disabled={!hasFavoriteAddress}
+                style={{
+                  alignSelf: "flex-start",
+                  background: hasFavoriteAddress ? "#0f172a" : "#e2e8f0",
+                  color: hasFavoriteAddress ? "white" : "#64748b",
+                  border: "none",
+                  borderRadius: 10,
+                  padding: "8px 12px",
+                  fontWeight: 700,
+                  cursor: hasFavoriteAddress ? "pointer" : "not-allowed",
+                }}
+              >
+                Use favorite address
+              </button>
+              {!hasFavoriteAddress && (
+                <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                  First set favorite address from profile screen.
+                </span>
+              )}
+            </div>
             <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
               Address*
               <textarea

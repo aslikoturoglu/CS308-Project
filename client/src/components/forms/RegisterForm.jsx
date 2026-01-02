@@ -13,7 +13,6 @@ function RegisterForm({ onSuccess }) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [taxId, setTaxId] = useState("");
-  const [address, setAddress] = useState("");
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
 
@@ -41,12 +40,6 @@ function RegisterForm({ onSuccess }) {
       return;
     }
 
-    if (!address.trim()) {
-      setError("Address is required.");
-      addToast("Address is required", "error");
-      return;
-    }
-
     if (!emailPattern.test(email.trim())) {
       setError("Enter a valid email address.");
       addToast("Enter a valid email address", "error");
@@ -58,7 +51,6 @@ function RegisterForm({ onSuccess }) {
       email: email.trim(),
       password,
       taxId: taxId.trim(),
-      address: address.trim(),
     })
       .then((data) => {
         setError("");
@@ -206,26 +198,6 @@ function RegisterForm({ onSuccess }) {
               borderRadius: 8,
               border: "1px solid #d4d7dd",
               fontSize: "0.95rem",
-            }}
-          />
-        </label>
-
-        <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1a1a1a" }}>
-          Address
-          <textarea
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            required
-            placeholder="Street, number, district, city"
-            style={{
-              width: "100%",
-              padding: 10,
-              marginTop: 6,
-              borderRadius: 8,
-              border: "1px solid #d4d7dd",
-              fontSize: "0.95rem",
-              minHeight: 70,
-              resize: "vertical",
             }}
           />
         </label>

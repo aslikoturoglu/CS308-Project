@@ -62,7 +62,7 @@ function hashToken(rawToken) {
 }
 
 export function register(req, res) {
-  const { fullName, email, password, address, taxId } = req.body;
+  const { fullName, email, password, taxId } = req.body;
 
   if (!fullName || !email || !password || !taxId) {
     return res.status(400).json({ error: "fullname, email, password ve tax_id zorunlu" });
@@ -88,7 +88,7 @@ export function register(req, res) {
         INSERT INTO users (full_name, email, password_hash, tax_id, home_address)
         VALUES (?, ?, ?, ?, ?)
       `;
-      db.query(insertSql, [fullName, email, hashed, taxId, address || ""], (insErr, result) => {
+      db.query(insertSql, [fullName, email, hashed, taxId, ""], (insErr, result) => {
         if (insErr) {
           console.error("User insert failed:", insErr);
           return res.status(500).json({ error: "Kayıt başarısız" });
@@ -99,7 +99,7 @@ export function register(req, res) {
             id: result.insertId,
             email,
             name: fullName,
-            address: address || "",
+            address: "",
             taxId,
             role: "customer",
           },

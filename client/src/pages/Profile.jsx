@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { updateUserAddress } from "../services/userService";
 import { formatOrderId, getOrders, fetchUserOrders } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
 import { cancelOrder } from "../services/orderService";
@@ -15,7 +16,7 @@ const mockPreferences = [
 
 
 function Profile() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
 
   // Product managers should stay on the admin dashboard
   if (user?.role === "product_manager") {
@@ -108,13 +109,22 @@ function Profile() {
     );
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const next = {
       ...profile,
       ...draft,
     };
     setProfile(next);
     if (storageKey) saveProfile(storageKey, next);
+    if (user?.id && typeof next.address === "string") {
+      try {
+        await updateUserAddress({ userId: user.id, address: next.address });
+        updateUser({ address: next.address });
+      } catch (error) {
+        console.error("Profile address update failed", error);
+        alert("Profile address update failed.");
+      }
+    }
     setEditing(false);
   };
 
