@@ -59,6 +59,13 @@ export function AuthProvider({ children }) {
     setUser(nextUser);
   };
 
+  const updateUser = (patch) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      return { ...prev, ...patch };
+    });
+  };
+
   const logout = () => setUser(null);
 
   const value = useMemo(
@@ -66,6 +73,7 @@ export function AuthProvider({ children }) {
       user,
       isAuthenticated: Boolean(user),
       login,
+      updateUser,
       logout,
     }),
     [user]

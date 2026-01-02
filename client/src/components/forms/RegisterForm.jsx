@@ -12,6 +12,7 @@ function RegisterForm({ onSuccess }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [taxId, setTaxId] = useState("");
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
 
@@ -33,6 +34,12 @@ function RegisterForm({ onSuccess }) {
       return;
     }
 
+    if (!taxId.trim()) {
+      setError("Tax ID is required.");
+      addToast("Tax ID is required", "error");
+      return;
+    }
+
     if (!emailPattern.test(email.trim())) {
       setError("Enter a valid email address.");
       addToast("Enter a valid email address", "error");
@@ -43,6 +50,7 @@ function RegisterForm({ onSuccess }) {
       fullName,
       email: email.trim(),
       password,
+      taxId: taxId.trim(),
     })
       .then((data) => {
         setError("");
@@ -164,6 +172,25 @@ function RegisterForm({ onSuccess }) {
             minLength={6}
             required
             placeholder="••••••"
+            style={{
+              width: "100%",
+              padding: 10,
+              marginTop: 6,
+              borderRadius: 8,
+              border: "1px solid #d4d7dd",
+              fontSize: "0.95rem",
+            }}
+          />
+        </label>
+
+        <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1a1a1a" }}>
+          Tax ID
+          <input
+            type="text"
+            value={taxId}
+            onChange={(e) => setTaxId(e.target.value)}
+            required
+            placeholder="Tax ID"
             style={{
               width: "100%",
               padding: 10,
