@@ -452,11 +452,10 @@ export function cancelOrder(req, res) {
     return res.status(400).json({ error: "Invalid order id" });
   }
 
-  // 1️⃣ Sipariş status kontrolü (SADECE orders.status)
   const checkSql = `
-    SELECT status
-    FROM orders
-    WHERE order_id = ?
+    SELECT d.delivery_status
+    FROM deliveries d
+    WHERE d.order_id = ?
   `;
 
   db.query(checkSql, [orderId], (err, rows) => {
@@ -469,31 +468,24 @@ export function cancelOrder(req, res) {
       return res.status(404).json({ error: "Order not found" });
     }
 
-    const { status } = rows[0];
+    const { delivery_status } = rows[0];
 
-    // ❗ SADECE processing
-    if (status !== "processing") {
+    // ❗ SADECE preparing
+    if (delivery_status !== "preparing") {
       return res.status(400).json({
-        error: "Only processing orders can be cancelled",
+        error: "Only processing (preparing) orders can be cancelled",
       });
     }
 
-    // 2️⃣ orders → cancelled
+    // orders → cancelled
     db.query(
       "UPDATE orders SET status = 'cancelled' WHERE order_id = ?",
       [orderId],
-      (orderErr) => {
-        if (orderErr) {
-          console.error("Order cancel failed:", orderErr);
-          return res.status(500).json({ error: "Order cancel failed" });
-        }
-
-        // 3️⃣ deliveries varsa → cancelled (opsiyonel ama tutarlı)
+      () => {
         db.query(
           "UPDATE deliveries SET delivery_status = 'cancelled' WHERE order_id = ?",
           [orderId],
           () => {
-            // 4️⃣ stok geri ekle
             const stockSql = `
               UPDATE products p
               JOIN order_items oi ON oi.product_id = p.product_id
@@ -502,11 +494,7 @@ export function cancelOrder(req, res) {
             `;
 
             db.query(stockSql, [orderId], () => {
-              return res.json({
-                success: true,
-                order_id: orderId,
-                status: "cancelled",
-              });
+              res.json({ success: true, order_id: orderId });
             });
           }
         );

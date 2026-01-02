@@ -44,11 +44,12 @@ const handleCancelOrder = async (orderId) => {
   try {
     await cancelOrder(orderId);
 
+    // 🔴 BURASI DÜZELTİLDİ
     setOrders((prev) =>
-      prev.filter((o) => o.id !== orderId)
+      prev.filter((o) => o.order_id !== orderId)
     );
   } catch (err) {
-    alert("Order cancel failed");
+    alert("Only processing orders can be cancelled");
   }
 };
 
@@ -244,7 +245,8 @@ const handleCancelOrder = async (orderId) => {
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {orders.slice(0, 3).map((order) => {
               console.log("RAW STATUS >>>", order.status);
-              const formattedId = formatOrderId(order.id);
+              const formattedId = formatOrderId(order.order_id);
+
               return (
                 <article
                   key={formattedId}
@@ -280,7 +282,7 @@ const handleCancelOrder = async (orderId) => {
 
     {order.status?.toLowerCase().trim() === "processing" && (
       <button
-        onClick={() => handleCancelOrder(order.id)}
+        onClick={() => handleCancelOrder(order.order_id)}
         style={{
           backgroundColor: "#fee2e2",
           color: "#b91c1c",
