@@ -44,13 +44,19 @@ const handleCancelOrder = async (orderId) => {
   try {
     await cancelOrder(orderId);
 
-    setOrders((prev) =>
-      prev.filter((o) => o.id !== orderId)
+    setOrders(prev =>
+      prev.map(o =>
+        o.id === orderId
+          ? { ...o, status: "Cancelled" }
+          : o
+      )
     );
   } catch (err) {
-    alert("Only processing orders can be cancelled");
+    alert(err?.message || "Only processing orders can be cancelled");
   }
 };
+
+
 
 
 
@@ -245,7 +251,8 @@ const handleCancelOrder = async (orderId) => {
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {orders.slice(0, 3).map((order) => {
               console.log("RAW STATUS >>>", order.status);
-              const formattedId = formatOrderId(order.order_id);
+              const formattedId = order.formattedId;
+
 
               return (
                 <article
@@ -276,13 +283,24 @@ const handleCancelOrder = async (orderId) => {
   </span>
 
   <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-    <span style={{ color: "#059669", fontWeight: 600 }}>
-      {order.status}
-    </span>
+    <span
+  style={{
+    color:
+      order.status === "Cancelled"
+        ? "#b91c1c"
+        : order.status === "Delivered"
+        ? "#2563eb"
+        : "#059669",
+    fontWeight: 600,
+  }}
+>
+  {order.status}
+</span>
 
     {order.status?.toLowerCase().trim() === "processing" && (
       <button
-        onClick={() => handleCancelOrder(order.order_id)}
+        onClick={() => handleCancelOrder(order.id)}
+
         style={{
           backgroundColor: "#fee2e2",
           color: "#b91c1c",
