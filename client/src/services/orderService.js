@@ -273,29 +273,6 @@ export function addOrder({ items, total, id: providedId, contact }) {
   return newOrder;
 }
 
-export async function cancelOrder(orderId) {
-  const orders = readOrders();
-  const targetNumeric = Number(orderId);
-  const targetFormatted = formatOrderId(orderId);
-  const idx = orders.findIndex((order) => {
-    if (order.order_id && Number.isFinite(targetNumeric)) {
-      return Number(order.order_id) === targetNumeric;
-    }
-    return formatOrderId(order.id) === targetFormatted;
-  });
-
-  if (idx >= 0) {
-    orders[idx] = {
-      ...orders[idx],
-      status: "Cancelled",
-      cancelledAt: new Date().toISOString(),
-    };
-    writeOrders(orders);
-  }
-
-  return true;
-}
-
 export function advanceOrderStatus(id, actor) {
   const orders = readOrders();
   const actorRole = typeof actor === "string" ? actor : actor?.role;
