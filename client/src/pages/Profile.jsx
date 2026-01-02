@@ -44,14 +44,14 @@ const handleCancelOrder = async (orderId) => {
   try {
     await cancelOrder(orderId);
 
-    // 🔴 BURASI DÜZELTİLDİ
     setOrders((prev) =>
-      prev.filter((o) => o.order_id !== orderId)
+      prev.filter((o) => o.id !== orderId)
     );
   } catch (err) {
     alert("Only processing orders can be cancelled");
   }
 };
+
 
 
 
