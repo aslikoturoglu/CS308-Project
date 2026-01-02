@@ -16,12 +16,12 @@ import AdminDashboard from "../pages/AdminDashboard";
 import Invoice from "../pages/Invoice";
 import ProtectedRoute from "../components/auth/ProtectedRoute";
 
-function AppRouter() {
+function AppRouter({ openMiniCart }) {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
-      <Route path="/products" element={<ProductList />} />
-      <Route path="/products/:id" element={<ProductDetail />} />
+      <Route path="/products" element={<ProductList openMiniCart={openMiniCart} />}/>
+      <Route path="/products/:id" element={<ProductDetail openMiniCart={openMiniCart} />}/>
       <Route path="/cart" element={<Cart />} />
       <Route element={<ProtectedRoute />}>
         <Route path="/wishlist" element={<Wishlist />} />
