@@ -8,6 +8,10 @@ import {
 } from "../controllers/orderController.js";
 
 import { generateInvoice } from "../controllers/invoiceController.js";
+import { cancelOrder } from "../controllers/orderController.js";
+
+router.put("/orders/:id/cancel", cancelOrder);
+
 
 const router = Router();
 

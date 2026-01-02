@@ -3,12 +3,16 @@ import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { formatOrderId, getOrders, fetchUserOrders } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
+import { cancelOrder } from "../services/orderService";
+
 
 const mockPreferences = [
   { label: "Email notifications", enabled: true },
   { label: "SMS campaigns", enabled: false },
   { label: "New product newsletter", enabled: true },
 ];
+
+
 
 function Profile() {
   const { user } = useAuth();
@@ -32,6 +36,22 @@ function Profile() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(profile || {});
   const [orders, setOrders] = useState([]);
+
+  const handleCancelOrder = async (orderId) => {
+  if (!window.confirm("Cancel this order?")) return;
+
+  try {
+    await cancelOrder(orderId);
+
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId ? { ...o, status: "Cancelled" } : o
+      )
+    );
+  } catch {
+    alert("Order cancel failed");
+  }
+};
 
   useEffect(() => {
     if (!user) {
@@ -204,9 +224,10 @@ function Profile() {
             boxShadow: "0 18px 35px rgba(0,0,0,0.05)",
           }}
         >
-          <h2 style={{ marginTop: 0, color: "#0058a3" }}>Recent orders</h2>
+          <h2 style={{ marginTop: 0, color: "#0058a3" }}>Recent ordersssss</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {orders.slice(0, 3).map((order) => {
+              console.log("RAW STATUS >>>", order.status);
               const formattedId = formatOrderId(order.id);
               return (
                 <article
@@ -232,9 +253,34 @@ function Profile() {
                     {order.items.map((it) => it.name).join(", ")}
                   </p>
                   <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-                    <span style={{ fontWeight: 600 }}>{formatPrice(order.total)}</span>
-                    <span style={{ color: "#059669", fontWeight: 600 }}>{order.status}</span>
-                  </div>
+  <span style={{ fontWeight: 600 }}>
+    {formatPrice(order.total)}
+  </span>
+
+  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+    <span style={{ color: "#059669", fontWeight: 600 }}>
+      {order.status}
+    </span>
+
+    {order.status?.toLowerCase().trim() === "processing" && (
+      <button
+        onClick={() => handleCancelOrder(order.id)}
+        style={{
+          backgroundColor: "#fee2e2",
+          color: "#b91c1c",
+          border: "1px solid #fecaca",
+          padding: "6px 12px",
+          borderRadius: 8,
+          cursor: "pointer",
+          fontWeight: 700,
+        }}
+      >
+        Cancel
+      </button>
+    )}
+  </div>
+</div>
+
                 </article>
               );
             })}

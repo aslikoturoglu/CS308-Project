@@ -386,6 +386,44 @@ export function getAllOrders(req, res) {
  * PUT /orders/:order_id/status
  * Body: { status } â†’ Ã¶rn: "preparing" | "shipped" | "in_transit" | "delivered"
  */
+// PUT /api/orders/:id/cancel
+export async function cancelOrder(req, res) {
+  const orderId = Number(req.params.id);
+
+  if (!orderId) {
+    return res.status(400).json({ error: "Invalid order id" });
+  }
+
+  try {
+    // Sadece Processing ise iptal edilebilir
+    const [rows] = await db.query(
+      "SELECT status FROM orders WHERE id = ?",
+      [orderId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    if (rows[0].status !== "Processing") {
+      return res.status(400).json({
+        error: "Only Processing orders can be cancelled",
+      });
+    }
+
+    await db.query(
+      "UPDATE orders SET status = 'Cancelled' WHERE id = ?",
+      [orderId]
+    );
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Cancel order error:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+}
+
+
 
 export function updateDeliveryStatus(req, res) {
   const { order_id } = req.params;
