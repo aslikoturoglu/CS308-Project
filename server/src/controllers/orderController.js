@@ -56,7 +56,7 @@ export function checkout(req, res) {
     // 3) orders tablosuna kaydet (status = 'placed')
     const sqlOrder = `
       INSERT INTO orders (user_id, order_date, status, total_amount, shipping_address, billing_address)
-      VALUES (?, NOW(), 'placed', ?, ?, ?)
+      VALUES (?, NOW(), 'processing', ?, ?, ?)
     `;
 
     db.query(
@@ -132,7 +132,7 @@ export function checkout(req, res) {
                       success: true,
                       order_id,
                       total_amount: totalAmount,
-                      order_status: "placed",
+                      order_status: "processing",
                       delivery_status: "preparing",
                     });
                   });
@@ -327,13 +327,15 @@ export function getAllOrders(req, res) {
   `;
 
   const normalizeStatus = (value) => {
-    const normalized = String(value || "").toLowerCase();
-    if (normalized.includes("transit") || normalized === "shipped" || normalized === "in_transit") {
-      return "In-transit";
-    }
-    if (normalized === "delivered") return "Delivered";
-    return "Processing";
-  };
+  const normalized = String(value || "").toLowerCase();
+  if (normalized === "cancelled") return "Cancelled";
+  if (normalized.includes("transit") || normalized === "shipped" || normalized === "in_transit") {
+    return "In-transit";
+  }
+  if (normalized === "delivered") return "Delivered";
+  return "Processing";
+};
+
 
   
 
@@ -443,7 +445,6 @@ export function updateDeliveryStatus(req, res) {
     });
   });
 }
-
 export function cancelOrder(req, res) {
   const orderId = Number(req.params.order_id);
 
@@ -451,14 +452,14 @@ export function cancelOrder(req, res) {
     return res.status(400).json({ error: "Invalid order id" });
   }
 
-  const sql = `
-    SELECT d.delivery_status
-    FROM orders o
-    LEFT JOIN deliveries d ON d.order_id = o.order_id
-    WHERE o.order_id = ?
+  // 1️⃣ Sipariş status kontrolü (SADECE orders.status)
+  const checkSql = `
+    SELECT status
+    FROM orders
+    WHERE order_id = ?
   `;
 
-  db.query(sql, [orderId], (err, rows) => {
+  db.query(checkSql, [orderId], (err, rows) => {
     if (err) {
       console.error("Cancel check failed:", err);
       return res.status(500).json({ error: "Cancel check failed" });
@@ -468,16 +469,16 @@ export function cancelOrder(req, res) {
       return res.status(404).json({ error: "Order not found" });
     }
 
-    const { delivery_status } = rows[0];
+    const { status } = rows[0];
 
-    // ❗ SADECE PREPARING
-    if (String(delivery_status).toLowerCase() !== "preparing") {
+    // ❗ SADECE processing
+    if (status !== "processing") {
       return res.status(400).json({
         error: "Only processing orders can be cancelled",
       });
     }
 
-    // 1️⃣ orders → cancelled
+    // 2️⃣ orders → cancelled
     db.query(
       "UPDATE orders SET status = 'cancelled' WHERE order_id = ?",
       [orderId],
@@ -487,17 +488,12 @@ export function cancelOrder(req, res) {
           return res.status(500).json({ error: "Order cancel failed" });
         }
 
-        // 2️⃣ deliveries varsa → cancel (HATA KONTROLLÜ)
+        // 3️⃣ deliveries varsa → cancelled (opsiyonel ama tutarlı)
         db.query(
           "UPDATE deliveries SET delivery_status = 'cancelled' WHERE order_id = ?",
           [orderId],
-          (dErr) => {
-            if (dErr) {
-              console.warn("Delivery cancel skipped:", dErr.message);
-              // devam et
-            }
-
-            // 3️⃣ stock geri ekle
+          () => {
+            // 4️⃣ stok geri ekle
             const stockSql = `
               UPDATE products p
               JOIN order_items oi ON oi.product_id = p.product_id
