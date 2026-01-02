@@ -441,6 +441,7 @@ export function updateDeliveryStatus(req, res) {
     });
   });
 }
+
 export function cancelOrder(req, res) {
   const orderId = Number(req.params.order_id);
 
@@ -449,9 +450,7 @@ export function cancelOrder(req, res) {
   }
 
   const sql = `
-    SELECT 
-      o.status AS order_status,
-      d.delivery_status
+    SELECT d.delivery_status
     FROM orders o
     LEFT JOIN deliveries d ON d.order_id = o.order_id
     WHERE o.order_id = ?
@@ -469,15 +468,14 @@ export function cancelOrder(req, res) {
 
     const { delivery_status } = rows[0];
 
+    // ❗ SADECE PREPARING İPTAL EDİLEBİLİR
     if (delivery_status !== "preparing") {
-  return res.status(400).json({
-    error: "Only processing orders can be cancelled",
-  });
-}
+      return res.status(400).json({
+        error: "Only processing orders can be cancelled",
+      });
+    }
 
-  
-
-    // 1️⃣ ORDER STATUS = CANCELLED
+    // 1️⃣ ORDERS → CANCELLED (EN KRİTİK ADIM)
     db.query(
       "UPDATE orders SET status = 'cancelled' WHERE order_id = ?",
       [orderId],
@@ -487,11 +485,18 @@ export function cancelOrder(req, res) {
           return res.status(500).json({ error: "Order cancel failed" });
         }
 
-        // 2️⃣ DELIVERY (varsa) CANCEL
+        // 2️⃣ DELIVERIES VARSA CANCEL
         db.query(
-          "UPDATE deliveries SET delivery_status = 'cancelled' WHERE order_id = ?",
+          "SELECT 1 FROM deliveries WHERE order_id = ?",
           [orderId],
-          () => {
+          (_, dRows) => {
+            if (dRows.length) {
+              db.query(
+                "UPDATE deliveries SET delivery_status = 'cancelled' WHERE order_id = ?",
+                [orderId]
+              );
+            }
+
             // 3️⃣ STOCK GERİ EKLE
             const stockSql = `
               UPDATE products p
