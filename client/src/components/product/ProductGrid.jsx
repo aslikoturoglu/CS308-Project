@@ -6,7 +6,8 @@ import { useAuth } from "../../context/AuthContext";
 import "../../styles/product.css";
 import { fetchProductsWithMeta } from "../../services/productService";
 
-function ProductGrid() {
+
+function ProductGrid({openMiniCart}) {
   const [products, setProducts] = useState([]);
   const [error, setError] = useState("");
   const { toggleItem, inWishlist } = useWishlist();
@@ -68,6 +69,7 @@ function ProductGrid() {
                   return;
                 }
                 addItem(p, 1);
+                openMiniCart?.(p);
               }}
               disabled={p.availableStock <= 0}
             >

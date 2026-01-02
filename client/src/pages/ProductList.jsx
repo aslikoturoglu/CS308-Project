@@ -48,7 +48,7 @@ const handleAddFirst = async (p) => {
   if (p.availableStock <= 0) return;
 
   addItem(p, 1);
-  openMiniCart(p); 
+  openMiniCart?.(p);
 
   await updateStock(p.id, -1);
 
@@ -64,7 +64,7 @@ const handleIncrease = async (p) => {
   if (p.availableStock <= 0) return;
 
   increment(p.id);
-  openMiniCart(p);
+  openMiniCart?.(p);
   await updateStock(p.id, -1);
 
   setProducts(prev =>
