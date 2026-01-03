@@ -19,14 +19,20 @@ function Wishlist({ openMiniCart }) {
     return cartItem ? cartItem.quantity : 0;
   };
 
+  const displayStock = (product) => {
+    const baseStock = Number(product.availableStock || 0);
+    const qty = cartQty(product.id);
+    return Math.max(0, baseStock - qty);
+  };
+
   const handleAddFirst = (product) => {
-    if (product.availableStock <= 0) return;
+    if (displayStock(product) <= 0) return;
     addItem(product, 1);
     openMiniCart?.(product);
   };
 
   const handleIncrease = (product) => {
-    if (product.availableStock <= 0) return;
+    if (displayStock(product) <= 0) return;
     const current = cartQty(product.id);
     if (Number.isFinite(product.availableStock) && current + 1 > product.availableStock) {
       alert("Not enough stock for this item.");
@@ -128,6 +134,7 @@ function Wishlist({ openMiniCart }) {
         >
           {items.map((item) => {
             const qty = cartQty(item.id);
+            const stockLeft = displayStock(item);
             const rating = Number.isFinite(Number(item.averageRating)) ? item.averageRating : 0;
             const ratingCount = Number.isFinite(Number(item.ratingCount)) ? item.ratingCount : 0;
 
@@ -135,10 +142,10 @@ function Wishlist({ openMiniCart }) {
               <article
                 key={item.id}
                 style={{
-                  background: "#ffffff",
+                  background: isDark ? "#2b2f36" : "#ffffff",
                   borderRadius: 16,
-                  border: "1px solid #e2e8f0",
-                  boxShadow: "0 14px 30px rgba(15,23,42,0.06)",
+                  border: isDark ? "1px solid #3a4250" : "1px solid #e2e8f0",
+                  boxShadow: isDark ? "0 14px 30px rgba(0,0,0,0.5)" : "0 14px 30px rgba(15,23,42,0.06)",
                   overflow: "hidden",
                   display: "flex",
                   flexDirection: "column",
@@ -151,7 +158,7 @@ function Wishlist({ openMiniCart }) {
                       alt={item.name}
                       style={{ width: "100%", height: 180, objectFit: "cover", borderRadius: "12px 12px 0 0" }}
                     />
-                    {item.availableStock <= 0 && (
+                    {stockLeft <= 0 && (
                       <span
                         style={{
                           position: "absolute",
@@ -170,20 +177,20 @@ function Wishlist({ openMiniCart }) {
                     )}
                   </div>
                   <div style={{ padding: 14, display: "grid", gap: 6 }}>
-                    <h3 style={{ margin: 0, color: "#0f172a" }}>{item.name}</h3>
+                    <h3 style={{ margin: 0, color: isDark ? "#7dd3fc" : "#0f172a" }}>{item.name}</h3>
                     <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                       <span style={{ color: "#f59e0b", fontWeight: 700 }}>
-                        {"\u2605"} {rating}
+                        {"\u2B50"} {rating}
                       </span>
-                      <span style={{ color: "#64748b", fontSize: "0.9rem" }}>({ratingCount})</span>
+                      <span style={{ color: isDark ? "#cbd5e1" : "#64748b", fontSize: "0.9rem" }}>({ratingCount})</span>
                     </div>
                     <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
-                      <p style={{ margin: 0, fontWeight: 800, color: "#0f172a" }}>
+                      <p style={{ margin: 0, fontWeight: 800, color: isDark ? "#e2e8f0" : "#0f172a" }}>
                         {`\u20BA${Number(item.price).toLocaleString("tr-TR")}`}
                       </p>
                       {item.hasDiscount && (
                         <>
-                          <p style={{ margin: 0, color: "#94a3b8", textDecoration: "line-through" }}>
+                          <p style={{ margin: 0, color: isDark ? "#a3b3c6" : "#94a3b8", textDecoration: "line-through" }}>
                             {`\u20BA${Number(item.originalPrice).toLocaleString("tr-TR")}`}
                           </p>
                           <span style={{ color: "#059669", fontWeight: 800, fontSize: "0.9rem" }}>
@@ -195,11 +202,11 @@ function Wishlist({ openMiniCart }) {
                     <p
                       style={{
                         margin: 0,
-                        color: item.availableStock > 0 ? "#059669" : "#b91c1c",
+                        color: stockLeft > 0 ? (isDark ? "#34d399" : "#059669") : "#b91c1c",
                         fontWeight: 700,
                       }}
                     >
-                      {item.availableStock > 0 ? `${item.availableStock} in stock` : "Out of stock"}
+                      {stockLeft > 0 ? `${stockLeft} in stock` : "Out of stock"}
                     </p>
                   </div>
                 </Link>
@@ -208,7 +215,7 @@ function Wishlist({ openMiniCart }) {
                   {qty === 0 ? (
                     <button
                       onClick={() => handleAddFirst(item)}
-                      disabled={item.availableStock <= 0}
+                      disabled={stockLeft <= 0}
                       style={{
                         flex: 1,
                         background: "#0058a3",
@@ -216,13 +223,13 @@ function Wishlist({ openMiniCart }) {
                         borderRadius: 10,
                         padding: "10px 12px",
                         fontWeight: 800,
-                        cursor: item.availableStock <= 0 ? "not-allowed" : "pointer",
-                        opacity: item.availableStock <= 0 ? 0.6 : 1,
+                        cursor: stockLeft <= 0 ? "not-allowed" : "pointer",
+                        opacity: stockLeft <= 0 ? 0.6 : 1,
                         border: "none",
                         transition: ".2s",
                       }}
                     >
-                      {item.availableStock <= 0 ? "Out of stock" : "Add to cart"}
+                      {stockLeft <= 0 ? "Out of stock" : "Add to cart"}
                     </button>
                   ) : (
                     <div
@@ -259,7 +266,7 @@ function Wishlist({ openMiniCart }) {
                       <button
                         onClick={() => handleIncrease(item)}
                         disabled={
-                          item.availableStock <= 0 ||
+                          stockLeft <= 0 ||
                           (Number.isFinite(item.availableStock) && qty >= item.availableStock)
                         }
                         style={{
@@ -271,12 +278,12 @@ function Wishlist({ openMiniCart }) {
                           color: "#0058a3",
                           fontWeight: 900,
                           cursor:
-                            item.availableStock <= 0 ||
+                            stockLeft <= 0 ||
                             (Number.isFinite(item.availableStock) && qty >= item.availableStock)
                               ? "not-allowed"
                               : "pointer",
                           opacity:
-                            item.availableStock <= 0 ||
+                            stockLeft <= 0 ||
                             (Number.isFinite(item.availableStock) && qty >= item.availableStock)
                               ? 0.6
                               : 1,

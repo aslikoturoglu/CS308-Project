@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { useAuth } from "./AuthContext";
+import { setInventoryAdjustmentsFromCart } from "../services/localStorageHelpers";
 
 const CartContext = createContext(undefined);
 const STORAGE_KEY = "cart";
@@ -70,6 +71,10 @@ export function CartProvider({ children }) {
     const key = buildKey(user);
     writeCart(key, items);
   }, [items, user]);
+
+  useEffect(() => {
+    setInventoryAdjustmentsFromCart(items);
+  }, [items]);
 
   // user değişince sepeti yönet
 useEffect(() => {

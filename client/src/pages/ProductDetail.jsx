@@ -121,6 +121,11 @@ function ProductDetail({ openMiniCart }) {
 
     addItem(product, 1);
     openMiniCart?.(product);
+    setProduct((prev) =>
+      prev
+        ? { ...prev, availableStock: Math.max(0, Number(prev.availableStock || 0) - 1) }
+        : prev
+    );
     alert("Added to cart.");
   };
 

@@ -22,6 +22,18 @@ export function decreaseInventory(items) {
   setJSON(INVENTORY_KEY, adjustments);
 }
 
+export function setInventoryAdjustmentsFromCart(items) {
+  if (!Array.isArray(items)) return;
+  const adjustments = {};
+  items.forEach((item) => {
+    const id = item.id ?? item.productId;
+    const qty = Number(item.quantity ?? item.qty ?? 0);
+    if (!id || Number.isNaN(qty) || qty <= 0) return;
+    adjustments[id] = qty;
+  });
+  setJSON(INVENTORY_KEY, adjustments);
+}
+
 export function getReviewMap() {
   return getJSON(REVIEW_KEY, {});
 }

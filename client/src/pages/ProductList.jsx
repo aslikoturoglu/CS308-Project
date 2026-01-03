@@ -50,6 +50,14 @@ const handleAddFirst = (p) => {
 
   addItem(p, 1);
   openMiniCart?.(p);
+
+  setProducts((prev) =>
+    prev.map((pr) =>
+      pr.id === p.id
+        ? { ...pr, availableStock: Math.max(0, Number(pr.availableStock || 0) - 1) }
+        : pr
+    )
+  );
 };
 
 
@@ -58,6 +66,14 @@ const handleIncrease = (p) => {
 
   increment(p.id);
   openMiniCart?.(p);
+
+  setProducts((prev) =>
+    prev.map((pr) =>
+      pr.id === p.id
+        ? { ...pr, availableStock: Math.max(0, Number(pr.availableStock || 0) - 1) }
+        : pr
+    )
+  );
 };
 const handleDecrease = (p) => {
   const current = cartQty(p.id);
@@ -67,11 +83,27 @@ const handleDecrease = (p) => {
   if (current === 1) {
 
     removeItem(p.id);            
+
+    setProducts((prev) =>
+      prev.map((pr) =>
+        pr.id === p.id
+          ? { ...pr, availableStock: Number(pr.availableStock || 0) + 1 }
+          : pr
+      )
+    );
     return;
   }
 
 
   decrement(p.id);
+
+  setProducts((prev) =>
+    prev.map((pr) =>
+      pr.id === p.id
+        ? { ...pr, availableStock: Number(pr.availableStock || 0) + 1 }
+        : pr
+    )
+  );
 };
 
 const handleWishlist = (product) => {
