@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
 
-function Wishlist() {
+function Wishlist({ openMiniCart }) {
   const { items, removeItem: removeWishlistItem } = useWishlist();
   const {
     addItem,
@@ -20,6 +20,7 @@ function Wishlist() {
   const handleAddFirst = (product) => {
     if (product.availableStock <= 0) return;
     addItem(product, 1);
+    openMiniCart?.(product);
   };
 
   const handleIncrease = (product) => {
@@ -30,6 +31,7 @@ function Wishlist() {
       return;
     }
     increment(product.id);
+    openMiniCart?.(product);
   };
 
   const handleDecrease = (product) => {
@@ -307,4 +309,7 @@ function Wishlist() {
 }
 
 export default Wishlist;
+
+
+
 

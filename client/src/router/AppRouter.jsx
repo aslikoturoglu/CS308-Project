@@ -24,7 +24,7 @@ function AppRouter({ openMiniCart }) {
       <Route path="/products/:id" element={<ProductDetail openMiniCart={openMiniCart} />}/>
       <Route path="/cart" element={<Cart />} />
       <Route element={<ProtectedRoute />}>
-        <Route path="/wishlist" element={<Wishlist />} />
+        <Route path="/wishlist" element={<Wishlist openMiniCart={openMiniCart} />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/invoice/:id" element={<Invoice />} />
