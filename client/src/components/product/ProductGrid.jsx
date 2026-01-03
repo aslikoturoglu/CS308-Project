@@ -37,14 +37,6 @@ function ProductGrid({openMiniCart}) {
     return () => controller.abort();
   }, []);
 
-  const cartQty = (id) => {
-    const item = cartItems.find((entry) => entry.id === id);
-    return item ? item.quantity : 0;
-  };
-
-  const stockLeft = (product) =>
-    Math.max(0, Number(product.availableStock ?? 0) - cartQty(product.id));
-
   return (
     <div className="product-grid">
       {error && <p>{error}</p>}
@@ -60,7 +52,7 @@ function ProductGrid({openMiniCart}) {
             <img src={p.image} alt={p.name} />
             <h3>{p.name}</h3>
             <p className="price">₺{p.price.toLocaleString("tr-TR")}</p>
-            <p className="stock">Stock: {stockLeft(p)}</p>
+            <p className="stock">Stock: {p.availableStock}</p>
             <p className="rating">⭐ {p.averageRating} ({p.ratingCount})</p>
             <div className="product-cta">View Details</div>
           </Link>
@@ -71,22 +63,17 @@ function ProductGrid({openMiniCart}) {
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                const remaining = stockLeft(p);
-                if (remaining <= 0) {
-                  alert("Not enough stock for this item.");
-                  return;
-                }
                 const existingQty = cartItems.find((item) => item.id === p.id)?.quantity ?? 0;
-                if (existingQty + 1 > remaining) {
+                if (existingQty + 1 > p.availableStock) {
                   alert("Not enough stock for this item.");
                   return;
                 }
                 addItem(p, 1);
                 openMiniCart?.();
               }}
-              disabled={stockLeft(p) <= 0}
+              disabled={p.availableStock <= 0}
             >
-              {stockLeft(p) > 0 ? "Add to Cart" : "Out of stock"}
+              {p.availableStock > 0 ? "Add to Cart" : "Out of stock"}
             </button>
           </div>
           <button

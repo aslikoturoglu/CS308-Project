@@ -44,11 +44,9 @@ const cartQty = (id) => {
   const item = cartItems.find((i) => i.id === id);
   return item ? item.quantity : 0;
 };
-const stockLeft = (product) =>
-  Math.max(0, Number(product.availableStock ?? 0) - cartQty(product.id));
 
 const handleAddFirst = (p) => {
-  if (stockLeft(p) <= 0) return;
+  if (p.availableStock <= 0) return;
 
   addItem(p, 1);
   openMiniCart?.(p);
@@ -56,7 +54,7 @@ const handleAddFirst = (p) => {
 
 
 const handleIncrease = (p) => {
-  if (stockLeft(p) <= 0) return;
+  if (p.availableStock <= 0) return;
 
   increment(p.id);
   openMiniCart?.(p);
@@ -231,13 +229,13 @@ const handleWishlist = (product) => {
   // 1) Önce frontend stok kontrolü
   const existingQty = cartItems.find((item) => item.id === product.id)?.quantity ?? 0;
 
-  if (existingQty + 1 > stockLeft(product)) {
+  if (existingQty + 1 > product.availableStock) {
     alert("Not enough stock for this item.");
     return;
   }
 
   // 2) Eğer stok 0 ise hiç ekleme yapma
-  if (stockLeft(product) <= 0) {
+  if (product.availableStock <= 0) {
     alert("This product is out of stock.");
     return;
   }
@@ -388,7 +386,7 @@ const handleWishlist = (product) => {
                         alt={p.name}
                         style={{ width: "100%", height: 180, objectFit: "cover", borderRadius: "12px 12px 0 0" }}
                       />
-                      {stockLeft(p) <= 0 && (
+                      {p.availableStock <= 0 && (
                         <span
                           style={{
                             position: "absolute",
@@ -427,19 +425,21 @@ const handleWishlist = (product) => {
                           </>
                         )}
                       </div>
-                      <p style={{ margin: 0, color: stockLeft(p) > 0 ? "#059669" : "#b91c1c", fontWeight: 700 }}>
-                        {stockLeft(p) > 0 ? `${stockLeft(p)} in stock` : "Out of stock"}
+                      <p style={{ margin: 0, color: p.availableStock > 0 ? "#059669" : "#b91c1c", fontWeight: 700 }}>
+                        {p.availableStock > 0 ? `${p.availableStock} in stock` : "Out of stock"}
                       </p>
                     </div>
                   </Link>
                   {!isProductManager && (
                     <>
+                      {/* ---------- Add to cart buton alanı ---------- */}
                       <div style={{ display:"flex", gap:8, padding:"0 14px 14px" }}>
 
                         {cartQty(p.id) === 0 ? (
+                          // ---------------- ADD TO CART (başlangıç) ----------------
                           <button
                             onClick={() => handleAddFirst(p)}
-                            disabled={stockLeft(p) <= 0}
+                            disabled={p.availableStock<=0}
                             style={{
                               flex:1,
                               background:"#0058a3",
@@ -447,16 +447,17 @@ const handleWishlist = (product) => {
                               borderRadius:10,
                               padding:"10px 12px",
                               fontWeight:800,
-                              cursor:stockLeft(p) <= 0 ? "not-allowed" : "pointer",
-                              opacity:stockLeft(p) <= 0 ? 0.6 : 1,
+                              cursor:p.availableStock<=0?"not-allowed":"pointer",
+                              opacity:p.availableStock<=0?0.6:1,
                               border:"none",
                               transition:".2s"
                             }}
                           >
-                            {stockLeft(p) <= 0 ? "Out of stock" : "Add to cart"}
+                            {p.availableStock<=0 ? "Out of stock" : "Add to cart"}
                           </button>
                         ) : (
 
+                          // ---------------- Sayaç görünümü ----------------
                           <div style={{
                             flex:1,
                             display:"flex",
@@ -471,6 +472,7 @@ const handleWishlist = (product) => {
                             transition:".2s"
                           }}>
                             
+                            {/* - */}
                             <button
                               onClick={() => handleDecrease(p)}
                               style={{
@@ -487,13 +489,15 @@ const handleWishlist = (product) => {
                               -
                             </button>
 
+                            {/* sayı */}
                             <span style={{ fontSize:"1rem", fontWeight:900 }}>
                               {cartQty(p.id)}
                             </span>
 
+                            {/* + */}
                             <button
                               onClick={() => handleIncrease(p)}
-                              disabled={stockLeft(p) <= 0}
+                              disabled={p.availableStock <= 0}
                               style={{
                                 width:28,
                                 height:28,
@@ -502,8 +506,8 @@ const handleWishlist = (product) => {
                                 background:"#fff",
                                 color:"#0058a3",
                                 fontWeight:900,
-                                cursor: stockLeft(p) <= 0 ? "not-allowed" : "pointer",
-                                opacity: stockLeft(p) <= 0 ? 0.5 : 1
+                                cursor: p.availableStock<=0?"not-allowed":"pointer",
+                                opacity:p.availableStock<=0?.5:1
                               }}
                             >
                               +

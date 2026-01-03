@@ -81,10 +81,28 @@ export function updateProductStock(req, res) {
     return res.status(400).json({ error: "amount missing or invalid" });
   }
 
-  // 🔽 Stok azaltma artık checkout akışında yapılıyor; bu endpoint sadece artırma için.
+  // 🔽 Stok azaltma (amount < 0) -> stok yetiyor mu kontrol et
   if (amount < 0) {
-    return res.status(400).json({
-      error: "Stock decrement is disabled here. Use checkout to finalize stock reduction.",
+    const need = Math.abs(amount);
+
+    const sql = `
+      UPDATE products
+      SET product_stock = product_stock + ?
+      WHERE product_id = ? AND product_stock >= ?
+    `;
+
+    db.query(sql, [amount, id, need], (err, result) => {
+      if (err) {
+        console.error("Stock update failed:", err);
+        return res.status(500).json({ error: "Stock update failed" });
+      }
+
+      // etkilenen satır yoksa stok yetmedi
+      if (result.affectedRows === 0) {
+        return res.status(400).json({ error: "Not enough stock" });
+      }
+
+      return res.json({ success: true });
     });
   } else {
     // 🔼 Stok arttırma (iade, admin panel vs.)
