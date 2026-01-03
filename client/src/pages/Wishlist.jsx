@@ -3,8 +3,44 @@ import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
 
 function Wishlist() {
-  const { items, removeItem } = useWishlist();
-  const { addItem } = useCart();
+  const { items, removeItem: removeWishlistItem } = useWishlist();
+  const {
+    addItem,
+    items: cartItems,
+    increment,
+    decrement,
+    removeItem: removeCartItem,
+  } = useCart();
+
+  const cartQty = (id) => {
+    const cartItem = cartItems.find((item) => item.id === id);
+    return cartItem ? cartItem.quantity : 0;
+  };
+
+  const handleAddFirst = (product) => {
+    if (product.availableStock <= 0) return;
+    addItem(product, 1);
+  };
+
+  const handleIncrease = (product) => {
+    if (product.availableStock <= 0) return;
+    const current = cartQty(product.id);
+    if (Number.isFinite(product.availableStock) && current + 1 > product.availableStock) {
+      alert("Not enough stock for this item.");
+      return;
+    }
+    increment(product.id);
+  };
+
+  const handleDecrease = (product) => {
+    const current = cartQty(product.id);
+    if (current <= 0) return;
+    if (current === 1) {
+      removeCartItem(product.id);
+      return;
+    }
+    decrement(product.id);
+  };
 
   if (items.length === 0) {
     return (
@@ -21,8 +57,10 @@ function Wishlist() {
           padding: 24,
         }}
       >
-        <h2 style={{ margin: 0 }}>❤️ Your wishlist is empty</h2>
-        <p style={{ margin: 0, color: "#475569" }}>Tap the heart icon on products to save your favorites.</p>
+        <h2 style={{ margin: 0 }}>Your wishlist is empty</h2>
+        <p style={{ margin: 0, color: "#475569" }}>
+          Tap the heart icon on products to save your favorites.
+        </p>
         <Link
           to="/products"
           style={{
@@ -41,125 +79,232 @@ function Wishlist() {
   }
 
   return (
-    <section style={{ padding: "40px 24px", background: "#f5f7fb", minHeight: "70vh" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-        <div>
-          <p style={{ margin: 0, color: "#475569" }}>Items you saved</p>
-          <h1 style={{ margin: 4, color: "#0f172a" }}>Wishlist</h1>
-        </div>
-        <Link
-          to="/products"
+    <section style={{ padding: "40px 20px", background: "#f5f7fb", minHeight: "70vh" }}>
+      <div style={{ maxWidth: 1180, margin: "0 auto" }}>
+        <div
           style={{
-            color: "#0058a3",
-            textDecoration: "none",
-            fontWeight: 700,
-            border: "1px solid #cbd5e1",
-            borderRadius: 999,
-            padding: "8px 14px",
-            background: "white",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 18,
+            flexWrap: "wrap",
+            gap: 10,
           }}
         >
-          ← Back to products
-        </Link>
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-          gap: 18,
-        }}
-      >
-        {items.map((item) => (
-          <div
-            key={item.id}
+          <div>
+            <p style={{ margin: 0, color: "#94a3b8", letterSpacing: 1 }}>WISHLIST</p>
+            <h1 style={{ margin: "6px 0 8px", color: "#0f172a" }}>Wishlist</h1>
+            <p style={{ margin: 0, color: "#475569" }}>
+              Saved products ready to add to your cart.
+            </p>
+          </div>
+          <Link
+            to="/products"
             style={{
+              color: "#0058a3",
+              textDecoration: "none",
+              fontWeight: 700,
+              border: "1px solid #cbd5e1",
+              borderRadius: 999,
+              padding: "8px 14px",
               background: "white",
-              borderRadius: 14,
-              padding: 14,
-              border: "1px solid #e5e7eb",
-              boxShadow: "0 10px 26px rgba(0,0,0,0.06)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
             }}
           >
-            <Link to={`/products/${item.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-              <img
-                src={item.image}
-                alt={item.name}
-                style={{ width: "100%", borderRadius: 12, objectFit: "cover", height: 180 }}
-              />
-              <h3 style={{ margin: "10px 0 4px", color: "#0f172a" }}>{item.name}</h3>
-              <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
-                <p style={{ margin: 0, color: "#0f172a", fontWeight: 800 }}>
-                  ₺{Number(item.price).toLocaleString("tr-TR")}
-                </p>
-                {item.hasDiscount && (
-                  <>
-                    <p style={{ margin: 0, color: "#94a3b8", textDecoration: "line-through" }}>
-                      ₺{Number(item.originalPrice).toLocaleString("tr-TR")}
-                    </p>
-                    <span style={{ color: "#059669", fontWeight: 800, fontSize: "0.9rem" }}>
-                      {item.discountLabel}
-                    </span>
-                  </>
-                )}
-              </div>
+            Back to products
+          </Link>
+        </div>
 
-              {item.hasDiscount && (
-                <p style={{ margin: "4px 0 0", color: "#059669", fontWeight: 700 }}>
-                  Discount applied to your wishlist item!
-                </p>
-              )}
-          
-            </Link>
-            <div style={{ display: "flex", gap: 10 }}>
-            <button
-              type="button"
-              onClick={() => {
-                if (item.availableStock > 0) {
-                  addItem(item, 1);
-                }
-              }}
-              disabled={item.availableStock <= 0}
-              style={{
-                flex: 1,
-                background: "#0058a3",
-                color: "white",
-                padding: "10px 12px",
-                borderRadius: 10,
-                fontWeight: 700,
-                cursor: item.availableStock <= 0 ? "not-allowed" : "pointer",
-                opacity: item.availableStock <= 0 ? 0.6 : 1,
-                border: "none",
-              }}
-            >
-            {item.availableStock <= 0 ? "Out of stock" : "Add to Cart"}
-            </button>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gap: 16,
+          }}
+        >
+          {items.map((item) => {
+            const qty = cartQty(item.id);
+            const rating = Number.isFinite(Number(item.averageRating)) ? item.averageRating : 0;
+            const ratingCount = Number.isFinite(Number(item.ratingCount)) ? item.ratingCount : 0;
 
-              
-              <button
-                type="button"
-                onClick={() => removeItem(item.id)}
+            return (
+              <article
+                key={item.id}
                 style={{
-                  border: "1px solid #e5e7eb",
-                  background: "white",
-                  color: "#b91c1c",
-                  padding: "10px 12px",
-                  borderRadius: 10,
-                  fontWeight: 700,
-                  cursor: "pointer",
+                  background: "#ffffff",
+                  borderRadius: 16,
+                  border: "1px solid #e2e8f0",
+                  boxShadow: "0 14px 30px rgba(15,23,42,0.06)",
+                  overflow: "hidden",
+                  display: "flex",
+                  flexDirection: "column",
                 }}
               >
-                Remove
-              </button>
-            </div>
-          </div>
-        ))}
+                <Link to={`/products/${item.id}`} style={{ textDecoration: "none", color: "inherit" }}>
+                  <div style={{ position: "relative" }}>
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      style={{ width: "100%", height: 180, objectFit: "cover", borderRadius: "12px 12px 0 0" }}
+                    />
+                    {item.availableStock <= 0 && (
+                      <span
+                        style={{
+                          position: "absolute",
+                          top: 10,
+                          right: 10,
+                          background: "#b91c1c",
+                          color: "white",
+                          padding: "6px 10px",
+                          borderRadius: 12,
+                          fontWeight: 800,
+                          fontSize: "0.85rem",
+                        }}
+                      >
+                        Out of stock
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ padding: 14, display: "grid", gap: 6 }}>
+                    <h3 style={{ margin: 0, color: "#0f172a" }}>{item.name}</h3>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <span style={{ color: "#f59e0b", fontWeight: 700 }}>
+                        {"\u2605"} {rating}
+                      </span>
+                      <span style={{ color: "#64748b", fontSize: "0.9rem" }}>({ratingCount})</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+                      <p style={{ margin: 0, fontWeight: 800, color: "#0f172a" }}>
+                        {`\u20BA${Number(item.price).toLocaleString("tr-TR")}`}
+                      </p>
+                      {item.hasDiscount && (
+                        <>
+                          <p style={{ margin: 0, color: "#94a3b8", textDecoration: "line-through" }}>
+                            {`\u20BA${Number(item.originalPrice).toLocaleString("tr-TR")}`}
+                          </p>
+                          <span style={{ color: "#059669", fontWeight: 800, fontSize: "0.9rem" }}>
+                            {item.discountLabel}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <p
+                      style={{
+                        margin: 0,
+                        color: item.availableStock > 0 ? "#059669" : "#b91c1c",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {item.availableStock > 0 ? `${item.availableStock} in stock` : "Out of stock"}
+                    </p>
+                  </div>
+                </Link>
+
+                <div style={{ display: "flex", gap: 8, padding: "0 14px 14px" }}>
+                  {qty === 0 ? (
+                    <button
+                      onClick={() => handleAddFirst(item)}
+                      disabled={item.availableStock <= 0}
+                      style={{
+                        flex: 1,
+                        background: "#0058a3",
+                        color: "#fff",
+                        borderRadius: 10,
+                        padding: "10px 12px",
+                        fontWeight: 800,
+                        cursor: item.availableStock <= 0 ? "not-allowed" : "pointer",
+                        opacity: item.availableStock <= 0 ? 0.6 : 1,
+                        border: "none",
+                        transition: ".2s",
+                      }}
+                    >
+                      {item.availableStock <= 0 ? "Out of stock" : "Add to cart"}
+                    </button>
+                  ) : (
+                    <div
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "4px 12px",
+                        borderRadius: 10,
+                        background: "#0058a3",
+                        color: "#fff",
+                        fontWeight: 800,
+                        fontSize: "1rem",
+                        transition: ".2s",
+                      }}
+                    >
+                      <button
+                        onClick={() => handleDecrease(item)}
+                        style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: 6,
+                          border: "none",
+                          background: "#fff",
+                          color: "#0058a3",
+                          fontWeight: 900,
+                          cursor: "pointer",
+                        }}
+                      >
+                        -
+                      </button>
+                      <span style={{ fontSize: "1rem", fontWeight: 900 }}>{qty}</span>
+                      <button
+                        onClick={() => handleIncrease(item)}
+                        disabled={
+                          item.availableStock <= 0 ||
+                          (Number.isFinite(item.availableStock) && qty >= item.availableStock)
+                        }
+                        style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: 6,
+                          border: "none",
+                          background: "#fff",
+                          color: "#0058a3",
+                          fontWeight: 900,
+                          cursor:
+                            item.availableStock <= 0 ||
+                            (Number.isFinite(item.availableStock) && qty >= item.availableStock)
+                              ? "not-allowed"
+                              : "pointer",
+                          opacity:
+                            item.availableStock <= 0 ||
+                            (Number.isFinite(item.availableStock) && qty >= item.availableStock)
+                              ? 0.6
+                              : 1,
+                        }}
+                      >
+                        +
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => removeWishlistItem(item.id)}
+                    style={{
+                      border: "1px solid #cbd5e1",
+                      borderRadius: 10,
+                      background: "#fff",
+                      color: "#b91c1c",
+                      padding: "0 12px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
       </div>
     </section>
   );
 }
 
 export default Wishlist;
+
