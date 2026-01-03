@@ -13,13 +13,11 @@ function Cart() {
     const item = items.find((p) => p.id === id);
     if (!item) return;
 
-    // Stok kontrolü
     if (item.availableStock <= item.quantity) {
       alert("Not enough stock for this item.");
       return;
     }
 
-    // cart'ta quantity +1
     increment(id);
   };
 
@@ -27,13 +25,11 @@ function Cart() {
     const item = items.find((p) => p.id === id);
     if (!item) return;
 
-    // quantity 1 ise, azaltmak yerine tamamen silip stoğa iade
     if (item.quantity <= 1) {
       removeItem(id);
       return;
     }
 
-    // cart'ta quantity -1
     decrement(id);
   };
 

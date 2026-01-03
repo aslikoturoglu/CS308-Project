@@ -114,8 +114,12 @@ function ProductDetail({ openMiniCart }) {
 
     const qtyInCart =
       cartItems.find((it) => it.id === product.id)?.quantity ?? 0;
+    const remainingStock = Math.max(
+      0,
+      Number(product.availableStock ?? 0) - qtyInCart
+    );
 
-    if (qtyInCart + 1 > product.availableStock) {
+    if (qtyInCart + 1 > remainingStock) {
       return alert("Not enough stock.");
     }
 
@@ -126,7 +130,13 @@ function ProductDetail({ openMiniCart }) {
 
   const handleBuyNow = () => {
     if (!product) return;
-    if (!product.availableStock) {
+    const qtyInCart =
+      cartItems.find((it) => it.id === product.id)?.quantity ?? 0;
+    const remainingStock = Math.max(
+      0,
+      Number(product.availableStock ?? 0) - qtyInCart
+    );
+    if (!remainingStock) {
       alert("This product is out of stock.");
       return;
     }

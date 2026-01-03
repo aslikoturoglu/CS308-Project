@@ -19,16 +19,19 @@ function Wishlist({ openMiniCart }) {
     return cartItem ? cartItem.quantity : 0;
   };
 
+  const stockLeft = (product) =>
+    Math.max(0, Number(product.availableStock ?? 0) - cartQty(product.id));
+
   const handleAddFirst = (product) => {
-    if (product.availableStock <= 0) return;
+    if (stockLeft(product) <= 0) return;
     addItem(product, 1);
     openMiniCart?.(product);
   };
 
   const handleIncrease = (product) => {
-    if (product.availableStock <= 0) return;
+    if (stockLeft(product) <= 0) return;
     const current = cartQty(product.id);
-    if (Number.isFinite(product.availableStock) && current + 1 > product.availableStock) {
+    if (Number.isFinite(product.availableStock) && current + 1 > stockLeft(product)) {
       alert("Not enough stock for this item.");
       return;
     }
@@ -315,8 +318,11 @@ export default Wishlist;
 
 
 
+<<<<<<< Updated upstream
 
 
 
 
 
+=======
+>>>>>>> Stashed changes
