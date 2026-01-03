@@ -251,7 +251,7 @@ const handleWishlist = (product) => {
       });
     }
     return list;
-  }, [category, products, searchTerm, sort]);
+  }, [category, products, roomFilter, searchTerm, sort]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -627,7 +627,6 @@ const handleWishlist = (product) => {
 }
 
 export default ProductList;
-
 
 
 
