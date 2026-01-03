@@ -542,7 +542,18 @@ export function refundOrder(req, res) {
 
     db.query("UPDATE orders SET status = 'refunded' WHERE order_id = ?", [orderId], () => {
       db.query("UPDATE deliveries SET delivery_status = 'refunded' WHERE order_id = ?", [orderId], () => {
-        res.json({ success: true, order_id: orderId });
+        db.query(
+          `
+          UPDATE products p
+          JOIN order_items oi ON oi.product_id = p.product_id
+          SET p.product_stock = p.product_stock + oi.quantity
+          WHERE oi.order_id = ?
+          `,
+          [orderId],
+          () => {
+            res.json({ success: true, order_id: orderId });
+          }
+        );
       });
     });
   });
