@@ -23,6 +23,26 @@ import {
   rejectComment as rejectCommentApi,
 } from "../services/commentService";
 
+const DELIVERY_FILTERS = [
+  { id: "All", label: "All" },
+  { id: "Processing", label: "Processing" },
+  { id: "In-transit", label: "In-transit" },
+  { id: "Delivered", label: "Delivered" },
+  { id: "Cancelled", label: "Canceled" },
+  { id: "Refunded", label: "Refunded" },
+];
+
+const DELIVERY_STATUSES = DELIVERY_FILTERS.filter((f) => f.id !== "All").map((f) => f.id);
+
+function normalizeDeliveryStatus(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized.startsWith("cancel")) return "Cancelled";
+  if (normalized === "refunded") return "Refunded";
+  if (normalized.includes("transit") || normalized === "shipped" || normalized === "in_transit") return "In-transit";
+  if (normalized === "delivered") return "Delivered";
+  return "Processing";
+}
+
 const rolesToSections = {
   admin: ["dashboard", "product", "sales", "support"],
   product_manager: ["product"],
@@ -38,6 +58,8 @@ function AdminDashboard() {
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [orders, setOrders] = useState([]);
   const [deliveries, setDeliveries] = useState([]);
+  const [deliveryTab, setDeliveryTab] = useState("All");
+  const [deliveryVisibleCount, setDeliveryVisibleCount] = useState(10);
   const [pendingReviews, setPendingReviews] = useState([]);
   const [chats, setChats] = useState([]);
   const [chatPage, setChatPage] = useState(1);
@@ -112,11 +134,16 @@ function AdminDashboard() {
         id: order.id,
         orderId: formatOrderId(order.id),
         product: order.items?.[0]?.name || "Order items",
-        status: order.status,
+        status: normalizeDeliveryStatus(order.status),
         address: order.address,
+        date: order.date,
       }))
     );
   }, [orders]);
+
+  useEffect(() => {
+    setDeliveryVisibleCount(10);
+  }, [deliveryTab, orders.length]);
 
   const loadInbox = useCallback(async () => {
     setIsLoadingChats(true);
@@ -237,6 +264,27 @@ function AdminDashboard() {
     const safeTotal = total > 0 ? total : 1;
     return { revenue, cost, profit, netProfit, loss, total, safeTotal };
   }, [reportData.totals]);
+
+  const filteredDeliveries = useMemo(() => {
+    const sorted = [...deliveries].sort((a, b) => {
+      const tsA = Date.parse(a.date || "") || 0;
+      const tsB = Date.parse(b.date || "") || 0;
+      if (tsA !== tsB) return tsB - tsA;
+      const numA = Number(a.id) || 0;
+      const numB = Number(b.id) || 0;
+      return numB - numA;
+    });
+    if (deliveryTab === "All") return sorted;
+    const normalizedTab = normalizeDeliveryStatus(deliveryTab);
+    return sorted.filter((d) => normalizeDeliveryStatus(d.status) === normalizedTab);
+  }, [deliveries, deliveryTab]);
+
+  const visibleDeliveries = useMemo(
+    () => filteredDeliveries.slice(0, deliveryVisibleCount),
+    [filteredDeliveries, deliveryVisibleCount]
+  );
+
+  const canLoadMoreDeliveries = filteredDeliveries.length > deliveryVisibleCount;
 
   const groupedOrders = useMemo(() => {
     const groups = {
@@ -448,33 +496,51 @@ function AdminDashboard() {
     link.remove();
   };
 
-  const handleDeliveryStatus = async () => {
-    if (!deliveryUpdate.id || !deliveryUpdate.status) {
+  const applyDeliveryStatus = async (deliveryId, nextStatus) => {
+    if (!deliveryId || !nextStatus) {
       addToast("Select delivery and status", "error");
       return;
     }
-    const numericId = Number(deliveryUpdate.id);
-    if (!Number.isFinite(numericId)) {
-      addToast("Only backend orders can be updated here", "error");
+    const normalizedStatus = normalizeDeliveryStatus(nextStatus);
+    if (!DELIVERY_STATUSES.includes(normalizedStatus)) {
+      addToast("Select a valid status", "error");
       return;
     }
+    const numericId = Number(deliveryId);
+    const isBackendOrder = Number.isFinite(numericId);
     try {
-      await updateBackendOrderStatus(numericId, deliveryUpdate.status);
-      // Optimistically update UI
+      if (isBackendOrder) {
+        await updateBackendOrderStatus(numericId, normalizedStatus);
+      }
       setDeliveries((prev) =>
-        prev.map((d) => (String(d.id) === String(numericId) ? { ...d, status: deliveryUpdate.status } : d))
+        prev.map((d) => (String(d.id) === String(deliveryId) ? { ...d, status: normalizedStatus } : d))
       );
       setOrders((prev) =>
         prev.map((o) =>
-          String(o.id) === String(numericId) ? { ...o, status: deliveryUpdate.status } : o
+          String(o.id) === String(deliveryId) ? { ...o, status: normalizedStatus } : o
         )
       );
-      await loadOrders(); // re-sync with backend
+      if (isBackendOrder) {
+        await loadOrders();
+      }
       addToast("Delivery status updated", "info");
     } catch (error) {
       console.error("Delivery update failed", error);
       addToast(error.message || "Delivery status could not be updated", "error");
     }
+  };
+
+  const handleDeliveryStatus = async () => {
+    await applyDeliveryStatus(deliveryUpdate.id, deliveryUpdate.status);
+  };
+
+  const handleInlineStatusClick = async (delivery) => {
+    const choice = window.prompt(
+      "Yeni durum seç (Processing, In-transit, Delivered, Cancelled, Refunded)",
+      delivery.status
+    );
+    if (!choice) return;
+    await applyDeliveryStatus(delivery.id, choice);
   };
 
   const handleSelectConversation = (id) => {
@@ -910,12 +976,38 @@ function AdminDashboard() {
                   boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
                 }}
               >
-                <h4 style={{ margin: "0 0 10px", color: "#0f172a" }}>Delivery list</h4>
-                {deliveries.length === 0 ? (
-                  <p style={{ margin: 0, color: "#94a3b8" }}>No deliveries to display.</p>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                  <h4 style={{ margin: "0 0 10px", color: "#0f172a" }}>Delivery list</h4>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(110px,1fr))", gap: 6, flex: "1 1 440px", minWidth: 260 }}>
+                    {DELIVERY_FILTERS.map((tab) => {
+                      const isActive = deliveryTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setDeliveryTab(tab.id)}
+                          style={{
+                            borderRadius: 999,
+                            padding: "8px 10px",
+                            border: `1px solid ${isActive ? "#0f172a" : "#e5e7eb"}`,
+                            background: isActive ? "#0f172a" : "#f8fafc",
+                            color: isActive ? "#fff" : "#0f172a",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            width: "100%",
+                          }}
+                        >
+                          {tab.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                {filteredDeliveries.length === 0 ? (
+                  <p style={{ margin: 0, color: "#94a3b8" }}>No deliveries to display for this filter.</p>
                 ) : (
                   <div style={{ display: "grid", gap: 10 }}>
-                    {deliveries.map((d) => (
+                    {visibleDeliveries.map((d) => (
                       <div
                         key={d.id}
                         style={{
@@ -935,9 +1027,33 @@ function AdminDashboard() {
                             {d.orderId} • {d.address}
                           </p>
                         </div>
-                        <span style={{ fontWeight: 700, color: "#0f172a" }}>{d.status}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleInlineStatusClick(d)}
+                          style={{
+                            border: "1px solid #e5e7eb",
+                            background: "#f8fafc",
+                            color: "#0f172a",
+                            padding: "8px 12px",
+                            borderRadius: 10,
+                            fontWeight: 800,
+                            cursor: "pointer",
+                          }}
+                          title="Statusa tıkla ve güncelle"
+                        >
+                          {d.status}
+                        </button>
                       </div>
                     ))}
+                    {canLoadMoreDeliveries && (
+                      <button
+                        type="button"
+                        onClick={() => setDeliveryVisibleCount((prev) => prev + 10)}
+                        style={{ ...secondaryBtn, justifySelf: "center", alignItems: "center", display: "inline-flex", gap: 6, marginTop: 4 }}
+                      >
+                        ↓ Load more
+                      </button>
+                    )}
                   </div>
                 )}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 8, marginTop: 10 }}>
@@ -959,9 +1075,14 @@ function AdminDashboard() {
                     style={inputStyle}
                   >
                     <option value="">Status</option>
-                    <option value="Processing">Processing</option>
-                    <option value="In-transit">In-transit</option>
-                    <option value="Delivered">Delivered</option>
+                    {DELIVERY_STATUSES.map((status) => {
+                      const tab = DELIVERY_FILTERS.find((f) => f.id === status);
+                      return (
+                        <option key={status} value={status}>
+                          {tab?.label || status}
+                        </option>
+                      );
+                    })}
                   </select>
                   <button type="button" onClick={handleDeliveryStatus} style={primaryBtn}>
                     Update delivery

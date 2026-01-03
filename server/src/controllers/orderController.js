@@ -1,4 +1,3 @@
-// server/src/controllers/orderController.js
 import db from "../db.js";
 import { sendInvoiceEmailForOrder } from "./invoiceController.js";
 import { sendMail } from "../utils/mailer.js";
