@@ -880,7 +880,16 @@ function AdminDashboard() {
                   {visibleProducts.map((p) => (
                     <tr key={p.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
                       <td style={td}>{p.name}</td>
-                          <td style={td}>₺{p.price.toLocaleString("tr-TR")}</td>
+                      <td style={td}>
+                        <div style={{ display: "grid", gap: 2 }}>
+                          <span style={{ fontWeight: 700 }}>₺{p.price.toLocaleString("tr-TR")}</span>
+                          {p.hasDiscount && (
+                            <span style={{ color: "#94a3b8", textDecoration: "line-through", fontSize: "0.85rem" }}>
+                              ₺{Number(p.originalPrice || 0).toLocaleString("tr-TR")}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                           <td style={td}>{p.availableStock}</td>
                           <td style={td}>{p.category || "General"}</td>
                           <td style={td}>
