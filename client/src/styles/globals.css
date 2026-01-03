@@ -15,6 +15,17 @@ body {
   color: #1a1a1a;
 }
 
+body.theme-dark {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+body.theme-dark img,
+body.theme-dark video,
+body.theme-dark iframe,
+body.theme-dark svg {
+  filter: invert(1) hue-rotate(180deg);
+}
+
 .checkout-page {
   padding: 32px 18px 60px;
   background: radial-gradient(circle at 10% 20%, rgba(0, 88, 163, 0.06), transparent 30%),

@@ -5,18 +5,12 @@ import { updateUserProfile } from "../services/userService";
 import { formatOrderId, getOrders, fetchUserOrders } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
 import { cancelOrder } from "../services/orderService";
-
-
-const mockPreferences = [
-  { label: "Email notifications", enabled: true },
-  { label: "SMS campaigns", enabled: false },
-  { label: "New product newsletter", enabled: true },
-];
-
+import { useTheme } from "../context/ThemeContext";
 
 
 function Profile() {
   const { user, updateUser } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
 
   // Product managers should stay on the admin dashboard
   if (user?.role === "product_manager") {
@@ -31,12 +25,30 @@ function Profile() {
           email: user?.email ?? "guest@suhome.com",
           address: user?.address ?? "Not set",
           memberSince: "2025",
+          emailNotifications: true,
         })
       : null
   );
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(profile || {});
   const [orders, setOrders] = useState([]);
+  const [emailNotifications, setEmailNotifications] = useState(() => profile?.emailNotifications ?? true);
+
+  useEffect(() => {
+    if (profile && typeof profile.emailNotifications === "boolean") {
+      setEmailNotifications(profile.emailNotifications);
+    }
+  }, [profile]);
+
+  const handleToggleEmailNotifications = () => {
+    const nextValue = !emailNotifications;
+    setEmailNotifications(nextValue);
+    if (storageKey) {
+      const nextProfile = { ...(profile || {}), emailNotifications: nextValue };
+      setProfile(nextProfile);
+      saveProfile(storageKey, nextProfile);
+    }
+  };
 
 const handleCancelOrder = async (orderId) => {
   if (!window.confirm("Cancel this order?")) return;
@@ -356,23 +368,88 @@ const handleCancelOrder = async (orderId) => {
         >
           <h2 style={{ marginTop: 0, color: "#0058a3" }}>Preferences</h2>
           <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 12 }}>
-            {mockPreferences.map((pref) => (
-              <li
-                key={pref.label}
+            <li
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                border: "1px solid #e5e7eb",
+                borderRadius: 12,
+                padding: "10px 14px",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <span>Email notifications</span>
+              <button
+                type="button"
+                onClick={handleToggleEmailNotifications}
+                aria-pressed={emailNotifications}
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 12,
-                  padding: "10px 14px",
+                  position: "relative",
+                  width: 46,
+                  height: 26,
+                  borderRadius: 999,
+                  border: "1px solid #cbd5e1",
+                  background: emailNotifications ? "#0f172a" : "#e2e8f0",
+                  padding: 2,
+                  cursor: "pointer",
+                  transition: "background 0.2s ease, border-color 0.2s ease",
                 }}
               >
-                <span>{pref.label}</span>
-                <span style={{ color: pref.enabled ? "#059669" : "#9ca3af", fontWeight: 600 }}>
-                  {pref.enabled ? "Enabled" : "Disabled"}
-                </span>
-              </li>
-            ))}
+                <span
+                  style={{
+                    display: "block",
+                    width: 22,
+                    height: 22,
+                    borderRadius: "50%",
+                    background: "#ffffff",
+                    transform: emailNotifications ? "translateX(20px)" : "translateX(0)",
+                    transition: "transform 0.2s ease",
+                  }}
+                />
+              </button>
+            </li>
+            <li
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                border: "1px solid #e5e7eb",
+                borderRadius: 12,
+                padding: "10px 14px",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <span>Dark mode</span>
+              <button
+                type="button"
+                onClick={toggleTheme}
+                aria-pressed={isDark}
+                style={{
+                  position: "relative",
+                  width: 46,
+                  height: 26,
+                  borderRadius: 999,
+                  border: "1px solid #cbd5e1",
+                  background: isDark ? "#0f172a" : "#e2e8f0",
+                  padding: 2,
+                  cursor: "pointer",
+                  transition: "background 0.2s ease, border-color 0.2s ease",
+                }}
+              >
+                <span
+                  style={{
+                    display: "block",
+                    width: 22,
+                    height: 22,
+                    borderRadius: "50%",
+                    background: "#ffffff",
+                    transform: isDark ? "translateX(20px)" : "translateX(0)",
+                    transition: "transform 0.2s ease",
+                  }}
+                />
+              </button>
+            </li>
           </ul>
         </aside>
       </div>
@@ -512,3 +589,4 @@ function Modal({ open, onClose, children }) {
     </div>
   );
 }
+

@@ -15,6 +15,18 @@ function Checkout() {
   const location = useLocation();
   const { user } = useAuth(); // login varsa gerçek user_id’ye geçebilirsin
   const { items: cartItems, clearCart, subtotal: cartSubtotal } = useCart();
+  const emailNotificationsEnabled = useMemo(() => {
+    if (typeof window === "undefined") return true;
+    if (!user?.email) return true;
+    try {
+      const raw = window.localStorage.getItem("profile:" + user.email);
+      if (!raw) return true;
+      const parsed = JSON.parse(raw);
+      return parsed?.emailNotifications !== false;
+    } catch {
+      return true;
+    }
+  }, [user?.email]);
 
   const items = useMemo(() => {
     if (location.state?.items?.length) return location.state.items;
@@ -86,6 +98,7 @@ function Checkout() {
           billing_address: serializedAddress,
           items: normalizedItems,
           order_note: shippingDetails.notes,
+          email_notifications: emailNotificationsEnabled,
         }),
       });
 
@@ -198,3 +211,7 @@ function Row({ label, value, accent = false, bold = false }) {
 }
 
 export default Checkout;
+
+
+
+

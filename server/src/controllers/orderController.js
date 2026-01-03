@@ -9,9 +9,10 @@ import { sendInvoiceEmailForOrder } from "./invoiceController.js";
  * Basit versiyon: cart_items tablosundaki TÃœM kayÄ±tlarÄ± tek bir sipariÅŸ sayÄ±yoruz.
  */
 export function checkout(req, res) {
-  let { user_id, shipping_address, billing_address, items } = req.body;
+  let { user_id, shipping_address, billing_address, items, email_notifications } = req.body;
   const shippingAddressPayload = normalizeAddressPayload(shipping_address);
   const billingAddressPayload = normalizeAddressPayload(billing_address);
+  const emailNotificationsEnabled = email_notifications !== false;
 
   // ğŸ”¹ user_id gÃ¼venli hale getir (email vs gelirse 1'e dÃ¼ÅŸ)
   const safeUserId = Number(user_id);
@@ -123,10 +124,12 @@ export function checkout(req, res) {
                       console.error("Sepet temizlenemedi:", err);
                     }
 
+                    if (emailNotificationsEnabled) {
                     // Invoice email (fire-and-forget)
                     sendInvoiceEmailForOrder(order_id).catch((e) =>
                       console.error("Invoice email error:", e)
                     );
+                  }
 
                     return res.json({
                       success: true,
@@ -494,4 +497,9 @@ export function cancelOrder(req, res) {
     });
   });
 }
+
+
+
+
+
 
