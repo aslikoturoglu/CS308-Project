@@ -38,7 +38,14 @@ function resolveDateRange(req) {
   return { from, to };
 }
 
-async function notifyWishlistUsers(productIds, discountLabel) {
+function formatEmailDate(value) {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().replace("T", " ").slice(0, 16);
+}
+
+async function notifyWishlistUsers(productIds, discountMeta) {
   if (!productIds.length) return 0;
 
   const sql = `
@@ -70,15 +77,30 @@ async function notifyWishlistUsers(productIds, discountLabel) {
     grouped.set(row.email, existing);
   });
 
+  const rate = Number(discountMeta?.rate) || 0;
+  const startAt = formatEmailDate(discountMeta?.startAt);
+  const endAt = formatEmailDate(discountMeta?.endAt);
+  const dateLine = startAt && endAt ? `Valid: ${startAt} to ${endAt}` : "";
+
   const entries = Array.from(grouped.entries());
   await Promise.all(
     entries.map(([email, payload]) => {
       const subject = "Wishlist discount available";
       const lines = payload.items.map((item) => `- ${item}`).join("\n");
-      const text = `Hello ${payload.name || "Customer"},\n\n` +
-        `A discount ${discountLabel} is now available for these wishlist items:\n${lines}\n\n` +
+      const intro = `A discount of ${rate}% is now available for these wishlist items:`;
+      const text =
+        `Hello ${payload.name || "Customer"},\n\n` +
+        `${intro}\n${lines}\n\n` +
+        `${dateLine ? `${dateLine}\n\n` : ""}` +
         "Visit SUHOME to see the updated prices.";
-      return sendMail({ to: email, subject, text }).catch((err) => {
+      const html = `
+        <p>Hello ${payload.name || "Customer"},</p>
+        <p>${intro}</p>
+        <ul>${payload.items.map((item) => `<li>${item}</li>`).join("")}</ul>
+        ${dateLine ? `<p><strong>${dateLine}</strong></p>` : ""}
+        <p>Visit SUHOME to see the updated prices.</p>
+      `;
+      return sendMail({ to: email, subject, text, html }).catch((err) => {
         console.error("Wishlist email failed:", err);
         return null;
       });
@@ -132,7 +154,11 @@ export function createDiscount(req, res) {
         return res.status(500).json({ error: "Discount link failed" });
       }
 
-      const notified = await notifyWishlistUsers(productIds, `${rate}%`);
+      const notified = await notifyWishlistUsers(productIds, {
+        rate,
+        startAt,
+        endAt,
+      });
       return res.json({ success: true, discount_id: discountId, notified });
     });
   });
