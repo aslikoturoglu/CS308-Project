@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
+import { formatPrice } from "../../utils/formatPrice";
 import "./MiniPreview.css";
 
 export default function MiniCartPreview({ onClose, open }) {
-  const { items } = useCart();
+  const { items, increment, decrement } = useCart();
 
   if (!open) return null;
 
@@ -31,11 +32,30 @@ export default function MiniCartPreview({ onClose, open }) {
                 <img src={item.image} alt={item.name} />
 
                 <div className="info">
-                  <p className="name">{item.name}</p>
-                  <p className="price">
-                    {item.quantity} × ₺{item.price}
-                  </p>
-                </div>
+  <p className="name">{item.name}</p>
+  <div className="mini-cart-meta">
+    <div className="mini-cart-qty">
+      <button
+        type="button"
+        className="mini-cart-qty-btn"
+        aria-label={`Decrease quantity for ${item.name}`}
+        onClick={() => decrement(item.id)}
+      >
+        -
+      </button>
+      <span className="mini-cart-qty-value">{item.quantity}</span>
+      <button
+        type="button"
+        className="mini-cart-qty-btn"
+        aria-label={`Increase quantity for ${item.name}`}
+        onClick={() => increment(item.id)}
+      >
+        +
+      </button>
+    </div>
+    <p className="price">{formatPrice(item.price)}</p>
+  </div>
+</div>
               </div>
             ))
           )}
@@ -44,7 +64,7 @@ export default function MiniCartPreview({ onClose, open }) {
         <div className="mini-cart-footer">
           <div className="total">
             <span>Total</span>
-            <span>₺{subtotal.toLocaleString("tr-TR")}</span>
+            <span>{formatPrice(subtotal)}</span>
           </div>
 
           <Link to="/cart" className="btn primary" onClick={onClose}>
@@ -55,3 +75,9 @@ export default function MiniCartPreview({ onClose, open }) {
     </>
   );
 }
+
+
+
+
+
+

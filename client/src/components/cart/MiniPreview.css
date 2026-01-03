@@ -95,6 +95,46 @@
   flex: 1;
 }
 
+.mini-cart-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mini-cart-qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 4px 8px;
+}
+
+.mini-cart-qty-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.mini-cart-qty-btn:hover {
+  background: #e2e8f0;
+}
+
+.mini-cart-qty-value {
+  min-width: 16px;
+  text-align: center;
+  font-weight: 700;
+  color: #0f172a;
+}
+
 .mini-cart-item .name {
   font-size: 0.9rem;
   font-weight: 500;
