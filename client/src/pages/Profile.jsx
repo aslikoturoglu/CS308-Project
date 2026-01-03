@@ -68,6 +68,23 @@ const handleCancelOrder = async (orderId) => {
   }
 };
 
+const handleRefundOrder = async (orderId) => {
+  if (!window.confirm("Request a refund for this delivered order?")) return;
+
+  try {
+    // TODO: hook into backend refund endpoint when available.
+    setOrders(prev =>
+      prev.map(o =>
+        o.id === orderId
+          ? { ...o, status: "Refunded" }
+          : o
+      )
+    );
+  } catch (err) {
+    alert(err?.message || "Refund failed.");
+  }
+};
+
 
 
 
@@ -347,6 +364,22 @@ const handleCancelOrder = async (orderId) => {
         }}
       >
         Cancel
+      </button>
+    )}
+    {order.status?.toLowerCase().trim() === "delivered" && (
+      <button
+        onClick={() => handleRefundOrder(order.order_id)}
+        style={{
+          backgroundColor: "#e0f2fe",
+          color: "#0369a1",
+          border: "1px solid #bae6fd",
+          padding: "6px 12px",
+          borderRadius: 8,
+          cursor: "pointer",
+          fontWeight: 700,
+        }}
+      >
+        Refund
       </button>
     )}
   </div>
