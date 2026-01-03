@@ -1,5 +1,6 @@
 /*im the best in the world*/
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { fetchProductsWithMeta } from "../services/productService";
@@ -32,6 +33,7 @@ const rolesToSections = {
 
 function AdminDashboard() {
   const { user } = useAuth();
+  const { isDark } = useTheme();
   const { addToast } = useToast();
   const [activeSection, setActiveSection] = useState("dashboard");
   const [products, setProducts] = useState([]);
@@ -490,7 +492,7 @@ function AdminDashboard() {
   return (
     <div
       style={{
-        background: "#f3f4f6",
+        background: isDark ? "#0b0f14" : "#f3f4f6",
         minHeight: "calc(100vh - 160px)",
         padding: "28px 16px 72px",
         boxSizing: "border-box",
@@ -509,7 +511,7 @@ function AdminDashboard() {
       >
         <aside
           style={{
-            background: "white",
+            background: isDark ? "#0f172a" : "white",
             borderRadius: 14,
             padding: 16,
             boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
@@ -519,7 +521,7 @@ function AdminDashboard() {
             minWidth: 220,
           }}
         >
-          <h3 style={{ margin: "0 0 8px", color: "#0f172a" }}>Admin Panel</h3>
+          <h3 style={{ margin: "0 0 8px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Admin Panel</h3>
           {sections.map((s) => (
             <button
               key={s.id}
@@ -527,9 +529,9 @@ function AdminDashboard() {
               onClick={() => setActiveSection(s.id)}
               style={{
                 textAlign: "left",
-                border: "1px solid #e5e7eb",
-                background: activeSection === s.id ? "#0058a3" : "white",
-                color: activeSection === s.id ? "white" : "#0f172a",
+                border: isDark ? "1px solid #1f2a44" : "1px solid #e5e7eb",
+                background: activeSection === s.id ? "#0058a3" : isDark ? "#0b1220" : "white",
+                color: activeSection === s.id ? "white" : isDark ? "#e2e8f0" : "#0f172a",
                 padding: "10px 12px",
                 borderRadius: 10,
                 cursor: "pointer",
@@ -553,7 +555,7 @@ function AdminDashboard() {
           {activeSection !== "support" && (
             <header
               style={{
-                background: "white",
+                background: isDark ? "#0f172a" : "white",
                 borderRadius: 16,
                 padding: 18,
                 boxShadow: "0 18px 40px rgba(0,0,0,0.06)",
@@ -563,14 +565,14 @@ function AdminDashboard() {
               }}
             >
               <div>
-                <p style={{ margin: "0 0 6px", color: "#6b7280", fontWeight: 700 }}>
+                <p style={{ margin: "0 0 6px", color: isDark ? "#a3b3c6" : "#6b7280", fontWeight: 700 }}>
                   Admin workspace / {activeSection}
                 </p>
-                <h1 style={{ margin: 0, color: "#0f172a" }}>Dashboard</h1>
-                <p style={{ margin: "6px 0 0", color: "#475569" }}>Role: {user?.role || "customer"}</p>
+                <h1 style={{ margin: 0, color: isDark ? "#e2e8f0" : "#0f172a" }}>Dashboard</h1>
+                <p style={{ margin: "6px 0 0", color: isDark ? "#a3b3c6" : "#475569" }}>Role: {user?.role || "customer"}</p>
               </div>
               <div style={{ textAlign: "right" }}>
-                <p style={{ margin: 0, color: "#6b7280" }}>Today&apos;s revenue</p>
+                <p style={{ margin: 0, color: isDark ? "#a3b3c6" : "#6b7280" }}>Today&apos;s revenue</p>
                 <strong style={{ fontSize: "1.4rem", color: "#0058a3" }}>
                   ₺{totals.revenue.toLocaleString("tr-TR")}
                 </strong>
@@ -600,16 +602,16 @@ function AdminDashboard() {
                 <div
                   key={card.label}
                   style={{
-                    background: "white",
+                    background: isDark ? "#0f172a" : "white",
                     borderRadius: 14,
                     padding: 16,
                     boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
                     borderLeft: `6px solid ${card.tone}`,
                   }}
                 >
-                  <p style={{ margin: "0 0 6px", color: "#6b7280", fontWeight: 700 }}>{card.label}</p>
+                  <p style={{ margin: "0 0 6px", color: isDark ? "#a3b3c6" : "#6b7280", fontWeight: 700 }}>{card.label}</p>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <span style={{ fontSize: "1.5rem", fontWeight: 800, color: "#0f172a" }}>{card.value}</span>
+                    <span style={{ fontSize: "1.5rem", fontWeight: 800, color: isDark ? "#e2e8f0" : "#0f172a" }}>{card.value}</span>
                     <span style={{ color: card.tone, fontWeight: 700, fontSize: "0.95rem" }}>{card.change}</span>
                   </div>
                 </div>
@@ -621,7 +623,7 @@ function AdminDashboard() {
             <section style={{ display: "grid", gap: 18 }}>
               <div
                 style={{
-                  background: "white",
+                  background: isDark ? "#0f172a" : "white",
                   borderRadius: 14,
                   padding: 18,
                   boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
@@ -629,7 +631,7 @@ function AdminDashboard() {
                   gap: 12,
                 }}
               >
-                <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Product Manager Panel</h3>
+                <h3 style={{ margin: "0 0 10px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Product Manager Panel</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
                   <input
                     placeholder="Name"
@@ -665,7 +667,7 @@ function AdminDashboard() {
 
               <div
                 style={{
-                  background: "white",
+                  background: isDark ? "#0f172a" : "white",
                   borderRadius: 14,
               padding: 18,
               boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
@@ -675,7 +677,7 @@ function AdminDashboard() {
             ref={productListRef}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-              <h4 style={{ margin: 0 }}>Product list</h4>
+              <h4 style={{ margin: 0, color: isDark ? "#e2e8f0" : "#0f172a" }}>Product list</h4>
               {showLowStockOnly ? (
                 <button type="button" style={linkBtn} onClick={() => setShowLowStockOnly(false)}>
                   Clear low-stock filter
@@ -686,25 +688,38 @@ function AdminDashboard() {
                 </button>
               )}
             </div>
-            <div style={{ maxHeight: 320, overflow: "auto", border: "1px solid #e5e7eb", borderRadius: 12 }}>
+            <div
+              style={{
+                maxHeight: 320,
+                overflow: "auto",
+                border: isDark ? "1px solid #1f2a44" : "1px solid #e5e7eb",
+                borderRadius: 12,
+              }}
+            >
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.95rem" }}>
                 <thead>
-                  <tr style={{ background: "#f8fafc", textAlign: "left" }}>
-                    <th style={th}>Name</th>
-                        <th style={th}>Price</th>
-                        <th style={th}>Stock</th>
-                    <th style={th}>Category</th>
-                    <th style={th}>Actions</th>
+                  <tr
+                    style={{
+                      background: isDark ? "#0b1220" : "#f8fafc",
+                      textAlign: "left",
+                      color: isDark ? "#e2e8f0" : "#0f172a",
+                    }}
+                  >
+                    <th style={{ ...th, borderBottom: isDark ? "1px solid #1f2a44" : th.borderBottom }}>Name</th>
+                    <th style={{ ...th, borderBottom: isDark ? "1px solid #1f2a44" : th.borderBottom }}>Price</th>
+                    <th style={{ ...th, borderBottom: isDark ? "1px solid #1f2a44" : th.borderBottom }}>Stock</th>
+                    <th style={{ ...th, borderBottom: isDark ? "1px solid #1f2a44" : th.borderBottom }}>Category</th>
+                    <th style={{ ...th, borderBottom: isDark ? "1px solid #1f2a44" : th.borderBottom }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {visibleProducts.map((p) => (
-                    <tr key={p.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                      <td style={td}>{p.name}</td>
-                          <td style={td}>₺{p.price.toLocaleString("tr-TR")}</td>
-                          <td style={td}>{p.availableStock}</td>
-                          <td style={td}>{p.category || "General"}</td>
-                          <td style={td}>
+                    <tr key={p.id} style={{ borderBottom: isDark ? "1px solid #1f2a44" : "1px solid #e5e7eb" }}>
+                      <td style={{ ...td, color: isDark ? "#e2e8f0" : "#0f172a" }}>{p.name}</td>
+                      <td style={{ ...td, color: isDark ? "#e2e8f0" : "#0f172a" }}>₺{p.price.toLocaleString("tr-TR")}</td>
+                      <td style={{ ...td, color: isDark ? "#e2e8f0" : "#0f172a" }}>{p.availableStock}</td>
+                      <td style={{ ...td, color: isDark ? "#e2e8f0" : "#0f172a" }}>{p.category || "General"}</td>
+                      <td style={{ ...td, color: isDark ? "#e2e8f0" : "#0f172a" }}>
                             <button type="button" style={linkBtn} onClick={() => addToast("Edit (local only)", "info")}>
                               Edit
                             </button>
@@ -725,7 +740,7 @@ function AdminDashboard() {
 
               <div
                 style={{
-                  background: "white",
+                  background: isDark ? "#0f172a" : "white",
                   borderRadius: 14,
                   padding: 18,
                   boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
@@ -735,7 +750,7 @@ function AdminDashboard() {
               >
                 <h4 style={{ margin: 0 }}>Review approvals</h4>
                 {pendingReviews.length === 0 ? (
-                  <p style={{ margin: 0, color: "#6b7280" }}>No pending reviews.</p>
+                  <p style={{ margin: 0, color: isDark ? "#a3b3c6" : "#6b7280" }}>No pending reviews.</p>
                 ) : (
                   <div style={{ display: "grid", gap: 8 }}>
                     {pendingReviews.map((rev) => {
@@ -752,12 +767,12 @@ function AdminDashboard() {
                             padding: 10,
                             display: "grid",
                             gap: 6,
-                            background: "#f8fafc",
+                            background: isDark ? "#0b1220" : "#f8fafc",
                           }}
                         >
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <div>
-                              <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>{productName}</p>
+                              <p style={{ margin: 0, fontWeight: 700, color: isDark ? "#e2e8f0" : "#0f172a" }}>{productName}</p>
                               <small style={{ color: "#64748b" }}>{rev.user_name || "User"}</small>
                             </div>
                             <div style={{ color: "#f59e0b", fontWeight: 800 }}>
@@ -765,7 +780,7 @@ function AdminDashboard() {
                               {"☆".repeat(Math.max(0, 5 - (Number(rev.rating) || 0)))}
                             </div>
                           </div>
-                          <p style={{ margin: 0, color: "#0f172a" }}>{rev.comment_text}</p>
+                          <p style={{ margin: 0, color: isDark ? "#e2e8f0" : "#0f172a" }}>{rev.comment_text}</p>
                           <div style={{ display: "flex", gap: 8 }}>
                             <button
                               type="button"
@@ -777,7 +792,7 @@ function AdminDashboard() {
                             <button
                               type="button"
                               onClick={() => handleRejectReview(rev.comment_id)}
-                              style={{ ...secondaryBtn, flex: 1 }}
+                              style={{ ...secondaryBtn(isDark), flex: 1 }}
                             >
                               Reject
                             </button>
@@ -791,13 +806,13 @@ function AdminDashboard() {
 
               <div
                 style={{
-                  background: "white",
+                  background: isDark ? "#0f172a" : "white",
                   borderRadius: 14,
                   padding: 18,
                   boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
                 }}
               >
-                <h4 style={{ margin: "0 0 10px", color: "#0f172a" }}>Delivery list</h4>
+                <h4 style={{ margin: "0 0 10px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Delivery list</h4>
                 {deliveries.length === 0 ? (
                   <p style={{ margin: 0, color: "#94a3b8" }}>No deliveries to display.</p>
                 ) : (
@@ -818,11 +833,11 @@ function AdminDashboard() {
                       >
                         <div>
                           <strong>{d.product}</strong>
-                          <p style={{ margin: "2px 0 0", color: "#475569" }}>
+                          <p style={{ margin: "2px 0 0", color: isDark ? "#a3b3c6" : "#475569" }}>
                             {d.orderId} • {d.address}
                           </p>
                         </div>
-                        <span style={{ fontWeight: 700, color: "#0f172a" }}>{d.status}</span>
+                        <span style={{ fontWeight: 700, color: isDark ? "#e2e8f0" : "#0f172a" }}>{d.status}</span>
                       </div>
                     ))}
                   </div>
@@ -860,8 +875,8 @@ function AdminDashboard() {
 
           {activeSection === "sales" && (
             <section style={{ display: "grid", gap: 18 }}>
-              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
-                <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Orders (sales manager)</h3>
+              <div style={{ background: isDark ? "#0f172a" : "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
+                <h3 style={{ margin: "0 0 10px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Orders (sales manager)</h3>
                 <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
                   {["Processing", "In-transit", "Delivered"].map((status) => {
                     const count = groupedOrders[status]?.length || 0;
@@ -908,7 +923,7 @@ function AdminDashboard() {
                                 textAlign: "left",
                                 padding: "12px 10px",
                                 borderBottom: "1px solid #e5e7eb",
-                                color: "#475569",
+                                color: isDark ? "#a3b3c6" : "#475569",
                                 fontWeight: 700,
                                 fontSize: "0.9rem",
                                 width: orderColumnWidths[index],
@@ -922,13 +937,13 @@ function AdminDashboard() {
                       <tbody>
                         {ordersForActiveTab.map((order) => (
                           <tr key={order.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                            <td style={{ ...td, width: orderColumnWidths[0], fontWeight: 700, color: "#0f172a" }}>{formatOrderId(order.id)}</td>
+                            <td style={{ ...td, width: orderColumnWidths[0], fontWeight: 700, color: isDark ? "#e2e8f0" : "#0f172a" }}>{formatOrderId(order.id)}</td>
                             <td style={{ ...td, width: orderColumnWidths[1], color: "#1f2937" }}>
                               <div style={{ fontWeight: 700 }}>{order.customerName || "Customer"}</div>
-                              <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>{order.address}</div>
+                              <div style={{ color: isDark ? "#a3b3c6" : "#6b7280", fontSize: "0.9rem" }}>{order.address}</div>
                             </td>
                             <td style={{ ...td, width: orderColumnWidths[2], color: "#334155" }}>{order.shippingCompany}</td>
-                            <td style={{ ...td, width: orderColumnWidths[3], fontWeight: 700, color: "#0f172a" }}>₺{order.total?.toLocaleString("tr-TR")}</td>
+                            <td style={{ ...td, width: orderColumnWidths[3], fontWeight: 700, color: isDark ? "#e2e8f0" : "#0f172a" }}>₺{order.total?.toLocaleString("tr-TR")}</td>
                             <td style={{ ...td, width: orderColumnWidths[4], color: order.status === "Delivered" ? "#22c55e" : "#0f172a", fontWeight: 700 }}>{order.status}</td>
                             <td style={{ ...td, width: orderColumnWidths[5] }}>
                               {order.status === "Delivered" ? (
@@ -964,7 +979,7 @@ function AdminDashboard() {
                           border: "1px solid #e5e7eb",
                           borderRadius: 12,
                           padding: 12,
-                          background: "#f8fafc",
+                          background: isDark ? "#0b1220" : "#f8fafc",
                           display: "grid",
                           gap: 8,
                         }}
@@ -978,11 +993,11 @@ function AdminDashboard() {
                             gap: 8,
                           }}
                         >
-                          <strong style={{ color: "#0f172a" }}>{formatOrderId(order.id)}</strong>
+                          <strong style={{ color: isDark ? "#e2e8f0" : "#0f172a" }}>{formatOrderId(order.id)}</strong>
                           <span style={{ fontWeight: 700, color: order.status === "Delivered" ? "#22c55e" : "#0f172a" }}>{order.status}</span>
                         </div>
-                        <div style={{ display: "grid", gap: 4, color: "#475569", fontSize: "0.95rem" }}>
-                          <span style={{ fontWeight: 700, color: "#0f172a" }}>{order.customerName || "Customer"}</span>
+                        <div style={{ display: "grid", gap: 4, color: isDark ? "#a3b3c6" : "#475569", fontSize: "0.95rem" }}>
+                          <span style={{ fontWeight: 700, color: isDark ? "#e2e8f0" : "#0f172a" }}>{order.customerName || "Customer"}</span>
                           <span>{order.address}</span>
                           <span>Shipping: {order.shippingCompany}</span>
                           <span>Total: ₺{order.total?.toLocaleString("tr-TR")}</span>
@@ -1007,8 +1022,8 @@ function AdminDashboard() {
                 )}
               </div>
 
-              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
-                <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Price & Discount</h3>
+              <div style={{ background: isDark ? "#0f172a" : "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
+                <h3 style={{ margin: "0 0 10px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Price & Discount</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
                   <select
                     value={priceUpdate.productId}
@@ -1072,8 +1087,8 @@ function AdminDashboard() {
                 </div>
               </div>
 
-              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
-                <h3 style={{ margin: "0 0 6px", color: "#0f172a" }}>Invoices (filter)</h3>
+              <div style={{ background: isDark ? "#0f172a" : "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
+                <h3 style={{ margin: "0 0 6px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Invoices (filter)</h3>
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                   <input
                     type="date"
@@ -1117,8 +1132,8 @@ function AdminDashboard() {
                 </div>
               </div>
 
-              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
-                <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Revenue</h3>
+              <div style={{ background: isDark ? "#0f172a" : "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
+                <h3 style={{ margin: "0 0 10px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Revenue</h3>
                 <div
                   style={{
                     border: "1px solid #e5e7eb",
@@ -1126,7 +1141,7 @@ function AdminDashboard() {
                     padding: 10,
                     maxHeight: 220,
                     overflowY: "auto",
-                    background: "#f8fafc",
+                    background: isDark ? "#0b1220" : "#f8fafc",
                   }}
                 >
                   {revenueSeries.length === 0 ? (
@@ -1143,7 +1158,7 @@ function AdminDashboard() {
                               borderRadius: 8,
                             }}
                           />
-                          <small style={{ color: "#475569", display: "block", marginTop: 6 }}>{bar.label}</small>
+                          <small style={{ color: isDark ? "#a3b3c6" : "#475569", display: "block", marginTop: 6 }}>{bar.label}</small>
                         </div>
                       ))}
                     </div>
@@ -1163,9 +1178,9 @@ function AdminDashboard() {
                 minWidth: 0,
               }}
             >
-              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
+              <div style={{ background: isDark ? "#0f172a" : "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Active chat queue</h3>
+                  <h3 style={{ margin: "0 0 10px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Active chat queue</h3>
                   {isLoadingChats && <span style={{ color: "#0ea5e9", fontWeight: 700 }}>Syncing…</span>}
                 </div>
                 <div style={{ display: "grid", gap: 12 }}>
@@ -1192,7 +1207,7 @@ function AdminDashboard() {
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <div>
                             <strong>{chat.customer_name}</strong>
-                            <p style={{ margin: "2px 0 0", color: "#475569" }}>
+                            <p style={{ margin: "2px 0 0", color: isDark ? "#a3b3c6" : "#475569" }}>
                               {chat.order_id ? formatOrderId(chat.order_id) : "No order linked"}
                             </p>
                           </div>
@@ -1209,8 +1224,8 @@ function AdminDashboard() {
                             {chat.status}
                           </span>
                         </div>
-                        <p style={{ margin: 0, color: "#0f172a" }}>{chat.last_message}</p>
-                        <small style={{ color: "#6b7280" }}>
+                        <p style={{ margin: 0, color: isDark ? "#e2e8f0" : "#0f172a" }}>{chat.last_message}</p>
+                        <small style={{ color: isDark ? "#a3b3c6" : "#6b7280" }}>
                           Last update: {new Date(chat.last_message_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
                         </small>
                         <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
@@ -1221,7 +1236,7 @@ function AdminDashboard() {
                               padding: "6px 10px",
                               borderRadius: 8,
                               border: "1px solid #e5e7eb",
-                              background: "white",
+                              background: isDark ? "#0f172a" : "white",
                               cursor: "pointer",
                             }}
                           >
@@ -1264,7 +1279,7 @@ function AdminDashboard() {
                       >
                         ‹ Prev
                       </button>
-                      <span style={{ color: "#475569", fontWeight: 600 }}>
+                      <span style={{ color: isDark ? "#a3b3c6" : "#475569", fontWeight: 600 }}>
                         Page {chatPage} / {Math.max(1, Math.ceil(chats.length / CHAT_PAGE_SIZE))}
                       </span>
                       <button
@@ -1288,14 +1303,14 @@ function AdminDashboard() {
                     </div>
                   )}
                   {!chats.length && !isLoadingChats && (
-                    <p style={{ margin: 0, color: "#6b7280" }}>No active chats yet.</p>
+                    <p style={{ margin: 0, color: isDark ? "#a3b3c6" : "#6b7280" }}>No active chats yet.</p>
                   )}
                 </div>
               </div>
 
               <div
                 style={{
-                  background: "white",
+                  background: isDark ? "#0f172a" : "white",
                   borderRadius: 14,
                   padding: 18,
                   boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
@@ -1303,7 +1318,7 @@ function AdminDashboard() {
                   gap: 12,
                 }}
               >
-                <h3 style={{ margin: "0 0 8px", color: "#0f172a" }}>Conversation</h3>
+                <h3 style={{ margin: "0 0 8px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Conversation</h3>
                 {activeConversationId ? (
                   <>
                     <div
@@ -1361,10 +1376,10 @@ function AdminDashboard() {
                         </div>
                       ))}
                       {chatMessages.length === 0 && !isLoadingThread && (
-                        <p style={{ margin: 0, color: "#6b7280" }}>No messages yet. Say hi to the customer.</p>
+                        <p style={{ margin: 0, color: isDark ? "#a3b3c6" : "#6b7280" }}>No messages yet. Say hi to the customer.</p>
                       )}
                       {isLoadingThread && (
-                        <p style={{ margin: 0, color: "#6b7280", fontSize: "0.9rem" }}>Refreshing…</p>
+                        <p style={{ margin: 0, color: isDark ? "#a3b3c6" : "#6b7280", fontSize: "0.9rem" }}>Refreshing…</p>
                       )}
                     </div>
                     <div style={{ display: "grid", gap: 8 }}>
@@ -1378,7 +1393,7 @@ function AdminDashboard() {
                       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                         <label
                           style={{
-                            ...secondaryBtn,
+                            ...secondaryBtn(isDark),
                             margin: 0,
                             cursor: "pointer",
                             display: "inline-flex",
@@ -1403,7 +1418,7 @@ function AdminDashboard() {
                               <span
                                 key={file.name}
                                 style={{
-                                  ...secondaryBtn,
+                                  ...secondaryBtn(isDark),
                                   padding: "6px 10px",
                                   display: "inline-flex",
                                   alignItems: "center",
@@ -1445,7 +1460,7 @@ function AdminDashboard() {
                     </div>
                   </>
                 ) : (
-                  <p style={{ margin: 0, color: "#6b7280" }}>Select a chat from the left to start messaging.</p>
+                  <p style={{ margin: 0, color: isDark ? "#a3b3c6" : "#6b7280" }}>Select a chat from the left to start messaging.</p>
                 )}
               </div>
             </section>
@@ -1461,8 +1476,8 @@ function AdminDashboard() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <h3 style={{ margin: "0 0 6px", color: "#0f172a" }}>Operational reminders</h3>
-                <p style={{ margin: 0, color: "#374151" }}>
+                <h3 style={{ margin: "0 0 6px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Operational reminders</h3>
+                <p style={{ margin: 0, color: isDark ? "#cbd5f5" : "#374151" }}>
                   {totals.lowStock} products are low on stock. Prioritize restock before weekend campaigns.
                 </p>
               </div>
@@ -1495,15 +1510,15 @@ const primaryBtn = {
   cursor: "pointer",
 };
 
-const secondaryBtn = {
-  border: "1px solid #e5e7eb",
-  background: "#ffffff",
-  color: "#0f172a",
+const secondaryBtn = (isDark) => ({
+  border: isDark ? "1px solid #1f2a44" : "1px solid #e5e7eb",
+  background: isDark ? "#0b1220" : "#ffffff",
+  color: isDark ? "#e2e8f0" : "#0f172a",
   padding: "10px 12px",
   borderRadius: 10,
   fontWeight: 700,
   cursor: "pointer",
-};
+});
 
 const linkBtn = {
   border: "none",
@@ -1524,3 +1539,7 @@ const th = {
 const td = { padding: "10px 12px", whiteSpace: "normal", wordBreak: "break-word" };
 
 export default AdminDashboard;
+
+
+
+
