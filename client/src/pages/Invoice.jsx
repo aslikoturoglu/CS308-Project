@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { formatOrderId, getOrderById } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 
 function Invoice() {
   const { id } = useParams();
@@ -10,6 +11,7 @@ function Invoice() {
   const decodedId = decodeURIComponent(id);
   const orderFromState = location.state?.order;
   const { user } = useAuth();
+  const { isDark } = useTheme();
   const [order, setOrder] = useState(orderFromState || getOrderById(decodedId));
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
@@ -69,17 +71,17 @@ function Invoice() {
 
   if (!order) {
     return (
-      <section style={pageStyle}>
-        <div style={cardStyle}>
+      <section style={pageStyle(isDark)}>
+        <div style={cardStyle(isDark)}>
           <h1 style={{ marginTop: 0, color: "#b91c1c" }}>Order not found</h1>
-          <p style={{ margin: 0, color: "#475569" }}>
+          <p style={{ margin: 0, color: isDark ? "#a3b3c6" : "#475569" }}>
             We could not locate this order. Please check your order list.
           </p>
           <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
-            <Link to="/orders" style={linkPrimary}>
+            <Link to="/orders" style={linkPrimary(isDark)}>
               Go to Order History
             </Link>
-            <Link to="/products" style={linkSecondary}>
+            <Link to="/products" style={linkSecondary(isDark)}>
               Browse Products
             </Link>
           </div>
@@ -151,8 +153,8 @@ function Invoice() {
   };
 
   return (
-    <section style={pageStyle}>
-      <div style={{ ...cardStyle, maxWidth: 980 }}>
+    <section style={pageStyle(isDark)}>
+      <div style={{ ...cardStyle(isDark), maxWidth: 980 }}>
         <header
           style={{
             display: "flex",
@@ -163,20 +165,20 @@ function Invoice() {
           }}
         >
           <div>
-            <p style={{ margin: 0, letterSpacing: 1, color: "#94a3b8" }}>
+            <p style={{ margin: 0, letterSpacing: 1, color: isDark ? "#7dd3fc" : "#94a3b8" }}>
               PURCHASE COMPLETED
             </p>
-            <h1 style={{ margin: "4px 0 6px", color: "#0f172a" }}>
+            <h1 style={{ margin: "4px 0 6px", color: isDark ? "#7dd3fc" : "#0f172a" }}>
               Thank you for your order!
             </h1>
-            <p style={{ margin: 0, color: "#475569" }}>
+            <p style={{ margin: 0, color: isDark ? "#a3b3c6" : "#475569" }}>
               Your order is being processed for delivery. A receipt will be
               emailed shortly.
             </p>
           </div>
           <div style={{ textAlign: "right" }}>
-            <p style={{ margin: 0, color: "#94a3b8" }}>Order ID</p>
-            <h2 style={{ margin: 0, color: "#0f172a" }}>{displayId}</h2>
+            <p style={{ margin: 0, color: isDark ? "#a3b3c6" : "#94a3b8" }}>Order ID</p>
+            <h2 style={{ margin: 0, color: isDark ? "#7dd3fc" : "#0f172a" }}>{displayId}</h2>
           </div>
         </header>
 
@@ -188,17 +190,17 @@ function Invoice() {
             marginTop: 14,
           }}
         >
-          <Info label="Date" value={displayDate} />
-          <Info label="Status" value={order.status} />
-          <Info label="Items" value={`${totalItems} pcs`} />
-          <Info label="Total Paid" value={formatPrice(order.total)} />
-          <Info label="Tax ID" value={user?.taxId || "Not provided"} />
+          <Info label="Date" value={displayDate} isDark={isDark} />
+          <Info label="Status" value={order.status} isDark={isDark} />
+          <Info label="Items" value={`${totalItems} pcs`} isDark={isDark} />
+          <Info label="Total Paid" value={formatPrice(order.total)} isDark={isDark} />
+          <Info label="Tax ID" value={user?.taxId || "Not provided"} isDark={isDark} />
         </div>
 
         <div
           style={{
             marginTop: 18,
-            border: "1px solid #e2e8f0",
+            border: isDark ? "1px solid #1f2937" : "1px solid #e2e8f0",
             borderRadius: 12,
             overflow: "hidden",
           }}
@@ -208,9 +210,10 @@ function Invoice() {
               display: "grid",
               gridTemplateColumns: "2fr 1fr 1fr",
               gap: 8,
-              background: "#f8fafc",
+              background: isDark ? "#0b1220" : "#f8fafc",
               padding: "10px 12px",
               fontWeight: 700,
+              color: isDark ? "#e2e8f0" : "#0f172a",
             }}
           >
             <span>Item</span>
@@ -226,17 +229,17 @@ function Invoice() {
                   gridTemplateColumns: "2fr 1fr 1fr",
                   alignItems: "center",
                   gap: 8,
-                  border: "1px solid #e2e8f0",
+                  border: isDark ? "1px solid #1f2937" : "1px solid #e2e8f0",
                   borderRadius: 10,
                   padding: "10px 12px",
-                  background: "#ffffff",
+                  background: isDark ? "#0f172a" : "#ffffff",
                 }}
               >
-                <span style={{ fontWeight: 700, color: "#0f172a" }}>
+                <span style={{ fontWeight: 700, color: isDark ? "#e2e8f0" : "#0f172a" }}>
                   {item.name}
                 </span>
-                <span style={{ color: "#475569" }}>{item.qty}</span>
-                <span style={{ fontWeight: 800, color: "#0f172a" }}>
+                <span style={{ color: isDark ? "#a3b3c6" : "#475569" }}>{item.qty}</span>
+                <span style={{ fontWeight: 800, color: isDark ? "#e2e8f0" : "#0f172a" }}>
                   {formatPrice(item.price * item.qty)}
                 </span>
               </div>
@@ -254,40 +257,42 @@ function Invoice() {
         >
           <div
             style={{
-              border: "1px solid #e2e8f0",
+              border: isDark ? "1px solid #1f2937" : "1px solid #e2e8f0",
               borderRadius: 12,
               padding: 12,
+              background: isDark ? "#0f172a" : "transparent",
             }}
           >
-            <h3 style={{ margin: "0 0 8px", color: "#0f172a" }}>
+            <h3 style={{ margin: "0 0 8px", color: isDark ? "#7dd3fc" : "#0f172a" }}>
               Billing & Shipping
             </h3>
-            <p style={{ margin: "4px 0", color: "#475569" }}>
+            <p style={{ margin: "4px 0", color: isDark ? "#a3b3c6" : "#475569" }}>
               {formatAddress(order.address)}
             </p>
-            <p style={{ margin: "4px 0", color: "#475569" }}>
+            <p style={{ margin: "4px 0", color: isDark ? "#a3b3c6" : "#475569" }}>
               Shipping Company: {order.shippingCompany ?? "SUExpress"}
             </p>
           </div>
 
           <div
             style={{
-              border: "1px solid #e2e8f0",
+              border: isDark ? "1px solid #1f2937" : "1px solid #e2e8f0",
               borderRadius: 12,
               padding: 12,
               display: "grid",
               gap: 8,
+              background: isDark ? "#0f172a" : "transparent",
             }}
           >
-            <h3 style={{ margin: 0, color: "#0f172a" }}>Invoice Actions</h3>
+            <h3 style={{ margin: 0, color: isDark ? "#7dd3fc" : "#0f172a" }}>Invoice Actions</h3>
             <button
               type="button"
-              style={buttonPrimary}
+              style={buttonPrimary(isDark)}
               onClick={handleDownloadPdf}
             >
               Download PDF
             </button>
-            <div style={{ ...pillInfo }}>
+            <div style={{ ...pillInfo(isDark) }}>
               Email has been sent to your address.
             </div>
           </div>
@@ -301,16 +306,16 @@ function Invoice() {
             flexWrap: "wrap",
           }}
         >
-          <Link to="/orders" style={linkPrimary}>
+          <Link to="/orders" style={linkPrimary(isDark)}>
             View Order Status
           </Link>
-          <Link to="/products" style={linkSecondary}>
+          <Link to="/products" style={linkSecondary(isDark)}>
             Continue Shopping
           </Link>
           <Link
             to="/"
             state={location.state}
-            style={{ ...linkSecondary, borderStyle: "dashed" }}
+            style={{ ...linkSecondary(isDark), borderStyle: "dashed" }}
           >
             Back to Home
           </Link>
@@ -320,23 +325,23 @@ function Invoice() {
   );
 }
 
-function Info({ label, value }) {
+function Info({ label, value, isDark }) {
   return (
     <div
       style={{
         padding: 12,
         borderRadius: 12,
-        border: "1px solid #e2e8f0",
-        background: "#f8fafc",
+        border: isDark ? "1px solid #1f2937" : "1px solid #e2e8f0",
+        background: isDark ? "#0b1220" : "#f8fafc",
       }}
     >
-      <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.85rem" }}>
+      <p style={{ margin: 0, color: isDark ? "#a3b3c6" : "#94a3b8", fontSize: "0.85rem" }}>
         {label}
       </p>
       <p
         style={{
           margin: "6px 0 0",
-          color: "#0f172a",
+          color: isDark ? "#e2e8f0" : "#0f172a",
           fontWeight: 800,
         }}
       >
@@ -346,61 +351,61 @@ function Info({ label, value }) {
   );
 }
 
-const pageStyle = {
+const pageStyle = (isDark) => ({
   padding: "40px 20px",
-  background: "#f5f7fb",
+  background: isDark ? "#0b0f14" : "#f5f7fb",
   minHeight: "70vh",
   display: "flex",
   justifyContent: "center",
-};
+});
 
-const cardStyle = {
+const cardStyle = (isDark) => ({
   width: "100%",
   maxWidth: 720,
-  background: "white",
+  background: isDark ? "#0f172a" : "white",
   borderRadius: 18,
   padding: 24,
-  border: "1px solid #e5e7eb",
-  boxShadow: "0 16px 40px rgba(15,23,42,0.08)",
-};
+  border: isDark ? "1px solid #1f2937" : "1px solid #e5e7eb",
+  boxShadow: isDark ? "0 16px 40px rgba(0,0,0,0.6)" : "0 16px 40px rgba(15,23,42,0.08)",
+});
 
-const buttonPrimary = {
+const buttonPrimary = (isDark) => ({
   border: "none",
-  background: "#0058a3",
+  background: isDark ? "#38bdf8" : "#0058a3",
   color: "white",
   padding: "10px 12px",
   borderRadius: 10,
   fontWeight: 800,
   cursor: "pointer",
-};
+});
 
-const pillInfo = {
-  border: "1px solid #cbd5e1",
-  background: "#f8fafc",
-  color: "#0f172a",
+const pillInfo = (isDark) => ({
+  border: isDark ? "1px solid #1f2937" : "1px solid #cbd5e1",
+  background: isDark ? "#0b1220" : "#f8fafc",
+  color: isDark ? "#e2e8f0" : "#0f172a",
   padding: "10px 12px",
   borderRadius: 10,
   fontWeight: 700,
   textAlign: "center",
-};
+});
 
-const linkPrimary = {
-  background: "#0058a3",
+const linkPrimary = (isDark) => ({
+  background: isDark ? "#38bdf8" : "#0058a3",
   color: "white",
   padding: "10px 12px",
   borderRadius: 10,
   textDecoration: "none",
   fontWeight: 800,
-};
+});
 
-const linkSecondary = {
-  border: "1px solid #cbd5e1",
-  color: "#0f172a",
+const linkSecondary = (isDark) => ({
+  border: isDark ? "1px solid #1f2937" : "1px solid #cbd5e1",
+  color: isDark ? "#e2e8f0" : "#0f172a",
   padding: "10px 12px",
   borderRadius: 10,
   textDecoration: "none",
   fontWeight: 700,
-  background: "white",
-};
+  background: isDark ? "#0f172a" : "white",
+});
 
 export default Invoice;
