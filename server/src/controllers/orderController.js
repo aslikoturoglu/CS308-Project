@@ -327,14 +327,15 @@ export function getAllOrders(req, res) {
   `;
 
   const normalizeStatus = (value) => {
-  const normalized = String(value || "").toLowerCase();
-  if (normalized === "cancelled") return "Cancelled";
-  if (normalized.includes("transit") || normalized === "shipped" || normalized === "in_transit") {
-    return "In-transit";
-  }
-  if (normalized === "delivered") return "Delivered";
-  return "Processing";
-};
+    const normalized = String(value || "").toLowerCase();
+    if (normalized === "refunded") return "Refunded";
+    if (normalized === "cancelled") return "Cancelled";
+    if (normalized.includes("transit") || normalized === "shipped" || normalized === "in_transit") {
+      return "In-transit";
+    }
+    if (normalized === "delivered") return "Delivered";
+    return "Processing";
+  };
 
 
   
@@ -502,5 +503,47 @@ export function cancelOrder(req, res) {
         );
       }
     );
+  });
+}
+
+export function refundOrder(req, res) {
+  const orderId = Number(req.params.id);
+
+  if (!Number.isFinite(orderId)) {
+    return res.status(400).json({ error: "Invalid order id" });
+  }
+
+  const checkSql = `
+    SELECT o.status AS order_status, d.delivery_status
+    FROM orders o
+    LEFT JOIN deliveries d ON d.order_id = o.order_id
+    WHERE o.order_id = ?
+  `;
+
+  db.query(checkSql, [orderId], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: "Refund check failed" });
+    }
+
+    if (!rows.length) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    const orderStatus = String(rows[0].order_status || "").toLowerCase();
+    const deliveryStatus = String(rows[0].delivery_status || "").toLowerCase();
+
+    if (orderStatus === "refunded" || deliveryStatus === "refunded") {
+      return res.status(400).json({ error: "Order already refunded" });
+    }
+
+    if (orderStatus !== "delivered" && deliveryStatus !== "delivered") {
+      return res.status(400).json({ error: "Only delivered orders can be refunded" });
+    }
+
+    db.query("UPDATE orders SET status = 'refunded' WHERE order_id = ?", [orderId], () => {
+      db.query("UPDATE deliveries SET delivery_status = 'refunded' WHERE order_id = ?", [orderId], () => {
+        res.json({ success: true, order_id: orderId });
+      });
+    });
   });
 }
