@@ -61,6 +61,7 @@ function AdminDashboard() {
   const [deliveryTab, setDeliveryTab] = useState("All");
   const [deliveryVisibleCount, setDeliveryVisibleCount] = useState(10);
   const [deliveryStatusPicker, setDeliveryStatusPicker] = useState(null);
+  const [expandedDeliveryId, setExpandedDeliveryId] = useState(null);
   const [pendingReviews, setPendingReviews] = useState([]);
   const [chats, setChats] = useState([]);
   const [chatPage, setChatPage] = useState(1);
@@ -288,6 +289,10 @@ function AdminDashboard() {
 
   const canLoadMoreDeliveries = filteredDeliveries.length > deliveryVisibleCount;
   const canLoadLessDeliveries = deliveryVisibleCount > 10;
+  const getOrderByDeliveryId = useCallback(
+    (deliveryId) => orders.find((o) => String(o.id) === String(deliveryId)),
+    [orders]
+  );
 
   const groupedOrders = useMemo(() => {
     const groups = {
@@ -1024,60 +1029,138 @@ function AdminDashboard() {
                           border: "1px solid #e5e7eb",
                           borderRadius: 10,
                           padding: 10,
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          flexWrap: "wrap",
+                          display: "grid",
                           gap: 8,
+                          background: expandedDeliveryId === d.id ? "#f8fafc" : "white",
                         }}
                       >
-                        <div>
-                          <strong>{d.product}</strong>
-                          <p style={{ margin: "2px 0 0", color: "#475569" }}>
-                            {d.orderId} • {d.address}
-                          </p>
-                        </div>
-                        <div style={{ display: "grid", gap: 6, minWidth: 180 }}>
-                          <button
-                            type="button"
-                            onClick={() => handleInlineStatusClick(d)}
-                            style={{
-                              border: "1px solid #e5e7eb",
-                              background: "#f8fafc",
-                              color: "#0f172a",
-                              padding: "8px 12px",
-                              borderRadius: 10,
-                              fontWeight: 800,
-                              cursor: "pointer",
-                            }}
-                            title="Statusa tıkla ve güncelle"
-                          >
-                            {d.status}
-                          </button>
-                          {deliveryStatusPicker === d.id && (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                              {DELIVERY_STATUSES.map((status) => {
-                                const label = DELIVERY_FILTERS.find((f) => f.id === status)?.label || status;
-                                return (
-                                  <button
-                                    key={status}
-                                    type="button"
-                                    onClick={() => handleSelectStatusOption(d, status)}
-                                    style={{
-                                      ...secondaryBtn,
-                                      padding: "6px 8px",
-                                      flex: "1 1 120px",
-                                      borderColor: "#e5e7eb",
-                                      background: "#fff",
-                                    }}
-                                  >
-                                    {label}
-                                  </button>
-                                );
-                              })}
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                            gap: 8,
+                          }}
+                        >
+                          <div>
+                            <strong>{d.product}</strong>
+                            <p style={{ margin: "2px 0 0", color: "#475569" }}>
+                              {d.orderId} • {d.address}
+                            </p>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedDeliveryId((prev) => (prev === d.id ? null : d.id))}
+                              style={{ ...secondaryBtn, padding: "8px 12px" }}
+                            >
+                              {expandedDeliveryId === d.id ? "Hide details" : "View details"}
+                            </button>
+                            <div style={{ display: "grid", gap: 6, minWidth: 180 }}>
+                              <button
+                                type="button"
+                                onClick={() => handleInlineStatusClick(d)}
+                                style={{
+                                  border: "1px solid #e5e7eb",
+                                  background: "#f8fafc",
+                                  color: "#0f172a",
+                                  padding: "8px 12px",
+                                  borderRadius: 10,
+                                  fontWeight: 800,
+                                  cursor: "pointer",
+                                }}
+                                title="Statusa tıkla ve güncelle"
+                              >
+                                {d.status}
+                              </button>
+                              {deliveryStatusPicker === d.id && (
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                  {DELIVERY_STATUSES.map((status) => {
+                                    const label = DELIVERY_FILTERS.find((f) => f.id === status)?.label || status;
+                                    return (
+                                      <button
+                                        key={status}
+                                        type="button"
+                                        onClick={() => handleSelectStatusOption(d, status)}
+                                        style={{
+                                          ...secondaryBtn,
+                                          padding: "6px 8px",
+                                          flex: "1 1 120px",
+                                          borderColor: "#e5e7eb",
+                                          background: "#fff",
+                                        }}
+                                      >
+                                        {label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
-                          )}
+                          </div>
                         </div>
+                        {expandedDeliveryId === d.id && (() => {
+                          const order = getOrderByDeliveryId(d.id);
+                          const items = Array.isArray(order?.items) ? order.items : [];
+                          const orderTotal = Number(order?.total || 0);
+                          return (
+                            <div
+                              style={{
+                                borderTop: "1px solid #e5e7eb",
+                                paddingTop: 10,
+                                display: "grid",
+                                gap: 10,
+                              }}
+                            >
+                              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", color: "#475569" }}>
+                                <span><strong>Shipping:</strong> {order?.shippingCompany || "SUExpress"}</span>
+                                <span><strong>Address:</strong> {order?.address || d.address}</span>
+                              </div>
+                              <div style={{ display: "grid", gap: 8 }}>
+                                {items.length === 0 ? (
+                                  <p style={{ margin: 0, color: "#94a3b8" }}>No item details available.</p>
+                                ) : (
+                                  items.map((item) => {
+                                    const qty = Number(item.qty ?? item.quantity ?? 1);
+                                    const price = Number(item.price || 0);
+                                    const lineTotal = price * qty;
+                                    return (
+                                      <div
+                                        key={item.id}
+                                        style={{
+                                          display: "flex",
+                                          justifyContent: "space-between",
+                                          alignItems: "center",
+                                          flexWrap: "wrap",
+                                          gap: 8,
+                                          border: "1px solid #e5e7eb",
+                                          borderRadius: 10,
+                                          padding: "8px 10px",
+                                          background: "white",
+                                        }}
+                                      >
+                                        <div>
+                                          <strong>{item.name || "Item"}</strong>
+                                          <p style={{ margin: "2px 0 0", color: "#475569" }}>
+                                            Qty: {qty}
+                                          </p>
+                                        </div>
+                                        <div style={{ textAlign: "right" }}>
+                                          <p style={{ margin: 0, fontWeight: 700 }}>₺{price.toLocaleString("tr-TR")}</p>
+                                          <small style={{ color: "#475569" }}>Line: ₺{lineTotal.toLocaleString("tr-TR")}</small>
+                                        </div>
+                                      </div>
+                                    );
+                                  })
+                                )}
+                              </div>
+                              <div style={{ textAlign: "right", fontWeight: 800, color: "#0f172a" }}>
+                                Order total: ₺{orderTotal.toLocaleString("tr-TR")}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     ))}
                     {canLoadMoreDeliveries && (
