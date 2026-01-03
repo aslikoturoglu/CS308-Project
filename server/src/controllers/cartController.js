@@ -100,9 +100,31 @@ export function addToCart(req, res) {
 
   // 1) Ürünü ve fiyatını bul
   const findProductSql = `
-    SELECT product_price, product_stock, product_name
-    FROM products
-    WHERE product_id = ?
+    SELECT
+      p.product_price,
+      p.product_stock,
+      p.product_name,
+      COALESCE(disc.discount_amount, 0) AS discount_amount,
+      GREATEST(p.product_price - COALESCE(disc.discount_amount, 0), 0) AS discounted_price
+    FROM products p
+    LEFT JOIN (
+      SELECT 
+        dp.product_id,
+        MAX(
+          CASE d.type
+            WHEN 'rate' THEN p2.product_price * d.value / 100
+            WHEN 'amount' THEN d.value
+            ELSE 0
+          END
+        ) AS discount_amount
+      FROM discount_products dp
+      JOIN discounts d ON d.discount_id = dp.discount_id
+      JOIN products p2 ON p2.product_id = dp.product_id
+      WHERE d.status = 'active'
+        AND NOW() BETWEEN d.start_at AND d.end_at
+      GROUP BY dp.product_id
+    ) disc ON disc.product_id = p.product_id
+    WHERE p.product_id = ?
  `;
 
   db.query(findProductSql, [product_id], (err, rows) => {
@@ -116,7 +138,9 @@ export function addToCart(req, res) {
     }
 
     const product = rows[0];
-    const price = Number(product.product_price);
+    const price = Number(
+      product.discounted_price ?? product.product_price ?? 0
+    );
     const stock = Number(product.product_stock);
 
     if (stock < quantity) {
@@ -211,8 +235,31 @@ export function syncCart(req, res) {
           }
 
           // Her ürün için fiyatı products tablosundan al
-          const productSql =
-            "SELECT product_price FROM products WHERE product_id = ?";
+          const productSql = `
+            SELECT
+              p.product_price,
+              COALESCE(disc.discount_amount, 0) AS discount_amount,
+              GREATEST(p.product_price - COALESCE(disc.discount_amount, 0), 0) AS discounted_price
+            FROM products p
+            LEFT JOIN (
+              SELECT 
+                dp.product_id,
+                MAX(
+                  CASE d.type
+                    WHEN 'rate' THEN p2.product_price * d.value / 100
+                    WHEN 'amount' THEN d.value
+                    ELSE 0
+                  END
+                ) AS discount_amount
+              FROM discount_products dp
+              JOIN discounts d ON d.discount_id = dp.discount_id
+              JOIN products p2 ON p2.product_id = dp.product_id
+              WHERE d.status = 'active'
+                AND NOW() BETWEEN d.start_at AND d.end_at
+              GROUP BY dp.product_id
+            ) disc ON disc.product_id = p.product_id
+            WHERE p.product_id = ?
+          `;
 
           db.query(productSql, [product_id], (errP, rowsP) => {
             if (errP || rowsP.length === 0) {
@@ -227,7 +274,9 @@ export function syncCart(req, res) {
               return;
             }
 
-            const price = Number(rowsP[0].product_price);
+            const price = Number(
+              rowsP[0].discounted_price ?? rowsP[0].product_price ?? 0
+            );
 
             const insertSql = `
               INSERT INTO cart_items (cart_id, product_id, quantity, unit_price)
