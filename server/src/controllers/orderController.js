@@ -1,6 +1,62 @@
 // server/src/controllers/orderController.js
 import db from "../db.js";
 import { sendInvoiceEmailForOrder } from "./invoiceController.js";
+import { sendMail } from "../utils/mailer.js";
+
+function sendOrderStatusEmail({ orderId, status }) {
+  const orderSql = `
+    SELECT o.order_id, o.total_amount, u.email, u.full_name
+    FROM orders o
+    LEFT JOIN users u ON u.user_id = o.user_id
+    WHERE o.order_id = ?
+    LIMIT 1
+  `;
+
+  const itemsSql = `
+    SELECT SUM(oi.quantity * oi.unit_price) AS total
+    FROM order_items oi
+    WHERE oi.order_id = ?
+  `;
+
+  db.query(orderSql, [orderId], (orderErr, orderRows) => {
+    if (orderErr || !orderRows?.length) {
+      console.error("Order email lookup failed:", orderErr);
+      return;
+    }
+
+    const order = orderRows[0];
+    if (!order.email) {
+      console.warn("Order email missing; skipping status email.");
+      return;
+    }
+
+    db.query(itemsSql, [orderId], (itemsErr, itemsRows) => {
+      if (itemsErr) {
+        console.error("Order items sum failed:", itemsErr);
+      }
+
+      const itemTotal = Number(itemsRows?.[0]?.total);
+      const total = Number.isFinite(itemTotal) && itemTotal > 0
+        ? itemTotal
+        : Number(order.total_amount) || 0;
+      const formattedTotal = total.toFixed(2);
+      const normalizedStatus = status === "refunded" ? "Refunded" : "Cancelled";
+      const subject = `SUHOME order ${normalizedStatus.toLowerCase()} - #${order.order_id}`;
+      const text = [
+        `Hello ${order.full_name || "Customer"},`,
+        "",
+        `Your order #${order.order_id} has been ${normalizedStatus.toLowerCase()}.`,
+        `Refund amount: ${formattedTotal} TL`,
+        "",
+        "Thank you for shopping with SUHOME."
+      ].join("\n");
+
+      sendMail({ to: order.email, subject, text }).catch((err) => {
+        console.error("Order status email failed:", err);
+      });
+    });
+  });
+}
 
 /**
  * POST /orders/checkout
@@ -497,6 +553,7 @@ export function cancelOrder(req, res) {
               [orderId],
               () => {
                 res.json({ success: true, order_id: orderId });
+                sendOrderStatusEmail({ orderId, status: "cancelled" });
               }
             );
           }
@@ -552,6 +609,7 @@ export function refundOrder(req, res) {
           [orderId],
           () => {
             res.json({ success: true, order_id: orderId });
+            sendOrderStatusEmail({ orderId, status: "refunded" });
           }
         );
       });

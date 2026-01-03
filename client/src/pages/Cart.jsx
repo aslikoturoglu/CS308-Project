@@ -2,7 +2,6 @@ import { Link, useNavigate } from "react-router-dom";
 import CartItem from "../components/cart/CartItem";
 import CartSummary from "../components/cart/CartSummary";
 import { useCart } from "../context/CartContext";
-import { updateStock } from "../services/api.js"; // products/:id/stock endpoint
 
 function Cart() {
   const navigate = useNavigate();
@@ -18,15 +17,8 @@ function Cart() {
       return;
     }
 
-    try {
-      // stoktan 1 düş
-      await updateStock(id, -1);
-      // cart'ta quantity +1
-      increment(id);
-    } catch (err) {
-      console.error("Increase failed:", err);
-      alert("Not enough stock or stock update failed.");
-    }
+    // cart'ta quantity +1
+    increment(id);
   };
 
   const handleDecrease = async (id) => {
@@ -35,41 +27,19 @@ function Cart() {
 
     // quantity 1 ise, azaltmak yerine tamamen silip stoğa iade
     if (item.quantity <= 1) {
-      try {
-        await updateStock(id, item.quantity); // sepetteki miktarı stoğa geri ekle (1)
-        removeItem(id);
-      } catch (err) {
-        console.error("Remove failed:", err);
-        alert("Stock update failed.");
-      }
+      removeItem(id);
       return;
     }
 
-    try {
-      // stok +1 (iade)
-      await updateStock(id, +1);
-      // cart'ta quantity -1
-      decrement(id);
-    } catch (err) {
-      console.error("Decrease failed:", err);
-      alert("Stock update failed.");
-    }
+    // cart'ta quantity -1
+    decrement(id);
   };
 
   const handleRemove = async (id) => {
     const item = items.find((p) => p.id === id);
     if (!item) return;
 
-    try {
-      // ürün cart'tan tamamen silinirken tüm adetleri stoğa geri ekle
-      if (item.quantity > 0) {
-        await updateStock(id, item.quantity);
-      }
-      removeItem(id);
-    } catch (err) {
-      console.error("Full remove failed:", err);
-      alert("Stock update failed.");
-    }
+    removeItem(id);
   };
 
   const shipping = items.length === 0 ? 0 : 89;
