@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+import { useTheme } from "../context/ThemeContext";
 import { fetchProductsWithMeta } from "../services/productService";
 import {
   fetchSupportInbox,
@@ -33,6 +34,7 @@ const rolesToSections = {
 function AdminDashboard() {
   const { user } = useAuth();
   const { addToast } = useToast();
+  const { isDark } = useTheme();
   const [activeSection, setActiveSection] = useState("dashboard");
   const [products, setProducts] = useState([]);
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
@@ -490,7 +492,7 @@ function AdminDashboard() {
   return (
     <div
       style={{
-        background: "#f3f4f6",
+        background: isDark ? "#0b0f14" : "#f3f4f6",
         minHeight: "calc(100vh - 160px)",
         padding: "28px 16px 72px",
         boxSizing: "border-box",

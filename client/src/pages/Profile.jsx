@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { updateUserProfile } from "../services/userService";
 import { cancelOrder, fetchUserOrders, formatOrderId, getOrders, refundOrder } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
@@ -10,6 +11,7 @@ import { useTheme } from "../context/ThemeContext";
 function Profile() {
   const { user, updateUser } = useAuth();
   const { isDark, toggleTheme } = useTheme();
+  const { addToast } = useToast();
 
   // Product managers should stay on the admin dashboard
   if (user?.role === "product_manager") {
@@ -152,15 +154,13 @@ const handleRefundOrder = async (orderId) => {
 
   const handleSave = async () => {
     if (!String(draft?.name || "").trim()) {
-      alert("Please enter your name.");
+      addToast("Please enter your name.", "error");
       return;
     }
     const next = {
       ...profile,
       ...draft,
     };
-    setProfile(next);
-    if (storageKey) saveProfile(storageKey, next);
     if (user?.id) {
       try {
         const nextAddress = typeof next.address === "string" ? next.address : "";
@@ -168,9 +168,27 @@ const handleRefundOrder = async (orderId) => {
         updateUser({ name: next.name, address: nextAddress });
       } catch (error) {
         console.error("Profile update failed", error);
-        alert("Profile update failed.");
+        addToast("Cannot save profile.", "error");
+        return;
       }
     }
+    setProfile(next);
+    if (storageKey) saveProfile(storageKey, next);
+    setEditing(false);
+    addToast("Profile saved.", "info");
+  };
+
+  const hasUnsavedChanges = useMemo(() => {
+    if (!editing) return false;
+    const draftName = String(draft?.name || "").trim();
+    const profileName = String(profile?.name || "").trim();
+    const draftAddress = String(draft?.address || "");
+    const profileAddress = String(profile?.address || "");
+    return draftName !== profileName || draftAddress !== profileAddress;
+  }, [draft, editing, profile]);
+
+  const handleCloseEditing = () => {
+    if (hasUnsavedChanges && !window.confirm("Close without saving changes?")) return;
     setEditing(false);
   };
 
@@ -515,7 +533,7 @@ const handleRefundOrder = async (orderId) => {
         </aside>
       </div>
 
-      <Modal open={editing} onClose={() => setEditing(false)} isDark={isDark}>
+      <Modal open={editing} onClose={handleCloseEditing} isDark={isDark}>
         <h3 style={{ marginTop: 0, color: isDark ? "#7dd3fc" : "#0f172a" }}>Edit profile</h3>
         <div style={{ display: "grid", gap: 10 }}>
           <label style={{ fontSize: "0.9rem", fontWeight: 700, color: isDark ? "#e2e8f0" : "#1f2937" }}>
@@ -553,21 +571,6 @@ const handleRefundOrder = async (orderId) => {
             />
           </label>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 6 }}>
-            <button
-              type="button"
-              onClick={() => setEditing(false)}
-              style={{
-                border: isDark ? "1px solid #1f2937" : "1px solid #cbd5e1",
-                background: isDark ? "#0b0f14" : "#ffffff",
-                color: isDark ? "#e2e8f0" : "#0f172a",
-                borderRadius: 10,
-                padding: "10px 14px",
-                cursor: "pointer",
-                fontWeight: 700,
-              }}
-            >
-              Cancel
-            </button>
             <button
               type="button"
               onClick={handleSave}
@@ -657,7 +660,5 @@ function Modal({ open, onClose, children, isDark }) {
     </div>
   );
 }
-
-
 
 
