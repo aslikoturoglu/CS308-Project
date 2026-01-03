@@ -126,12 +126,13 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
       return;
     }
 
-    const payload = {
-      ...formData,
-      cartTotal,
-      shippingFee,
-      grandTotal,
-    };
+  const payload = {
+    ...formData,
+    cartTotal,
+    shippingFee,
+    grandTotal,
+    shippingLabel: shippingOptions.find((option) => option.id === formData.shipping)?.label || "Standard Delivery",
+  };
 
     setInfo("Order created! Redirecting to payment confirmation.");
     if (typeof onSubmit === "function") {

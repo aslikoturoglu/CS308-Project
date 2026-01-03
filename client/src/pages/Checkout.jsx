@@ -123,10 +123,22 @@ function Checkout() {
       });
 
       clearCart();
-      alert("Your order has been placed!");
 
-      const invoiceId = encodeURIComponent(newOrder.id);
-      navigate(`/invoice/${invoiceId}`, { state: { orderId: newOrder.id } });
+      navigate("/payment-details", {
+        state: {
+          orderId: newOrder.id,
+          amount: payload.grandTotal ?? merchandiseTotal,
+          cardNumber: payload.cardNumber,
+          expiry: payload.expiry,
+          cardName: payload.cardName,
+          customerName: `${payload.firstName || ""} ${payload.lastName || ""}`.trim(),
+          items: normalizedItems,
+          shippingDetails,
+          shippingLabel: payload.shippingLabel,
+          shippingFee: payload.shippingFee,
+          createdAt: new Date().toISOString(),
+        },
+      });
     } catch (err) {
       console.error("Checkout error:", err);
       alert("An unexpected error occurred during checkout.");
@@ -211,7 +223,5 @@ function Row({ label, value, accent = false, bold = false }) {
 }
 
 export default Checkout;
-
-
 
 
