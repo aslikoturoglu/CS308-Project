@@ -1,9 +1,7 @@
 /*im the best in the world*/
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
-import { useTheme } from "../context/ThemeContext";
 import { fetchProductsWithMeta } from "../services/productService";
 import {
   fetchSupportInbox,
@@ -34,9 +32,7 @@ const rolesToSections = {
 
 function AdminDashboard() {
   const { user } = useAuth();
-  const { isDark } = useTheme();
   const { addToast } = useToast();
-  const { isDark } = useTheme();
   const [activeSection, setActiveSection] = useState("dashboard");
   const [products, setProducts] = useState([]);
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
@@ -54,6 +50,14 @@ function AdminDashboard() {
   const [isLoadingThread, setIsLoadingThread] = useState(false);
   const [isSendingReply, setIsSendingReply] = useState(false);
   const [filters, setFilters] = useState({ invoiceFrom: "", invoiceTo: "" });
+  const [invoices, setInvoices] = useState([]);
+  const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
+  const [reportFilters, setReportFilters] = useState({ from: "", to: "" });
+  const [reportData, setReportData] = useState({
+    totals: { revenue: 0, cost: 0, profit: 0 },
+    series: [],
+  });
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
   const [newProduct, setNewProduct] = useState({ name: "", price: "", stock: "", category: "" });
   const [discountForm, setDiscountForm] = useState({
     productId: "",
@@ -62,6 +66,7 @@ function AdminDashboard() {
     endAt: "",
   });
   const [priceUpdate, setPriceUpdate] = useState({ productId: "", price: "" });
+  const [costUpdate, setCostUpdate] = useState({ productId: "", cost: "" });
   const [deliveryUpdate, setDeliveryUpdate] = useState({ id: "", status: "" });
   const [isCompactLayout, setIsCompactLayout] = useState(false);
   const productListRef = useRef(null);
@@ -212,26 +217,26 @@ function AdminDashboard() {
     [products, showLowStockOnly]
   );
 
-  const invoiceList = useMemo(
-    () =>
-      orders.map((order) => ({
-        id: `#INV-${String(formatOrderId(order.id)).replace("#ORD-", "")}`,
-        orderId: formatOrderId(order.id),
-        date: order.date,
-        total: Number(order.total) || 0,
-      })),
-    [orders]
-  );
-
-  const revenueSeries = useMemo(() => {
-    const buckets = new Map();
-    orders.forEach((order) => {
-      const label = order.date || "Unknown";
-      const val = Number(order.total) || 0;
-      buckets.set(label, (buckets.get(label) || 0) + val);
+  const filteredInvoices = useMemo(() => {
+    if (!filters.invoiceFrom && !filters.invoiceTo) return invoices;
+    const from = filters.invoiceFrom ? Date.parse(filters.invoiceFrom) : -Infinity;
+    const to = filters.invoiceTo ? Date.parse(filters.invoiceTo) : Infinity;
+    return invoices.filter((inv) => {
+      const ts = Date.parse(inv.issued_at || inv.date || "");
+      return Number.isFinite(ts) ? ts >= from && ts <= to : false;
     });
-    return Array.from(buckets.entries()).map(([label, value]) => ({ label, value }));
-  }, [orders]);
+  }, [filters.invoiceFrom, filters.invoiceTo, invoices]);
+
+  const reportBreakdown = useMemo(() => {
+    const revenue = Number(reportData.totals?.revenue || 0);
+    const cost = Number(reportData.totals?.cost || 0);
+    const profit = Number(reportData.totals?.profit || 0);
+    const netProfit = profit > 0 ? profit : 0;
+    const loss = profit < 0 ? Math.abs(profit) : 0;
+    const total = cost + netProfit + loss;
+    const safeTotal = total > 0 ? total : 1;
+    return { revenue, cost, profit, netProfit, loss, total, safeTotal };
+  }, [reportData.totals]);
 
   const groupedOrders = useMemo(() => {
     const groups = {
@@ -305,6 +310,31 @@ function AdminDashboard() {
     }
   };
 
+  const handleCostUpdate = async () => {
+    if (!costUpdate.productId || costUpdate.cost === "") {
+      addToast("Select product and cost", "error");
+      return;
+    }
+    try {
+      const body = new URLSearchParams();
+      body.set("cost", costUpdate.cost);
+      const res = await fetch(`/api/sales/products/${costUpdate.productId}/cost`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Cost update failed");
+      }
+      addToast("Cost updated", "info");
+    } catch (error) {
+      console.error("Cost update failed:", error);
+      addToast(error.message || "Cost update failed", "error");
+    }
+  };
+
+
   const handleDiscount = async () => {
     if (!discountForm.productId) {
       addToast("Select product", "error");
@@ -337,6 +367,85 @@ function AdminDashboard() {
       console.error("Discount apply failed:", error);
       addToast(error.message || "Discount apply failed", "error");
     }
+  };
+  const handleLoadInvoices = async () => {
+    if (!filters.invoiceFrom || !filters.invoiceTo) {
+      addToast("Select invoice date range", "error");
+      return;
+    }
+    setIsLoadingInvoices(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("from", filters.invoiceFrom);
+      params.set("to", filters.invoiceTo);
+      const res = await fetch(`/api/sales/invoices?${params.toString()}`);
+      const data = await res.json().catch(() => []);
+      if (!res.ok) {
+        throw new Error(data?.error || "Invoices could not be loaded");
+      }
+      setInvoices(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Invoice load failed:", error);
+      setInvoices([]);
+      addToast(error.message || "Invoices could not be loaded", "error");
+    } finally {
+      setIsLoadingInvoices(false);
+    }
+  };
+
+  const handleLoadReport = async () => {
+    if (!reportFilters.from || !reportFilters.to) {
+      addToast("Select report date range", "error");
+      return;
+    }
+    setIsLoadingReport(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("from", reportFilters.from);
+      params.set("to", reportFilters.to);
+      const res = await fetch(`/api/sales/reports/profit?${params.toString()}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Report could not be loaded");
+      }
+      setReportData({
+        totals: data?.totals || { revenue: 0, cost: 0, profit: 0 },
+        series: Array.isArray(data?.series) ? data.series : [],
+      });
+    } catch (error) {
+      console.error("Report load failed:", error);
+      setReportData({ totals: { revenue: 0, cost: 0, profit: 0 }, series: [] });
+      addToast(error.message || "Report could not be loaded", "error");
+    } finally {
+      setIsLoadingReport(false);
+    }
+  };
+
+  const buildInvoiceUrl = (orderId) => `/api/orders/${encodeURIComponent(orderId)}/invoice`;
+
+  const handleViewInvoice = (orderId) => {
+    window.open(buildInvoiceUrl(orderId), "_blank", "noopener,noreferrer");
+  };
+
+  const handlePrintInvoice = (orderId) => {
+    const win = window.open(buildInvoiceUrl(orderId), "_blank", "noopener,noreferrer");
+    if (!win) {
+      addToast("Popup blocked", "error");
+      return;
+    }
+    win.addEventListener("load", () => {
+      win.focus();
+      win.print();
+    });
+  };
+
+  const handleDownloadInvoice = (orderId) => {
+    const link = document.createElement("a");
+    link.href = buildInvoiceUrl(orderId);
+    link.download = `invoice_${orderId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   };
 
   const handleDeliveryStatus = async () => {
@@ -494,7 +603,7 @@ function AdminDashboard() {
   return (
     <div
       style={{
-        background: isDark ? "#0b0f14" : "#f3f4f6",
+        background: "#f3f4f6",
         minHeight: "calc(100vh - 160px)",
         padding: "28px 16px 72px",
         boxSizing: "border-box",
@@ -513,7 +622,7 @@ function AdminDashboard() {
       >
         <aside
           style={{
-            background: isDark ? "#0f172a" : "white",
+            background: "white",
             borderRadius: 14,
             padding: 16,
             boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
@@ -523,7 +632,7 @@ function AdminDashboard() {
             minWidth: 220,
           }}
         >
-          <h3 style={{ margin: "0 0 8px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Admin Panel</h3>
+          <h3 style={{ margin: "0 0 8px", color: "#0f172a" }}>Admin Panel</h3>
           {sections.map((s) => (
             <button
               key={s.id}
@@ -531,9 +640,9 @@ function AdminDashboard() {
               onClick={() => setActiveSection(s.id)}
               style={{
                 textAlign: "left",
-                border: isDark ? "1px solid #1f2a44" : "1px solid #e5e7eb",
-                background: activeSection === s.id ? "#0058a3" : isDark ? "#0b1220" : "white",
-                color: activeSection === s.id ? "white" : isDark ? "#e2e8f0" : "#0f172a",
+                border: "1px solid #e5e7eb",
+                background: activeSection === s.id ? "#0058a3" : "white",
+                color: activeSection === s.id ? "white" : "#0f172a",
                 padding: "10px 12px",
                 borderRadius: 10,
                 cursor: "pointer",
@@ -557,7 +666,7 @@ function AdminDashboard() {
           {activeSection !== "support" && (
             <header
               style={{
-                background: isDark ? "#0f172a" : "white",
+                background: "white",
                 borderRadius: 16,
                 padding: 18,
                 boxShadow: "0 18px 40px rgba(0,0,0,0.06)",
@@ -567,14 +676,14 @@ function AdminDashboard() {
               }}
             >
               <div>
-                <p style={{ margin: "0 0 6px", color: isDark ? "#a3b3c6" : "#6b7280", fontWeight: 700 }}>
+                <p style={{ margin: "0 0 6px", color: "#6b7280", fontWeight: 700 }}>
                   Admin workspace / {activeSection}
                 </p>
-                <h1 style={{ margin: 0, color: isDark ? "#e2e8f0" : "#0f172a" }}>Dashboard</h1>
-                <p style={{ margin: "6px 0 0", color: isDark ? "#a3b3c6" : "#475569" }}>Role: {user?.role || "customer"}</p>
+                <h1 style={{ margin: 0, color: "#0f172a" }}>Dashboard</h1>
+                <p style={{ margin: "6px 0 0", color: "#475569" }}>Role: {user?.role || "customer"}</p>
               </div>
               <div style={{ textAlign: "right" }}>
-                <p style={{ margin: 0, color: isDark ? "#a3b3c6" : "#6b7280" }}>Today&apos;s revenue</p>
+                <p style={{ margin: 0, color: "#6b7280" }}>Today&apos;s revenue</p>
                 <strong style={{ fontSize: "1.4rem", color: "#0058a3" }}>
                   ₺{totals.revenue.toLocaleString("tr-TR")}
                 </strong>
@@ -604,16 +713,16 @@ function AdminDashboard() {
                 <div
                   key={card.label}
                   style={{
-                    background: isDark ? "#0f172a" : "white",
+                    background: "white",
                     borderRadius: 14,
                     padding: 16,
                     boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
                     borderLeft: `6px solid ${card.tone}`,
                   }}
                 >
-                  <p style={{ margin: "0 0 6px", color: isDark ? "#a3b3c6" : "#6b7280", fontWeight: 700 }}>{card.label}</p>
+                  <p style={{ margin: "0 0 6px", color: "#6b7280", fontWeight: 700 }}>{card.label}</p>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <span style={{ fontSize: "1.5rem", fontWeight: 800, color: isDark ? "#e2e8f0" : "#0f172a" }}>{card.value}</span>
+                    <span style={{ fontSize: "1.5rem", fontWeight: 800, color: "#0f172a" }}>{card.value}</span>
                     <span style={{ color: card.tone, fontWeight: 700, fontSize: "0.95rem" }}>{card.change}</span>
                   </div>
                 </div>
@@ -625,7 +734,7 @@ function AdminDashboard() {
             <section style={{ display: "grid", gap: 18 }}>
               <div
                 style={{
-                  background: isDark ? "#0f172a" : "white",
+                  background: "white",
                   borderRadius: 14,
                   padding: 18,
                   boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
@@ -633,7 +742,7 @@ function AdminDashboard() {
                   gap: 12,
                 }}
               >
-                <h3 style={{ margin: "0 0 10px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Product Manager Panel</h3>
+                <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Product Manager Panel</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
                   <input
                     placeholder="Name"
@@ -669,7 +778,7 @@ function AdminDashboard() {
 
               <div
                 style={{
-                  background: isDark ? "#0f172a" : "white",
+                  background: "white",
                   borderRadius: 14,
               padding: 18,
               boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
@@ -679,7 +788,7 @@ function AdminDashboard() {
             ref={productListRef}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-              <h4 style={{ margin: 0, color: isDark ? "#e2e8f0" : "#0f172a" }}>Product list</h4>
+              <h4 style={{ margin: 0 }}>Product list</h4>
               {showLowStockOnly ? (
                 <button type="button" style={linkBtn} onClick={() => setShowLowStockOnly(false)}>
                   Clear low-stock filter
@@ -690,38 +799,25 @@ function AdminDashboard() {
                 </button>
               )}
             </div>
-            <div
-              style={{
-                maxHeight: 320,
-                overflow: "auto",
-                border: isDark ? "1px solid #1f2a44" : "1px solid #e5e7eb",
-                borderRadius: 12,
-              }}
-            >
+            <div style={{ maxHeight: 320, overflow: "auto", border: "1px solid #e5e7eb", borderRadius: 12 }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.95rem" }}>
                 <thead>
-                  <tr
-                    style={{
-                      background: isDark ? "#0b1220" : "#f8fafc",
-                      textAlign: "left",
-                      color: isDark ? "#e2e8f0" : "#0f172a",
-                    }}
-                  >
-                    <th style={{ ...th, borderBottom: isDark ? "1px solid #1f2a44" : th.borderBottom }}>Name</th>
-                    <th style={{ ...th, borderBottom: isDark ? "1px solid #1f2a44" : th.borderBottom }}>Price</th>
-                    <th style={{ ...th, borderBottom: isDark ? "1px solid #1f2a44" : th.borderBottom }}>Stock</th>
-                    <th style={{ ...th, borderBottom: isDark ? "1px solid #1f2a44" : th.borderBottom }}>Category</th>
-                    <th style={{ ...th, borderBottom: isDark ? "1px solid #1f2a44" : th.borderBottom }}>Actions</th>
+                  <tr style={{ background: "#f8fafc", textAlign: "left" }}>
+                    <th style={th}>Name</th>
+                        <th style={th}>Price</th>
+                        <th style={th}>Stock</th>
+                    <th style={th}>Category</th>
+                    <th style={th}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {visibleProducts.map((p) => (
-                    <tr key={p.id} style={{ borderBottom: isDark ? "1px solid #1f2a44" : "1px solid #e5e7eb" }}>
-                      <td style={{ ...td, color: isDark ? "#e2e8f0" : "#0f172a" }}>{p.name}</td>
-                      <td style={{ ...td, color: isDark ? "#e2e8f0" : "#0f172a" }}>₺{p.price.toLocaleString("tr-TR")}</td>
-                      <td style={{ ...td, color: isDark ? "#e2e8f0" : "#0f172a" }}>{p.availableStock}</td>
-                      <td style={{ ...td, color: isDark ? "#e2e8f0" : "#0f172a" }}>{p.category || "General"}</td>
-                      <td style={{ ...td, color: isDark ? "#e2e8f0" : "#0f172a" }}>
+                    <tr key={p.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                      <td style={td}>{p.name}</td>
+                          <td style={td}>₺{p.price.toLocaleString("tr-TR")}</td>
+                          <td style={td}>{p.availableStock}</td>
+                          <td style={td}>{p.category || "General"}</td>
+                          <td style={td}>
                             <button type="button" style={linkBtn} onClick={() => addToast("Edit (local only)", "info")}>
                               Edit
                             </button>
@@ -742,7 +838,7 @@ function AdminDashboard() {
 
               <div
                 style={{
-                  background: isDark ? "#0f172a" : "white",
+                  background: "white",
                   borderRadius: 14,
                   padding: 18,
                   boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
@@ -752,7 +848,7 @@ function AdminDashboard() {
               >
                 <h4 style={{ margin: 0 }}>Review approvals</h4>
                 {pendingReviews.length === 0 ? (
-                  <p style={{ margin: 0, color: isDark ? "#a3b3c6" : "#6b7280" }}>No pending reviews.</p>
+                  <p style={{ margin: 0, color: "#6b7280" }}>No pending reviews.</p>
                 ) : (
                   <div style={{ display: "grid", gap: 8 }}>
                     {pendingReviews.map((rev) => {
@@ -769,12 +865,12 @@ function AdminDashboard() {
                             padding: 10,
                             display: "grid",
                             gap: 6,
-                            background: isDark ? "#0b1220" : "#f8fafc",
+                            background: "#f8fafc",
                           }}
                         >
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <div>
-                              <p style={{ margin: 0, fontWeight: 700, color: isDark ? "#e2e8f0" : "#0f172a" }}>{productName}</p>
+                              <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>{productName}</p>
                               <small style={{ color: "#64748b" }}>{rev.user_name || "User"}</small>
                             </div>
                             <div style={{ color: "#f59e0b", fontWeight: 800 }}>
@@ -782,7 +878,7 @@ function AdminDashboard() {
                               {"☆".repeat(Math.max(0, 5 - (Number(rev.rating) || 0)))}
                             </div>
                           </div>
-                          <p style={{ margin: 0, color: isDark ? "#e2e8f0" : "#0f172a" }}>{rev.comment_text}</p>
+                          <p style={{ margin: 0, color: "#0f172a" }}>{rev.comment_text}</p>
                           <div style={{ display: "flex", gap: 8 }}>
                             <button
                               type="button"
@@ -794,7 +890,7 @@ function AdminDashboard() {
                             <button
                               type="button"
                               onClick={() => handleRejectReview(rev.comment_id)}
-                              style={{ ...secondaryBtn(isDark), flex: 1 }}
+                              style={{ ...secondaryBtn, flex: 1 }}
                             >
                               Reject
                             </button>
@@ -808,13 +904,13 @@ function AdminDashboard() {
 
               <div
                 style={{
-                  background: isDark ? "#0f172a" : "white",
+                  background: "white",
                   borderRadius: 14,
                   padding: 18,
                   boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
                 }}
               >
-                <h4 style={{ margin: "0 0 10px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Delivery list</h4>
+                <h4 style={{ margin: "0 0 10px", color: "#0f172a" }}>Delivery list</h4>
                 {deliveries.length === 0 ? (
                   <p style={{ margin: 0, color: "#94a3b8" }}>No deliveries to display.</p>
                 ) : (
@@ -835,11 +931,11 @@ function AdminDashboard() {
                       >
                         <div>
                           <strong>{d.product}</strong>
-                          <p style={{ margin: "2px 0 0", color: isDark ? "#a3b3c6" : "#475569" }}>
+                          <p style={{ margin: "2px 0 0", color: "#475569" }}>
                             {d.orderId} • {d.address}
                           </p>
                         </div>
-                        <span style={{ fontWeight: 700, color: isDark ? "#e2e8f0" : "#0f172a" }}>{d.status}</span>
+                        <span style={{ fontWeight: 700, color: "#0f172a" }}>{d.status}</span>
                       </div>
                     ))}
                   </div>
@@ -877,8 +973,8 @@ function AdminDashboard() {
 
           {activeSection === "sales" && (
             <section style={{ display: "grid", gap: 18 }}>
-              <div style={{ background: isDark ? "#0f172a" : "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
-                <h3 style={{ margin: "0 0 10px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Orders (sales manager)</h3>
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
+                <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Orders (sales manager)</h3>
                 <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
                   {["Processing", "In-transit", "Delivered"].map((status) => {
                     const count = groupedOrders[status]?.length || 0;
@@ -925,7 +1021,6 @@ function AdminDashboard() {
                                 textAlign: "left",
                                 padding: "12px 10px",
                                 borderBottom: "1px solid #e5e7eb",
-                                color: isDark ? "#a3b3c6" : "#475569",
                                 fontWeight: 700,
                                 fontSize: "0.9rem",
                                 width: orderColumnWidths[index],
@@ -939,14 +1034,14 @@ function AdminDashboard() {
                       <tbody>
                         {ordersForActiveTab.map((order) => (
                           <tr key={order.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                            <td style={{ ...td, width: orderColumnWidths[0], fontWeight: 700, color: isDark ? "#e2e8f0" : "#0f172a" }}>{formatOrderId(order.id)}</td>
-                            <td style={{ ...td, width: orderColumnWidths[1], color: "#1f2937" }}>
+                            <td style={{ ...td, width: orderColumnWidths[0], fontWeight: 700 }}>{formatOrderId(order.id)}</td>
+                            <td style={{ ...td, width: orderColumnWidths[1] }}>
                               <div style={{ fontWeight: 700 }}>{order.customerName || "Customer"}</div>
-                              <div style={{ color: isDark ? "#a3b3c6" : "#6b7280", fontSize: "0.9rem" }}>{order.address}</div>
+                              <div style={{ fontSize: "0.9rem" }}>{order.address}</div>
                             </td>
-                            <td style={{ ...td, width: orderColumnWidths[2], color: "#334155" }}>{order.shippingCompany}</td>
-                            <td style={{ ...td, width: orderColumnWidths[3], fontWeight: 700, color: isDark ? "#e2e8f0" : "#0f172a" }}>₺{order.total?.toLocaleString("tr-TR")}</td>
-                            <td style={{ ...td, width: orderColumnWidths[4], color: order.status === "Delivered" ? "#22c55e" : "#0f172a", fontWeight: 700 }}>{order.status}</td>
+                            <td style={{ ...td, width: orderColumnWidths[2] }}>{order.shippingCompany}</td>
+                            <td style={{ ...td, width: orderColumnWidths[3], fontWeight: 700 }}>₺{order.total?.toLocaleString("tr-TR")}</td>
+                            <td style={{ ...td, width: orderColumnWidths[4], color: order.status === "Delivered" ? "#22c55e" : "inherit", fontWeight: 700 }}>{order.status}</td>
                             <td style={{ ...td, width: orderColumnWidths[5] }}>
                               {order.status === "Delivered" ? (
                                 <button type="button" style={{ ...primaryBtn, background: "#e5e7eb", color: "#9ca3af", border: "none", cursor: "not-allowed" }} disabled>
@@ -981,7 +1076,7 @@ function AdminDashboard() {
                           border: "1px solid #e5e7eb",
                           borderRadius: 12,
                           padding: 12,
-                          background: isDark ? "#0b1220" : "#f8fafc",
+                          background: "#f8fafc",
                           display: "grid",
                           gap: 8,
                         }}
@@ -995,11 +1090,11 @@ function AdminDashboard() {
                             gap: 8,
                           }}
                         >
-                          <strong style={{ color: isDark ? "#e2e8f0" : "#0f172a" }}>{formatOrderId(order.id)}</strong>
-                          <span style={{ fontWeight: 700, color: order.status === "Delivered" ? "#22c55e" : "#0f172a" }}>{order.status}</span>
+                          <strong>{formatOrderId(order.id)}</strong>
+                          <span style={{ fontWeight: 700, color: order.status === "Delivered" ? "#22c55e" : "inherit" }}>{order.status}</span>
                         </div>
-                        <div style={{ display: "grid", gap: 4, color: isDark ? "#a3b3c6" : "#475569", fontSize: "0.95rem" }}>
-                          <span style={{ fontWeight: 700, color: isDark ? "#e2e8f0" : "#0f172a" }}>{order.customerName || "Customer"}</span>
+                        <div style={{ display: "grid", gap: 4, fontSize: "0.95rem" }}>
+                          <span style={{ fontWeight: 700 }}>{order.customerName || "Customer"}</span>
                           <span>{order.address}</span>
                           <span>Shipping: {order.shippingCompany}</span>
                           <span>Total: ₺{order.total?.toLocaleString("tr-TR")}</span>
@@ -1024,8 +1119,8 @@ function AdminDashboard() {
                 )}
               </div>
 
-              <div style={{ background: isDark ? "#0f172a" : "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
-                <h3 style={{ margin: "0 0 10px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Price & Discount</h3>
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
+                <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Price & Discount</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
                   <select
                     value={priceUpdate.productId}
@@ -1048,6 +1143,31 @@ function AdminDashboard() {
                   />
                   <button type="button" onClick={handlePriceUpdate} style={primaryBtn}>
                     Update price
+                  </button>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12, marginTop: 12 }}>
+                  <select
+                    value={costUpdate.productId}
+                    onChange={(e) => setCostUpdate((p) => ({ ...p, productId: e.target.value }))}
+                    style={inputStyle}
+                  >
+                    <option value="">Select product</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    placeholder="Cost"
+                    value={costUpdate.cost}
+                    onChange={(e) => setCostUpdate((p) => ({ ...p, cost: e.target.value }))}
+                    style={inputStyle}
+                  />
+                  <button type="button" onClick={handleCostUpdate} style={primaryBtn}>
+                    Update cost
                   </button>
                 </div>
 
@@ -1089,8 +1209,8 @@ function AdminDashboard() {
                 </div>
               </div>
 
-              <div style={{ background: isDark ? "#0f172a" : "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
-                <h3 style={{ margin: "0 0 6px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Invoices (filter)</h3>
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
+                <h3 style={{ margin: "0 0 6px", color: "#0f172a" }}>Invoices (filter)</h3>
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                   <input
                     type="date"
@@ -1104,69 +1224,170 @@ function AdminDashboard() {
                     onChange={(e) => setFilters((f) => ({ ...f, invoiceTo: e.target.value }))}
                     style={inputStyle}
                   />
+                  <button type="button" onClick={handleLoadInvoices} style={primaryBtn} disabled={isLoadingInvoices}>
+                    {isLoadingInvoices ? "Loading..." : "Load invoices"}
+                  </button>
                 </div>
                 <div style={{ display: "grid", gap: 10, marginTop: 6 }}>
-                  {invoiceList
-                    .filter((inv) => {
-                      const ts = Date.parse(inv.date);
-                      const from = filters.invoiceFrom ? Date.parse(filters.invoiceFrom) : -Infinity;
-                      const to = filters.invoiceTo ? Date.parse(filters.invoiceTo) : Infinity;
-                      return ts >= from && ts <= to;
-                    })
-                    .map((inv) => (
-                      <div
-                        key={inv.id}
-                        style={{
-                          border: "1px solid #e5e7eb",
-                          borderRadius: 10,
-                          padding: 10,
-                          display: "flex",
-                          justifyContent: "space-between",
-                        }}
-                      >
-                        <span>
-                          {inv.id} / {inv.orderId}
+                  {filteredInvoices.map((inv) => (
+                    <div
+                      key={`${inv.invoice_id}-${inv.order_id}`}
+                      style={{
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 10,
+                        padding: 10,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <div style={{ display: "grid", gap: 4 }}>
+                        <span style={{ fontWeight: 700 }}>
+                          #INV-{String(inv.invoice_id).padStart(5, "0")} / #ORD-{String(inv.order_id).padStart(5, "0")}
                         </span>
-                        <span>₺{inv.total.toLocaleString("tr-TR")}</span>
+                        <small style={{ color: "#64748b" }}>
+                          {inv.issued_at ? new Date(inv.issued_at).toLocaleDateString("tr-TR") : "-"}
+                        </small>
                       </div>
-                    ))}
-                  {invoiceList.length === 0 && <p style={{ margin: 0, color: "#94a3b8" }}>No invoices available.</p>}
-                </div>
-              </div>
-
-              <div style={{ background: isDark ? "#0f172a" : "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
-                <h3 style={{ margin: "0 0 10px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Revenue</h3>
-                <div
-                  style={{
-                    border: "1px solid #e5e7eb",
-                    borderRadius: 12,
-                    padding: 10,
-                    maxHeight: 220,
-                    overflowY: "auto",
-                    background: isDark ? "#0b1220" : "#f8fafc",
-                  }}
-                >
-                  {revenueSeries.length === 0 ? (
-                    <p style={{ margin: 0, color: "#94a3b8" }}>No revenue data yet.</p>
-                  ) : (
-                    <div style={{ display: "flex", gap: 8, alignItems: "flex-end", minHeight: 140 }}>
-                      {revenueSeries.map((bar) => (
-                        <div key={bar.label} style={{ textAlign: "center", flex: 1 }}>
-                          <div
-                            style={{
-                              height: `${Math.max(bar.value / 100, 1) * 10}px`,
-                              minHeight: 8,
-                              background: "linear-gradient(180deg, #3b82f6, #0ea5e9)",
-                              borderRadius: 8,
-                            }}
-                          />
-                          <small style={{ color: isDark ? "#a3b3c6" : "#475569", display: "block", marginTop: 6 }}>{bar.label}</small>
-                        </div>
-                      ))}
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <span style={{ fontWeight: 700 }}>₺{Number(inv.amount || 0).toLocaleString("tr-TR")}</span>
+                        <button type="button" style={linkBtn} onClick={() => handleViewInvoice(inv.order_id)}>
+                          View PDF
+                        </button>
+                        <button type="button" style={linkBtn} onClick={() => handlePrintInvoice(inv.order_id)}>
+                          Print
+                        </button>
+                        <button type="button" style={linkBtn} onClick={() => handleDownloadInvoice(inv.order_id)}>
+                          Download
+                        </button>
+                      </div>
                     </div>
+                  ))}
+                  {!filteredInvoices.length && !isLoadingInvoices && (
+                    <p style={{ margin: 0, color: "#94a3b8" }}>No invoices available.</p>
                   )}
                 </div>
               </div>
+
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                  <h3 style={{ margin: 0, color: "#0f172a" }}>Sales breakdown</h3>
+                  <button type="button" style={linkBtn} onClick={handleLoadReport} disabled={isLoadingReport}>
+                    {isLoadingReport ? "Loading..." : "Refresh report"}
+                  </button>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 1fr) minmax(220px, 1.2fr)", gap: 16, alignItems: "center" }}>
+                  <div style={{ display: "grid", placeItems: "center", gap: 8 }}>
+                    <div
+                      style={{
+                        width: 220,
+                        height: 220,
+                        borderRadius: "50%",
+                        background: `conic-gradient(#22c55e 0 ${((reportBreakdown.netProfit / reportBreakdown.safeTotal) * 100).toFixed(2)}%, #f97316 ${((reportBreakdown.netProfit / reportBreakdown.safeTotal) * 100).toFixed(2)}% ${(((reportBreakdown.netProfit + reportBreakdown.loss) / reportBreakdown.safeTotal) * 100).toFixed(2)}%, #6366f1 ${(((reportBreakdown.netProfit + reportBreakdown.loss) / reportBreakdown.safeTotal) * 100).toFixed(2)}% 100%)`,
+                        display: "grid",
+                        placeItems: "center",
+                      }}
+                    >
+                      <div style={{ width: 150, height: 150, borderRadius: "50%", background: "white", display: "grid", placeItems: "center", textAlign: "center", padding: 12 }}>
+                        <p style={{ margin: 0, color: "#64748b", fontWeight: 700 }}>Total sales</p>
+                        <strong style={{ fontSize: "1.3rem", color: "#0f172a" }}>
+                          ₺{reportBreakdown.revenue.toLocaleString("tr-TR")}
+                        </strong>
+                        <small style={{ color: "#94a3b8" }}>100%</small>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input
+                        type="date"
+                        value={reportFilters.from}
+                        onChange={(e) => setReportFilters((r) => ({ ...r, from: e.target.value }))}
+                        style={inputStyle}
+                      />
+                      <input
+                        type="date"
+                        value={reportFilters.to}
+                        onChange={(e) => setReportFilters((r) => ({ ...r, to: e.target.value }))}
+                        style={inputStyle}
+                      />
+                      <button type="button" onClick={handleLoadReport} style={primaryBtn} disabled={isLoadingReport}>
+                        {isLoadingReport ? "Loading..." : "Load"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gap: 10 }}>
+                    <div style={{ display: "grid", gap: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#22c55e" }} />
+                          Net profit
+                        </span>
+                        <strong>₺{reportBreakdown.netProfit.toLocaleString("tr-TR")}</strong>
+                        <span style={{ color: "#64748b" }}>{((reportBreakdown.netProfit / reportBreakdown.safeTotal) * 100).toFixed(1)}%</span>
+                      </div>
+                      {reportBreakdown.loss > 0 && (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#f97316" }} />
+                            Loss
+                          </span>
+                          <strong>₺{reportBreakdown.loss.toLocaleString("tr-TR")}</strong>
+                          <span style={{ color: "#64748b" }}>{((reportBreakdown.loss / reportBreakdown.safeTotal) * 100).toFixed(1)}%</span>
+                        </div>
+                      )}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#6366f1" }} />
+                          Cost
+                        </span>
+                        <strong>₺{reportBreakdown.cost.toLocaleString("tr-TR")}</strong>
+                        <span style={{ color: "#64748b" }}>{((reportBreakdown.cost / reportBreakdown.safeTotal) * 100).toFixed(1)}%</span>
+                      </div>
+                    </div>
+
+                    <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, background: "#f8fafc" }}>
+                      {reportData.series.length === 0 ? (
+                        <p style={{ margin: 0, color: "#94a3b8" }}>No report data yet.</p>
+                      ) : (
+                        <div style={{ display: "grid", gap: 10 }}>
+                          <div style={{ display: "flex", gap: 8, alignItems: "flex-end", minHeight: 160 }}>
+                            {reportData.series.map((bar) => {
+                              const maxRevenue =
+                                reportData.series.reduce((max, item) => Math.max(max, Number(item.revenue) || 0), 1) || 1;
+                              const revenueHeight = Math.max(((Number(bar.revenue) || 0) / maxRevenue) * 140, 6);
+                              const costHeight = Math.max(((Number(bar.cost) || 0) / (Number(bar.revenue) || 1)) * revenueHeight, 3);
+                              const profitHeight = Math.max(revenueHeight - costHeight, 3);
+                              return (
+                                <div key={bar.date} style={{ textAlign: "center", flex: 1, minWidth: 12 }}>
+                                  <div style={{ height: 140, display: "flex", alignItems: "flex-end" }}>
+                                    <div style={{ width: "100%", borderRadius: 8, overflow: "hidden", background: "#e2e8f0", height: revenueHeight }}>
+                                      <div style={{ height: costHeight, background: "#6366f1" }} />
+                                      <div style={{ height: profitHeight, background: "#22c55e" }} />
+                                    </div>
+                                  </div>
+                                  <small style={{ color: "#475569", display: "block", marginTop: 6 }}>{bar.date}</small>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div style={{ display: "flex", gap: 16, color: "#64748b", fontSize: "0.85rem" }}>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#22c55e" }} />
+                              Profit
+                            </span>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#6366f1" }} />
+                              Cost
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </section>
           )}
 
@@ -1180,9 +1401,9 @@ function AdminDashboard() {
                 minWidth: 0,
               }}
             >
-              <div style={{ background: isDark ? "#0f172a" : "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <h3 style={{ margin: "0 0 10px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Active chat queue</h3>
+                  <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Active chat queue</h3>
                   {isLoadingChats && <span style={{ color: "#0ea5e9", fontWeight: 700 }}>Syncing…</span>}
                 </div>
                 <div style={{ display: "grid", gap: 12 }}>
@@ -1209,7 +1430,7 @@ function AdminDashboard() {
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <div>
                             <strong>{chat.customer_name}</strong>
-                            <p style={{ margin: "2px 0 0", color: isDark ? "#a3b3c6" : "#475569" }}>
+                            <p style={{ margin: "2px 0 0", color: "#475569" }}>
                               {chat.order_id ? formatOrderId(chat.order_id) : "No order linked"}
                             </p>
                           </div>
@@ -1226,8 +1447,8 @@ function AdminDashboard() {
                             {chat.status}
                           </span>
                         </div>
-                        <p style={{ margin: 0, color: isDark ? "#e2e8f0" : "#0f172a" }}>{chat.last_message}</p>
-                        <small style={{ color: isDark ? "#a3b3c6" : "#6b7280" }}>
+                        <p style={{ margin: 0, color: "#0f172a" }}>{chat.last_message}</p>
+                        <small style={{ color: "#6b7280" }}>
                           Last update: {new Date(chat.last_message_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
                         </small>
                         <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
@@ -1238,7 +1459,7 @@ function AdminDashboard() {
                               padding: "6px 10px",
                               borderRadius: 8,
                               border: "1px solid #e5e7eb",
-                              background: isDark ? "#0f172a" : "white",
+                              background: "white",
                               cursor: "pointer",
                             }}
                           >
@@ -1281,7 +1502,7 @@ function AdminDashboard() {
                       >
                         ‹ Prev
                       </button>
-                      <span style={{ color: isDark ? "#a3b3c6" : "#475569", fontWeight: 600 }}>
+                      <span style={{ color: "#475569", fontWeight: 600 }}>
                         Page {chatPage} / {Math.max(1, Math.ceil(chats.length / CHAT_PAGE_SIZE))}
                       </span>
                       <button
@@ -1305,14 +1526,14 @@ function AdminDashboard() {
                     </div>
                   )}
                   {!chats.length && !isLoadingChats && (
-                    <p style={{ margin: 0, color: isDark ? "#a3b3c6" : "#6b7280" }}>No active chats yet.</p>
+                    <p style={{ margin: 0, color: "#6b7280" }}>No active chats yet.</p>
                   )}
                 </div>
               </div>
 
               <div
                 style={{
-                  background: isDark ? "#0f172a" : "white",
+                  background: "white",
                   borderRadius: 14,
                   padding: 18,
                   boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
@@ -1320,7 +1541,7 @@ function AdminDashboard() {
                   gap: 12,
                 }}
               >
-                <h3 style={{ margin: "0 0 8px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Conversation</h3>
+                <h3 style={{ margin: "0 0 8px", color: "#0f172a" }}>Conversation</h3>
                 {activeConversationId ? (
                   <>
                     <div
@@ -1378,10 +1599,10 @@ function AdminDashboard() {
                         </div>
                       ))}
                       {chatMessages.length === 0 && !isLoadingThread && (
-                        <p style={{ margin: 0, color: isDark ? "#a3b3c6" : "#6b7280" }}>No messages yet. Say hi to the customer.</p>
+                        <p style={{ margin: 0, color: "#6b7280" }}>No messages yet. Say hi to the customer.</p>
                       )}
                       {isLoadingThread && (
-                        <p style={{ margin: 0, color: isDark ? "#a3b3c6" : "#6b7280", fontSize: "0.9rem" }}>Refreshing…</p>
+                        <p style={{ margin: 0, color: "#6b7280", fontSize: "0.9rem" }}>Refreshing…</p>
                       )}
                     </div>
                     <div style={{ display: "grid", gap: 8 }}>
@@ -1395,7 +1616,7 @@ function AdminDashboard() {
                       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                         <label
                           style={{
-                            ...secondaryBtn(isDark),
+                            ...secondaryBtn,
                             margin: 0,
                             cursor: "pointer",
                             display: "inline-flex",
@@ -1420,7 +1641,7 @@ function AdminDashboard() {
                               <span
                                 key={file.name}
                                 style={{
-                                  ...secondaryBtn(isDark),
+                                  ...secondaryBtn,
                                   padding: "6px 10px",
                                   display: "inline-flex",
                                   alignItems: "center",
@@ -1462,7 +1683,7 @@ function AdminDashboard() {
                     </div>
                   </>
                 ) : (
-                  <p style={{ margin: 0, color: isDark ? "#a3b3c6" : "#6b7280" }}>Select a chat from the left to start messaging.</p>
+                  <p style={{ margin: 0, color: "#6b7280" }}>Select a chat from the left to start messaging.</p>
                 )}
               </div>
             </section>
@@ -1478,8 +1699,8 @@ function AdminDashboard() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <h3 style={{ margin: "0 0 6px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Operational reminders</h3>
-                <p style={{ margin: 0, color: isDark ? "#cbd5f5" : "#374151" }}>
+                <h3 style={{ margin: "0 0 6px", color: "#0f172a" }}>Operational reminders</h3>
+                <p style={{ margin: 0, color: "#374151" }}>
                   {totals.lowStock} products are low on stock. Prioritize restock before weekend campaigns.
                 </p>
               </div>
@@ -1512,15 +1733,15 @@ const primaryBtn = {
   cursor: "pointer",
 };
 
-const secondaryBtn = (isDark) => ({
-  border: isDark ? "1px solid #1f2a44" : "1px solid #e5e7eb",
-  background: isDark ? "#0b1220" : "#ffffff",
-  color: isDark ? "#e2e8f0" : "#0f172a",
+const secondaryBtn = {
+  border: "1px solid #e5e7eb",
+  background: "#ffffff",
+  color: "#0f172a",
   padding: "10px 12px",
   borderRadius: 10,
   fontWeight: 700,
   cursor: "pointer",
-});
+};
 
 const linkBtn = {
   border: "none",
@@ -1541,7 +1762,3 @@ const th = {
 const td = { padding: "10px 12px", whiteSpace: "normal", wordBreak: "break-word" };
 
 export default AdminDashboard;
-
-
-
-
