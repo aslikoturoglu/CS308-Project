@@ -79,6 +79,132 @@ body.theme-dark [style*="background-color: #f8fafc"] {
   color: #e5e7eb !important;
 }
 
+body.theme-dark .checkout-page {
+  background: radial-gradient(circle at 10% 20%, rgba(125, 211, 252, 0.08), transparent 30%),
+    radial-gradient(circle at 80% 0%, rgba(15, 23, 42, 0.25), transparent 32%),
+    #0b0f14;
+}
+
+body.theme-dark .checkout-header h1 {
+  color: #7dd3fc;
+}
+
+body.theme-dark .checkout-header p {
+  color: #a3b3c6;
+}
+
+body.theme-dark .checkout-back {
+  background: #0f172a;
+  border-color: #1f2937;
+  color: #7dd3fc;
+}
+
+body.theme-dark .checkout-card {
+  background: linear-gradient(145deg, #0f172a 0%, #0b1220 100%);
+  border-color: #1f2937;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+
+body.theme-dark .checkout-summary {
+  background: #0f172a;
+  border-color: #1f2937;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+  color: #e2e8f0;
+}
+
+body.theme-dark .summary-item {
+  background: #0b1220;
+  border-color: #1f2937;
+}
+
+body.theme-dark .summary-name,
+body.theme-dark .summary-price {
+  color: #e2e8f0;
+}
+
+body.theme-dark .summary-meta,
+body.theme-dark .summary-note {
+  color: #a3b3c6;
+}
+
+body.theme-dark .summary-totals {
+  border-top-color: #1f2937;
+}
+
+body.theme-dark .checkout-card,
+body.theme-dark .checkout-card label,
+body.theme-dark .checkout-card p {
+  color: #e2e8f0;
+}
+
+body.theme-dark .checkout-card label {
+  color: #cbd5e1;
+}
+
+body.theme-dark .checkout-card .summary-meta,
+body.theme-dark .checkout-card .summary-note {
+  color: #a3b3c6;
+}
+
+body.theme-dark .checkout-card input::placeholder,
+body.theme-dark .checkout-card textarea::placeholder {
+  color: #94a3b8;
+}
+
+body.theme-dark .checkout-card input,
+body.theme-dark .checkout-card textarea {
+  color: #0f172a !important;
+}
+
+body.theme-dark .checkout-card label,
+body.theme-dark .checkout-card label span {
+  color: #cbd5e1 !important;
+}
+
+body.theme-dark .checkout-card label div {
+  color: #a3b3c6 !important;
+}
+
+body.theme-dark .checkout-card p {
+  color: #a3b3c6 !important;
+}
+
+body.theme-dark .checkout-card h3 {
+  color: #7dd3fc !important;
+}
+
+body.theme-dark .checkout-card label span {
+  color: #e2e8f0 !important;
+}
+
+body.theme-dark .checkout-card label input {
+  accent-color: #38bdf8;
+}
+
+body.theme-dark .checkout-card .shipping-option {
+  color: #0f172a !important;
+}
+
+body.theme-dark .checkout-card .shipping-option span {
+  color: #0f172a !important;
+}
+
+body.theme-dark .checkout-card .shipping-option div {
+  color: #475569 !important;
+}
+
+body.theme-dark .checkout-pill {
+  background: #0b1220 !important;
+  color: #e2e8f0 !important;
+  border: 1px solid #1f2937 !important;
+}
+
+body.theme-dark .checkout-pill:disabled {
+  opacity: 0.6;
+  color: #94a3b8 !important;
+}
+
+
 body.theme-dark [style*="background: white"],
 body.theme-dark [style*="background: \"white\""],
 body.theme-dark [style*="background-color: white"],

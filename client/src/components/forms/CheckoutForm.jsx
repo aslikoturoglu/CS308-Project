@@ -254,6 +254,7 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
                 type="button"
                 onClick={handleProfileNameClick}
                 disabled={!hasProfileName}
+                className="checkout-pill"
                 style={{
                   alignSelf: "flex-start",
                   background: hasProfileName ? "#0f172a" : "#e2e8f0",
@@ -289,6 +290,7 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
                 type="button"
                 onClick={handleFavoriteAddressClick}
                 disabled={!hasFavoriteAddress}
+                className="checkout-pill"
                 style={{
                   alignSelf: "flex-start",
                   background: hasFavoriteAddress ? "#0f172a" : "#e2e8f0",
@@ -378,6 +380,7 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
             {shippingOptions.map((option) => (
               <label
                 key={option.id}
+                className="shipping-option"
                 style={{
                   flex: 1,
                   minWidth: 200,
