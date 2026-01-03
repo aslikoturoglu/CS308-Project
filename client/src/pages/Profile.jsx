@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { updateUserProfile } from "../services/userService";
-import { formatOrderId, getOrders, fetchUserOrders } from "../services/orderService";
+import { cancelOrder, fetchUserOrders, formatOrderId, getOrders, refundOrder } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
-import { cancelOrder } from "../services/orderService";
 import { useTheme } from "../context/ThemeContext";
 
 
@@ -65,6 +64,23 @@ const handleCancelOrder = async (orderId) => {
     );
   } catch (err) {
     alert(err?.message || "Only processing orders can be cancelled");
+  }
+};
+
+const handleRefundOrder = async (orderId) => {
+  if (!window.confirm("Request a refund for this delivered order?")) return;
+
+  try {
+    await refundOrder(orderId);
+    setOrders(prev =>
+      prev.map(o =>
+        o.id === orderId
+          ? { ...o, status: "Refunded" }
+          : o
+      )
+    );
+  } catch (err) {
+    alert(err?.message || "Refund failed.");
   }
 };
 
@@ -286,6 +302,11 @@ const handleCancelOrder = async (orderId) => {
                     color: "#15803d",
                     border: "#22c55e",
                   },
+                  Refunded: {
+                    bg: "rgba(15,118,110,0.15)",
+                    color: "#0f766e",
+                    border: "#5eead4",
+                  },
                   "In-transit": {
                     bg: "rgba(59,130,246,0.15)",
                     color: "#1d4ed8",
@@ -303,13 +324,14 @@ const handleCancelOrder = async (orderId) => {
                 return (
                   <article
                     key={formattedId}
-                  style={{
-                    border: isDark ? "1px solid #1f2937" : "1px solid #e5e7eb",
-                    borderRadius: 12,
-                    padding: 16,
-                    backgroundColor: isDark ? "#0b1220" : "transparent",
-                  }}
-                >
+                    style={{
+                      border: isDark ? "1px solid #1f2937" : "1px solid #e5e7eb",
+                      borderRadius: 12,
+                      padding: 16,
+                      backgroundColor: isDark ? "#0b1220" : "transparent",
+                    }}
+                  >
+
                   <div
                     style={{
                       display: "flex",
@@ -360,6 +382,22 @@ const handleCancelOrder = async (orderId) => {
         }}
       >
         Cancel
+      </button>
+    )}
+    {order.status?.toLowerCase().trim() === "delivered" && (
+      <button
+        onClick={() => handleRefundOrder(order.id)}
+        style={{
+          backgroundColor: "#e0f2fe",
+          color: "#0369a1",
+          border: "1px solid #bae6fd",
+          padding: "6px 12px",
+          borderRadius: 8,
+          cursor: "pointer",
+          fontWeight: 700,
+        }}
+      >
+        Refund
       </button>
     )}
   </div>
@@ -585,9 +623,8 @@ function Modal({ open, onClose, children, isDark }) {
         placeItems: "center",
         zIndex: 2000,
         padding: 16,
-                    backgroundColor: isDark ? "#0b1220" : "transparent",
-                  }}
-    >
+      }}>
+
       <div
         style={{
           background: isDark ? "#0f172a" : "white",
@@ -620,13 +657,6 @@ function Modal({ open, onClose, children, isDark }) {
     </div>
   );
 }
-
-
-
-
-
-
-
 
 
 

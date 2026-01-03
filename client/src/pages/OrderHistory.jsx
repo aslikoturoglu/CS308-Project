@@ -9,7 +9,7 @@ import { formatPrice } from "../utils/formatPrice";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 
-const timelineSteps = ["Processing", "In-transit", "Delivered", "Cancelled"];
+const timelineSteps = ["Processing", "In-transit", "Delivered", "Cancelled", "Refunded"];
 const filterOptions = ["All", ...timelineSteps];
 
 const statusPills = {
@@ -17,6 +17,7 @@ const statusPills = {
   "In-transit": { bg: "rgba(59,130,246,0.15)", color: "#1d4ed8", border: "#60a5fa" },
   Delivered: { bg: "rgba(34,197,94,0.15)", color: "#15803d", border: "#22c55e" },
   Cancelled: { bg: "rgba(248,113,113,0.18)", color: "#b91c1c", border: "#f87171" },
+  Refunded: { bg: "rgba(15,118,110,0.15)", color: "#0f766e", border: "#5eead4" },
 };
 
 function OrderHistory() {
@@ -76,7 +77,7 @@ function OrderHistory() {
     () => ({
       totalSpent: orders.reduce((sum, order) => sum + order.total, 0),
       delivered: orders.filter((order) => order.status === "Delivered").length,
-      active: orders.filter((order) => !["Delivered", "Cancelled"].includes(order.status)).length,
+      active: orders.filter((order) => !["Delivered", "Cancelled", "Refunded"].includes(order.status)).length,
     }),
     [orders]
   );

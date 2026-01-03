@@ -174,6 +174,25 @@ export async function cancelOrder(orderId) {
   return data;
 }
 
+export async function refundOrder(orderId) {
+  const numericId = Number(orderId);
+  if (!Number.isFinite(numericId)) {
+    throw new Error("Invalid order id");
+  }
+
+  const res = await fetch(
+    `${API_BASE}/api/orders/${numericId}/refund`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" }
+    }
+  );
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Refund failed");
+  return data;
+}
+
 
 
 
@@ -318,6 +337,7 @@ export function advanceOrderStatus(id, actor) {
 
 function backendToFrontendStatus(value) {
   const normalized = String(value || "").toLowerCase();
+  if (normalized === "refunded") return "Refunded";
   if (normalized === "cancelled") return "Cancelled";
   if (normalized.includes("transit") || normalized === "shipped" || normalized === "in_transit")
     return "In-transit";

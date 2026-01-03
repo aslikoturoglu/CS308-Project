@@ -1,6 +1,62 @@
 // server/src/controllers/orderController.js
 import db from "../db.js";
 import { sendInvoiceEmailForOrder } from "./invoiceController.js";
+import { sendMail } from "../utils/mailer.js";
+
+function sendOrderStatusEmail({ orderId, status }) {
+  const orderSql = `
+    SELECT o.order_id, o.total_amount, u.email, u.full_name
+    FROM orders o
+    LEFT JOIN users u ON u.user_id = o.user_id
+    WHERE o.order_id = ?
+    LIMIT 1
+  `;
+
+  const itemsSql = `
+    SELECT SUM(oi.quantity * oi.unit_price) AS total
+    FROM order_items oi
+    WHERE oi.order_id = ?
+  `;
+
+  db.query(orderSql, [orderId], (orderErr, orderRows) => {
+    if (orderErr || !orderRows?.length) {
+      console.error("Order email lookup failed:", orderErr);
+      return;
+    }
+
+    const order = orderRows[0];
+    if (!order.email) {
+      console.warn("Order email missing; skipping status email.");
+      return;
+    }
+
+    db.query(itemsSql, [orderId], (itemsErr, itemsRows) => {
+      if (itemsErr) {
+        console.error("Order items sum failed:", itemsErr);
+      }
+
+      const itemTotal = Number(itemsRows?.[0]?.total);
+      const total = Number.isFinite(itemTotal) && itemTotal > 0
+        ? itemTotal
+        : Number(order.total_amount) || 0;
+      const formattedTotal = total.toFixed(2);
+      const normalizedStatus = status === "refunded" ? "Refunded" : "Cancelled";
+      const subject = `SUHOME order ${normalizedStatus.toLowerCase()} - #${order.order_id}`;
+      const text = [
+        `Hello ${order.full_name || "Customer"},`,
+        "",
+        `Your order #${order.order_id} has been ${normalizedStatus.toLowerCase()}.`,
+        `Refund amount: ${formattedTotal} TL`,
+        "",
+        "Thank you for shopping with SUHOME."
+      ].join("\n");
+
+      sendMail({ to: order.email, subject, text }).catch((err) => {
+        console.error("Order status email failed:", err);
+      });
+    });
+  });
+}
 
 /**
  * POST /orders/checkout
@@ -9,10 +65,9 @@ import { sendInvoiceEmailForOrder } from "./invoiceController.js";
  * Basit versiyon: cart_items tablosundaki TÃœM kayÄ±tlarÄ± tek bir sipariÅŸ sayÄ±yoruz.
  */
 export function checkout(req, res) {
-  let { user_id, shipping_address, billing_address, items, email_notifications } = req.body;
+  let { user_id, shipping_address, billing_address, items } = req.body;
   const shippingAddressPayload = normalizeAddressPayload(shipping_address);
   const billingAddressPayload = normalizeAddressPayload(billing_address);
-  const emailNotificationsEnabled = email_notifications !== false;
 
   // ğŸ”¹ user_id gÃ¼venli hale getir (email vs gelirse 1'e dÃ¼ÅŸ)
   const safeUserId = Number(user_id);
@@ -124,12 +179,10 @@ export function checkout(req, res) {
                       console.error("Sepet temizlenemedi:", err);
                     }
 
-                    if (emailNotificationsEnabled) {
                     // Invoice email (fire-and-forget)
                     sendInvoiceEmailForOrder(order_id).catch((e) =>
                       console.error("Invoice email error:", e)
                     );
-                  }
 
                     return res.json({
                       success: true,
@@ -330,14 +383,15 @@ export function getAllOrders(req, res) {
   `;
 
   const normalizeStatus = (value) => {
-  const normalized = String(value || "").toLowerCase();
-  if (normalized === "cancelled") return "Cancelled";
-  if (normalized.includes("transit") || normalized === "shipped" || normalized === "in_transit") {
-    return "In-transit";
-  }
-  if (normalized === "delivered") return "Delivered";
-  return "Processing";
-};
+    const normalized = String(value || "").toLowerCase();
+    if (normalized === "refunded") return "Refunded";
+    if (normalized === "cancelled") return "Cancelled";
+    if (normalized.includes("transit") || normalized === "shipped" || normalized === "in_transit") {
+      return "In-transit";
+    }
+    if (normalized === "delivered") return "Delivered";
+    return "Processing";
+  };
 
 
   
@@ -449,7 +503,7 @@ export function updateDeliveryStatus(req, res) {
   });
 }
 export function cancelOrder(req, res) {
-  const orderId = Number(req.params.id); // ✅ BURASI
+  const orderId = Number(req.params.id);
 
   if (!Number.isFinite(orderId)) {
     return res.status(400).json({ error: "Invalid order id" });
@@ -473,14 +527,78 @@ export function cancelOrder(req, res) {
 
     const { order_status } = rows[0];
 
+    // 🔥 ASIL KURAL
     if (order_status !== "processing") {
       return res.status(400).json({
         error: "Only processing orders can be cancelled"
       });
     }
 
-    db.query("UPDATE orders SET status = 'cancelled' WHERE order_id = ?", [orderId], () => {
-      db.query("UPDATE deliveries SET delivery_status = 'cancelled' WHERE order_id = ?", [orderId], () => {
+    // orders → cancelled
+    db.query(
+      "UPDATE orders SET status = 'cancelled' WHERE order_id = ?",
+      [orderId],
+      () => {
+        db.query(
+          "UPDATE deliveries SET delivery_status = 'cancelled' WHERE order_id = ?",
+          [orderId],
+          () => {
+            db.query(
+              `
+              UPDATE products p
+              JOIN order_items oi ON oi.product_id = p.product_id
+              SET p.product_stock = p.product_stock + oi.quantity
+              WHERE oi.order_id = ?
+              `,
+              [orderId],
+              () => {
+                res.json({ success: true, order_id: orderId });
+                sendOrderStatusEmail({ orderId, status: "cancelled" });
+              }
+            );
+          }
+        );
+      }
+    );
+  });
+}
+
+export function refundOrder(req, res) {
+  const orderId = Number(req.params.id);
+
+  if (!Number.isFinite(orderId)) {
+    return res.status(400).json({ error: "Invalid order id" });
+  }
+
+  const checkSql = `
+    SELECT o.status AS order_status, d.delivery_status
+    FROM orders o
+    LEFT JOIN deliveries d ON d.order_id = o.order_id
+    WHERE o.order_id = ?
+  `;
+
+  db.query(checkSql, [orderId], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: "Refund check failed" });
+    }
+
+    if (!rows.length) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    const orderStatus = String(rows[0].order_status || "").toLowerCase();
+    const deliveryStatus = String(rows[0].delivery_status || "").toLowerCase();
+
+    if (orderStatus === "refunded" || deliveryStatus === "refunded") {
+      return res.status(400).json({ error: "Order already refunded" });
+    }
+
+    if (orderStatus !== "delivered" && deliveryStatus !== "delivered") {
+      return res.status(400).json({ error: "Only delivered orders can be refunded" });
+    }
+
+    db.query("UPDATE orders SET status = 'refunded' WHERE order_id = ?", [orderId], () => {
+      db.query("UPDATE deliveries SET delivery_status = 'refunded' WHERE order_id = ?", [orderId], () => {
         db.query(
           `
           UPDATE products p
@@ -491,15 +609,10 @@ export function cancelOrder(req, res) {
           [orderId],
           () => {
             res.json({ success: true, order_id: orderId });
+            sendOrderStatusEmail({ orderId, status: "refunded" });
           }
         );
       });
     });
   });
 }
-
-
-
-
-
-

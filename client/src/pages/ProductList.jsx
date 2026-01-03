@@ -4,7 +4,6 @@ import { fetchProductsWithMeta } from "../services/productService";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import Spinner from "../components/ui/Spinner";
-import { updateStock } from "../services/api.js";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 
@@ -46,36 +45,21 @@ const cartQty = (id) => {
   return item ? item.quantity : 0;
 };
 
-const handleAddFirst = async (p) => {
+const handleAddFirst = (p) => {
   if (p.availableStock <= 0) return;
 
   addItem(p, 1);
   openMiniCart?.(p);
-
-  await updateStock(p.id, -1);
-
-  setProducts(prev =>
-    prev.map(pr =>
-      pr.id === p.id ? { ...pr, availableStock: pr.availableStock - 1 } : pr
-    )
-  );
 };
 
 
-const handleIncrease = async (p) => {
+const handleIncrease = (p) => {
   if (p.availableStock <= 0) return;
 
   increment(p.id);
   openMiniCart?.(p);
-  await updateStock(p.id, -1);
-
-  setProducts(prev =>
-    prev.map(pr =>
-      pr.id === p.id ? { ...pr, availableStock: pr.availableStock - 1 } : pr
-    )
-  );
 };
-const handleDecrease = async (p) => {
+const handleDecrease = (p) => {
   const current = cartQty(p.id);
 
   if (current <= 0) return;
@@ -83,30 +67,11 @@ const handleDecrease = async (p) => {
   if (current === 1) {
 
     removeItem(p.id);            
-
-    await updateStock(p.id, +1);
-
-    setProducts((prev) =>
-      prev.map((pr) =>
-        pr.id === p.id
-          ? { ...pr, availableStock: pr.availableStock + 1 }
-          : pr
-      )
-    );
     return;
   }
 
 
   decrement(p.id);
-  await updateStock(p.id, +1);
-
-  setProducts((prev) =>
-    prev.map((pr) =>
-      pr.id === p.id
-        ? { ...pr, availableStock: pr.availableStock + 1 }
-        : pr
-    )
-  );
 };
 
 const handleWishlist = (product) => {
@@ -275,21 +240,8 @@ const handleWishlist = (product) => {
     return;
   }
 
-  try {
-    // 3) Backend'e stok azaltma talebi gönder (-1)
-    await updateStock(product.id, -1);
-
-    // 4) Ürünü sepete ekle
-    addItem(product, 1);
-
-    // 5) Ürün listesini yenile → stok düşüşünü UI'da görelim
-    const refreshed = await fetchProductsWithMeta();
-    setProducts(refreshed);
-
-  } catch (err) {
-    console.error("Stock update failed:", err);
-    alert("Stock update failed. This product may be out of stock.");
-  }
+  // 3) Ürünü sepete ekle
+  addItem(product, 1);
 };
 
 
