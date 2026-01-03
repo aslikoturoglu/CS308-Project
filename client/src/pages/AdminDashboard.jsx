@@ -60,6 +60,7 @@ function AdminDashboard() {
   const [deliveries, setDeliveries] = useState([]);
   const [deliveryTab, setDeliveryTab] = useState("All");
   const [deliveryVisibleCount, setDeliveryVisibleCount] = useState(10);
+  const [deliveryStatusPicker, setDeliveryStatusPicker] = useState(null);
   const [pendingReviews, setPendingReviews] = useState([]);
   const [chats, setChats] = useState([]);
   const [chatPage, setChatPage] = useState(1);
@@ -143,6 +144,7 @@ function AdminDashboard() {
 
   useEffect(() => {
     setDeliveryVisibleCount(10);
+    setDeliveryStatusPicker(null);
   }, [deliveryTab, orders.length]);
 
   const loadInbox = useCallback(async () => {
@@ -285,6 +287,7 @@ function AdminDashboard() {
   );
 
   const canLoadMoreDeliveries = filteredDeliveries.length > deliveryVisibleCount;
+  const canLoadLessDeliveries = deliveryVisibleCount > 10;
 
   const groupedOrders = useMemo(() => {
     const groups = {
@@ -534,13 +537,13 @@ function AdminDashboard() {
     await applyDeliveryStatus(deliveryUpdate.id, deliveryUpdate.status);
   };
 
-  const handleInlineStatusClick = async (delivery) => {
-    const choice = window.prompt(
-      "Yeni durum seç (Processing, In-transit, Delivered, Cancelled, Refunded)",
-      delivery.status
-    );
-    if (!choice) return;
-    await applyDeliveryStatus(delivery.id, choice);
+  const handleInlineStatusClick = (delivery) => {
+    setDeliveryStatusPicker((prev) => (prev === delivery.id ? null : delivery.id));
+  };
+
+  const handleSelectStatusOption = async (delivery, status) => {
+    await applyDeliveryStatus(delivery.id, status);
+    setDeliveryStatusPicker(null);
   };
 
   const handleSelectConversation = (id) => {
@@ -985,32 +988,30 @@ function AdminDashboard() {
                   boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                  <h4 style={{ margin: "0 0 10px", color: "#0f172a" }}>Delivery list</h4>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(110px,1fr))", gap: 6, flex: "1 1 440px", minWidth: 260 }}>
-                    {DELIVERY_FILTERS.map((tab) => {
-                      const isActive = deliveryTab === tab.id;
-                      return (
-                        <button
-                          key={tab.id}
-                          type="button"
-                          onClick={() => setDeliveryTab(tab.id)}
-                          style={{
-                            borderRadius: 999,
-                            padding: "8px 10px",
-                            border: `1px solid ${isActive ? "#0f172a" : "#e5e7eb"}`,
-                            background: isActive ? "#0f172a" : "#f8fafc",
-                            color: isActive ? "#fff" : "#0f172a",
-                            fontWeight: 700,
-                            cursor: "pointer",
-                            width: "100%",
-                          }}
-                        >
-                          {tab.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                <h4 style={{ margin: "0 0 10px", color: "#0f172a" }}>Delivery list</h4>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(110px,1fr))", gap: 6, marginBottom: 6 }}>
+                  {DELIVERY_FILTERS.map((tab) => {
+                    const isActive = deliveryTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setDeliveryTab(tab.id)}
+                        style={{
+                          borderRadius: 999,
+                          padding: "8px 10px",
+                          border: `1px solid ${isActive ? "#0f172a" : "#e5e7eb"}`,
+                          background: isActive ? "#0f172a" : "#f8fafc",
+                          color: isActive ? "#fff" : "#0f172a",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          width: "100%",
+                        }}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
                 </div>
                 {filteredDeliveries.length === 0 ? (
                   <p style={{ margin: 0, color: "#94a3b8" }}>No deliveries to display for this filter.</p>
@@ -1036,32 +1037,68 @@ function AdminDashboard() {
                             {d.orderId} • {d.address}
                           </p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleInlineStatusClick(d)}
-                          style={{
-                            border: "1px solid #e5e7eb",
-                            background: "#f8fafc",
-                            color: "#0f172a",
-                            padding: "8px 12px",
-                            borderRadius: 10,
-                            fontWeight: 800,
-                            cursor: "pointer",
-                          }}
-                          title="Statusa tıkla ve güncelle"
-                        >
-                          {d.status}
-                        </button>
+                        <div style={{ display: "grid", gap: 6, minWidth: 180 }}>
+                          <button
+                            type="button"
+                            onClick={() => handleInlineStatusClick(d)}
+                            style={{
+                              border: "1px solid #e5e7eb",
+                              background: "#f8fafc",
+                              color: "#0f172a",
+                              padding: "8px 12px",
+                              borderRadius: 10,
+                              fontWeight: 800,
+                              cursor: "pointer",
+                            }}
+                            title="Statusa tıkla ve güncelle"
+                          >
+                            {d.status}
+                          </button>
+                          {deliveryStatusPicker === d.id && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                              {DELIVERY_STATUSES.map((status) => {
+                                const label = DELIVERY_FILTERS.find((f) => f.id === status)?.label || status;
+                                return (
+                                  <button
+                                    key={status}
+                                    type="button"
+                                    onClick={() => handleSelectStatusOption(d, status)}
+                                    style={{
+                                      ...secondaryBtn,
+                                      padding: "6px 8px",
+                                      flex: "1 1 120px",
+                                      borderColor: "#e5e7eb",
+                                      background: "#fff",
+                                    }}
+                                  >
+                                    {label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                     {canLoadMoreDeliveries && (
-                      <button
-                        type="button"
-                        onClick={() => setDeliveryVisibleCount((prev) => prev + 10)}
-                        style={{ ...secondaryBtn, justifySelf: "center", alignItems: "center", display: "inline-flex", gap: 6, marginTop: 4 }}
-                      >
-                        ↓ Load more
-                      </button>
+                      <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 4 }}>
+                        <button
+                          type="button"
+                          onClick={() => setDeliveryVisibleCount((prev) => prev + 10)}
+                          style={{ ...secondaryBtn, alignItems: "center", display: "inline-flex", gap: 6 }}
+                        >
+                          ↓ Load more
+                        </button>
+                        {canLoadLessDeliveries && (
+                          <button
+                            type="button"
+                            onClick={() => setDeliveryVisibleCount((prev) => Math.max(10, prev - 10))}
+                            style={{ ...secondaryBtn, alignItems: "center", display: "inline-flex", gap: 6 }}
+                          >
+                            ↑ Load less
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
