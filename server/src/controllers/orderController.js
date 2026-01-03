@@ -446,7 +446,7 @@ export function updateDeliveryStatus(req, res) {
   });
 }
 export function cancelOrder(req, res) {
-  const orderId = Number(req.params.order_id); // ✅ BURASI
+  const orderId = Number(req.params.id); // ✅ BURASI
 
   if (!Number.isFinite(orderId)) {
     return res.status(400).json({ error: "Invalid order id" });
@@ -494,3 +494,4 @@ export function cancelOrder(req, res) {
     });
   });
 }
+
