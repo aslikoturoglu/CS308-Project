@@ -7,6 +7,7 @@ import {
 import { formatOrderId, fetchUserOrders } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 
 const timelineSteps = ["Processing", "In-transit", "Delivered", "Cancelled"];
 const filterOptions = ["All", ...timelineSteps];
@@ -20,10 +21,25 @@ const statusPills = {
 
 function OrderHistory() {
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const [filter, setFilter] = useState("All");
   const [orders, setOrders] = useState([]);
   const [reviews, setReviews] = useState({});
   const [openOrderId, setOpenOrderId] = useState(null);
+  const palette = {
+    pageBg: isDark ? "#0b0f14" : "#f5f7fb",
+    panelBg: isDark ? "#0f172a" : "#ffffff",
+    panelBorder: isDark ? "#1f2937" : "#e2e8f0",
+    panelShadow: isDark ? "0 18px 42px rgba(2,6,23,0.65)" : "0 18px 42px rgba(15,23,42,0.07)",
+    title: isDark ? "#7dd3fc" : "#0f172a",
+    text: isDark ? "#e2e8f0" : "#0f172a",
+    textMuted: isDark ? "#a3b3c6" : "#475569",
+    textFaint: isDark ? "#94a3b8" : "#94a3b8",
+    link: isDark ? "#7dd3fc" : "#0058a3",
+    inputBg: isDark ? "#0b1220" : "#ffffff",
+    softBg: isDark ? "#0b1220" : "#f8fafc",
+  };
 
   useEffect(() => {
     const controller = new AbortController();
@@ -112,7 +128,7 @@ function OrderHistory() {
   return (
     <main
       style={{
-        backgroundColor: "#f5f7fb",
+        backgroundColor: palette.pageBg,
         minHeight: "75vh",
         padding: "48px 16px 72px",
         fontFamily: "Arial, sans-serif",
@@ -128,9 +144,9 @@ function OrderHistory() {
           }}
         >
           <div>
-            <p style={{ margin: 0, letterSpacing: 1, color: "#94a3b8" }}>ORDER HISTORY</p>
-            <h1 style={{ margin: "6px 0 8px", color: "#0f172a" }}>Deliveries and past purchases</h1>
-            <p style={{ margin: 0, color: "#475569" }}>
+            <p style={{ margin: 0, letterSpacing: 1, color: palette.textFaint }}>ORDER HISTORY</p>
+            <h1 style={{ margin: "6px 0 8px", color: palette.title }}>Deliveries and past purchases</h1>
+            <p style={{ margin: 0, color: palette.textMuted }}>
               Track shipments, see stock impact per order, and leave post-delivery reviews.
             </p>
           </div>
@@ -150,14 +166,15 @@ function OrderHistory() {
               <div
                 key={card.label}
                 style={{
-                  backgroundColor: "#ffffff",
+                  backgroundColor: palette.panelBg,
                   borderRadius: 18,
                   padding: 18,
-                  boxShadow: "0 15px 35px rgba(15,23,42,0.08)",
+                  border: `1px solid ${palette.panelBorder}`,
+                  boxShadow: palette.panelShadow,
                 }}
               >
-                <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.85rem" }}>{card.label}</p>
-                <h3 style={{ margin: "10px 0 0", color: "#0f172a" }}>{card.value}</h3>
+                <p style={{ margin: 0, color: palette.textFaint, fontSize: "0.85rem" }}>{card.label}</p>
+                <h3 style={{ margin: "10px 0 0", color: palette.text }}>{card.value}</h3>
               </div>
             ))}
           </div>
@@ -178,9 +195,9 @@ function OrderHistory() {
               onClick={() => setFilter(option)}
               style={{
                 border: "1px solid",
-                borderColor: option === filter ? "#0058a3" : "#cbd5f5",
-                backgroundColor: option === filter ? "#0058a3" : "#ffffff",
-                color: option === filter ? "#ffffff" : "#0f172a",
+                borderColor: option === filter ? (isDark ? "#38bdf8" : "#0058a3") : (isDark ? "#1f2937" : "#cbd5f5"),
+                backgroundColor: option === filter ? (isDark ? "#0b3a6b" : "#0058a3") : (isDark ? "#0f172a" : "#ffffff"),
+                color: option === filter ? "#ffffff" : palette.text,
                 padding: "10px 18px",
                 borderRadius: 999,
                 fontWeight: 600,
@@ -196,17 +213,17 @@ function OrderHistory() {
           {filteredOrders.length === 0 && (
             <div
               style={{
-                backgroundColor: "#ffffff",
+                backgroundColor: palette.panelBg,
                 borderRadius: 20,
                 padding: 32,
                 textAlign: "center",
-                border: "1px dashed #cbd5f5",
+                border: `1px dashed ${isDark ? "#334155" : "#cbd5f5"}`,
               }}
             >
-              <h3 style={{ margin: 0, color: "#0f172a" }}>No orders in this filter</h3>
-              <p style={{ color: "#475569" }}>
+              <h3 style={{ margin: 0, color: palette.text }}>No orders in this filter</h3>
+              <p style={{ color: palette.textMuted }}>
                 Try another status or{" "}
-                <Link to="/products" style={{ color: "#0058a3", fontWeight: 600 }}>
+                <Link to="/products" style={{ color: palette.link, fontWeight: 600 }}>
                   browse products
                 </Link>
                 .
@@ -223,10 +240,11 @@ function OrderHistory() {
               <article
                 key={formattedId}
                 style={{
-                  backgroundColor: "#ffffff",
+                  backgroundColor: palette.panelBg,
                   borderRadius: 24,
                   padding: 24,
-                  boxShadow: "0 18px 42px rgba(15,23,42,0.07)",
+                  border: `1px solid ${palette.panelBorder}`,
+                  boxShadow: palette.panelShadow,
                   display: "flex",
                   flexDirection: "column",
                   gap: 18,
@@ -245,11 +263,10 @@ function OrderHistory() {
                     cursor: "pointer",
                   }}
                 >
-
                   <div>
-                    <p style={{ margin: 0, color: "#94a3b8", letterSpacing: 1 }}>ORDER</p>
-                    <h3 style={{ margin: "4px 0", color: "#0f172a" }}>{formattedId}</h3>
-                    <p style={{ margin: 0, color: "#475569" }}>{order.date}</p>
+                    <p style={{ margin: 0, color: palette.textFaint, letterSpacing: 1 }}>ORDER</p>
+                    <h3 style={{ margin: "4px 0", color: palette.text }}>{formattedId}</h3>
+                    <p style={{ margin: 0, color: palette.textMuted }}>{order.date}</p>
                   </div>
 
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -264,204 +281,205 @@ function OrderHistory() {
                     >
                       {order.status}
                     </span>
-                    <p style={{ margin: 0, color: "#0f172a", fontWeight: 800 }}>{formatPrice(order.total)}</p>
+                    <p style={{ margin: 0, color: palette.text, fontWeight: 800 }}>{formatPrice(order.total)}</p>
                   </div>
                 </header>
 
-                {openOrderId === formattedId && (<>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-                  <Info label="Shipping" value={order.shippingCompany || "SUExpress"} />
-                  <Info label="Address" value={order.address || "Not provided"} />
-                  <Info label="Estimate" value={order.estimate || "TBD"} />
-                  {order.deliveredAt && <Info label="Delivered" value={order.deliveredAt} />}
-                </div>
+                {openOrderId === formattedId && (
+                  <>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+                      <Info label="Shipping" value={order.shippingCompany || "SUExpress"} />
+                      <Info label="Address" value={order.address || "Not provided"} />
+                      <Info label="Estimate" value={order.estimate || "TBD"} />
+                      {order.deliveredAt && <Info label="Delivered" value={order.deliveredAt} />}
+                    </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: `repeat(${timelineSteps.length}, minmax(0, 1fr))`, gap: 12 }}>
-                  {timelineSteps.map((step, index) => {
-                    const isActive = step === order.status;
-                    const pill = statusPills[step];
-                    return (
-                      <div
-                        key={step}
-                        style={{
-                          padding: 12,
-                          borderRadius: 14,
-                          border: `2px solid ${isActive ? pill?.border ?? "#22c55e" : "#e2e8f0"}`,
-                          backgroundColor: isActive ? pill?.bg ?? "rgba(34,197,94,0.12)" : "#f8fafc",
-                          color: isActive ? pill?.color ?? "#15803d" : "#94a3b8",
-                          fontWeight: 800,
-                          textAlign: "center",
-                          boxShadow: isActive ? "0 6px 16px rgba(34,197,94,0.18)" : "none",
-                          transition: "all 0.2s ease",
-                        }}
-                      >
-                        {step}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <p style={{ margin: 0, color: "#0f172a", fontWeight: 700 }}>Items</p>
-                  <div style={{ display: "grid", gap: 10 }}>
-                    {order.items.map((item) => {
-                      const productId = item.productId ?? item.id;
-                      const userReviews = reviews[productId] ?? [];
-                      const latestReview = userReviews[userReviews.length - 1];
-                      const approvedReview = [...userReviews]
-                        .reverse()
-                        .find((r) => (r.status ?? "approved") === "approved" || r.approved);
-
-                      return (
-                        <div
-                          key={item.id}
-                          style={{
-                            border: "1px solid #e2e8f0",
-                            borderRadius: 12,
-                            padding: 12,
-                            display: "grid",
-                            gridTemplateColumns: "auto 1fr auto",
-                            alignItems: "center",
-                            gap: 12,
-                            backgroundColor: "#f8fafc",
-                          }}
-                        >
+                    <div style={{ display: "grid", gridTemplateColumns: `repeat(${timelineSteps.length}, minmax(0, 1fr))`, gap: 12 }}>
+                      {timelineSteps.map((step, index) => {
+                        const isActive = step === order.status;
+                        const stepPill = statusPills[step];
+                        return (
                           <div
+                            key={step}
                             style={{
-                              width: 64,
-                              height: 64,
-                              borderRadius: 10,
-                              overflow: "hidden",
-                              background: "#e2e8f0",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
+                              padding: 12,
+                              borderRadius: 14,
+                              border: `2px solid ${isActive ? stepPill?.border ?? "#22c55e" : palette.panelBorder}`,
+                              backgroundColor: isActive ? stepPill?.bg ?? "rgba(34,197,94,0.12)" : palette.softBg,
+                              color: isActive ? stepPill?.color ?? "#15803d" : palette.textFaint,
+                              fontWeight: 800,
+                              textAlign: "center",
+                              boxShadow: isActive ? "0 6px 16px rgba(34,197,94,0.18)" : "none",
+                              transition: "all 0.2s ease",
                             }}
                           >
-                            {item.image ? (
-                              <img
-                                src={item.image}
-                                alt={item.name}
-                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                              />
-                            ) : (
-                              <span style={{ color: "#94a3b8", fontWeight: 700 }}>No image</span>
-                            )}
+                            {step}
                           </div>
+                        );
+                      })}
+                    </div>
 
-                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                            <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>{item.name}</p>
-                            <p style={{ margin: 0, color: "#475569" }}>Qty: {item.qty}</p>
-                            {item.variant && (
-                              <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.9rem" }}>{item.variant}</p>
-                            )}
-                          </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      <p style={{ margin: 0, color: palette.text, fontWeight: 700 }}>Items</p>
+                      <div style={{ display: "grid", gap: 10 }}>
+                        {order.items.map((item) => {
+                          const productId = item.productId ?? item.id;
+                          const userReviews = reviews[productId] ?? [];
+                          const latestReview = userReviews[userReviews.length - 1];
+                          const approvedReview = [...userReviews]
+                            .reverse()
+                            .find((r) => (r.status ?? "approved") === "approved" || r.approved);
 
-                          <div style={{ textAlign: "right" }}>
-                            <p style={{ margin: 0, fontWeight: 800, color: "#0f172a" }}>
-                              {formatPrice(item.price * item.qty)}
-                            </p>
-                            <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.9rem" }}>
-                              {formatPrice(item.price)} each
-                            </p>
-                          </div>
+                          return (
+                            <div
+                              key={item.id}
+                              style={{
+                                border: `1px solid ${palette.panelBorder}`,
+                                borderRadius: 12,
+                                padding: 12,
+                                display: "grid",
+                                gridTemplateColumns: "auto 1fr auto",
+                                alignItems: "center",
+                                gap: 12,
+                                backgroundColor: palette.softBg,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: 64,
+                                  height: 64,
+                                  borderRadius: 10,
+                                  overflow: "hidden",
+                                  background: palette.panelBorder,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                {item.image ? (
+                                  <img
+                                    src={item.image}
+                                    alt={item.name}
+                                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                  />
+                                ) : (
+                                  <span style={{ color: palette.textFaint, fontWeight: 700 }}>No image</span>
+                                )}
+                              </div>
 
-                          {order.status === "Delivered" && (
-                            <div style={{ gridColumn: "1 / -1", marginTop: 4, display: "grid", gap: 6 }}>
-                              {latestReview && (
-                                <div
-                                  style={{
-                                    padding: 10,
-                                    borderRadius: 10,
-                                    background: "#ffffff",
-                                    border: "1px dashed #e2e8f0",
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                  }}
-                                >
-                                  <div>
-                                    <p style={{ margin: 0, color: "#0f172a", fontWeight: 700 }}>
-                                      Your rating: {latestReview.rating}/5
-                                    </p>
-                                    {approvedReview?.comment_text ? (
-                                      <p style={{ margin: "4px 0 0", color: "#475569" }}>
-                                        {approvedReview.comment_text}
-                                      </p>
-                                    ) : latestReview.status === "rejected" ? (
-                                      <p style={{ margin: "4px 0 0", color: "#b91c1c" }}>
-                                        Comment rejected by manager.
-                                      </p>
-                                    ) : latestReview.comment_text ? (
-                                      <p style={{ margin: "4px 0 0", color: "#94a3b8" }}>
-                                        Comment pending manager approval
-                                      </p>
-                                    ) : null}
-                                  </div>
-                                  <span style={{ color: "#94a3b8", fontSize: "0.9rem" }}>
-                                    {new Date(latestReview.created_at ?? latestReview.date).toLocaleDateString()}
-                                  </span>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                <p style={{ margin: 0, fontWeight: 700, color: palette.text }}>{item.name}</p>
+                                <p style={{ margin: 0, color: palette.textMuted }}>Qty: {item.qty}</p>
+                                {item.variant && (
+                                  <p style={{ margin: 0, color: palette.textFaint, fontSize: "0.9rem" }}>{item.variant}</p>
+                                )}
+                              </div>
+
+                              <div style={{ textAlign: "right" }}>
+                                <p style={{ margin: 0, fontWeight: 800, color: palette.text }}>
+                                  {formatPrice(item.price * item.qty)}
+                                </p>
+                                <p style={{ margin: 0, color: palette.textFaint, fontSize: "0.9rem" }}>
+                                  {formatPrice(item.price)} each
+                                </p>
+                              </div>
+
+                              {order.status === "Delivered" && (
+                                <div style={{ gridColumn: "1 / -1", marginTop: 4, display: "grid", gap: 6 }}>
+                                  {latestReview && (
+                                    <div
+                                      style={{
+                                        padding: 10,
+                                        borderRadius: 10,
+                                        background: palette.panelBg,
+                                        border: `1px dashed ${palette.panelBorder}`,
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                      }}
+                                    >
+                                      <div>
+                                        <p style={{ margin: 0, color: palette.text, fontWeight: 700 }}>
+                                          Your rating: {latestReview.rating}/5
+                                        </p>
+                                        {approvedReview?.comment_text ? (
+                                          <p style={{ margin: "4px 0 0", color: palette.textMuted }}>
+                                            {approvedReview.comment_text}
+                                          </p>
+                                        ) : latestReview.status === "rejected" ? (
+                                          <p style={{ margin: "4px 0 0", color: "#b91c1c" }}>
+                                            Comment rejected by manager.
+                                          </p>
+                                        ) : latestReview.comment_text ? (
+                                          <p style={{ margin: "4px 0 0", color: palette.textFaint }}>
+                                            Comment pending manager approval
+                                          </p>
+                                        ) : null}
+                                      </div>
+                                      <span style={{ color: palette.textFaint, fontSize: "0.9rem" }}>
+                                        {new Date(latestReview.created_at ?? latestReview.date).toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  <ReviewForm
+                                    productId={productId}
+                                    latestReview={latestReview}
+                                    onSubmit={handleReviewSubmit}
+                                    isDelivered={order.status === "Delivered"}
+                                  />
                                 </div>
                               )}
-
-                              <ReviewForm
-                                productId={productId}
-                                latestReview={latestReview}
-                                onSubmit={handleReviewSubmit}
-                                isDelivered={order.status === "Delivered"}
-                              />
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-                <div
-                  style={{
-                    padding: 14,
-                    backgroundColor: "#f8fafc",
-                    borderRadius: 12,
-                    border: "1px solid #e2e8f0",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: 12,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <p style={{ margin: 0, color: "#475569" }}>{order.note}</p>
-                    {order.statusUpdatedBy && (
-                      <span style={{ margin: 0, color: "#64748b", fontWeight: 600 }}>
-                        Last status update by {order.statusUpdatedBy}
-                      </span>
-                    )}
-                    {order.status !== "Delivered" && (
-                      <span style={{ color: "#94a3b8", fontWeight: 700 }}>
-                        Status changes are handled by the sales manager.
-                      </span>
-                    )}
-                  </div>
-                  <Link
-                    to={`/invoice/${encodeURIComponent(formattedId)}`}
-                    state={{ order }}
-                    style={{
-                      border: "1px solid #0058a3",
-                      color: "#0058a3",
-                      background: "white",
-                      padding: "8px 12px",
-                      borderRadius: 10,
-                      textDecoration: "none",
-                      fontWeight: 700,
-                    }}
-                  >
-                    View invoice
-                  </Link>
-                </div>
-                </>
-              )}
+                    <div
+                      style={{
+                        padding: 14,
+                        backgroundColor: palette.softBg,
+                        borderRadius: 12,
+                        border: `1px solid ${palette.panelBorder}`,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 12,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <p style={{ margin: 0, color: palette.textMuted }}>{order.note}</p>
+                        {order.statusUpdatedBy && (
+                          <span style={{ margin: 0, color: palette.textFaint, fontWeight: 600 }}>
+                            Last status update by {order.statusUpdatedBy}
+                          </span>
+                        )}
+                        {order.status !== "Delivered" && (
+                          <span style={{ color: palette.textFaint, fontWeight: 700 }}>
+                            Status changes are handled by the sales manager.
+                          </span>
+                        )}
+                      </div>
+                      <Link
+                        to={`/invoice/${encodeURIComponent(formattedId)}`}
+                        state={{ order }}
+                        style={{
+                          border: `1px solid ${isDark ? "#38bdf8" : "#0058a3"}`,
+                          color: palette.link,
+                          background: palette.inputBg,
+                          padding: "8px 12px",
+                          borderRadius: 10,
+                          textDecoration: "none",
+                          fontWeight: 700,
+                        }}
+                      >
+                        View invoice
+                      </Link>
+                    </div>
+                  </>
+                )}
               </article>
             );
           })}
@@ -474,6 +492,14 @@ function OrderHistory() {
 function ReviewForm({ productId, latestReview, onSubmit, isDelivered }) {
   const [rating, setRating] = useState(latestReview?.rating ?? 5);
   const [comment, setComment] = useState("");
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const palette = {
+    text: isDark ? "#e2e8f0" : "#0f172a",
+    textFaint: isDark ? "#94a3b8" : "#94a3b8",
+    inputBg: isDark ? "#0b1220" : "#ffffff",
+    border: isDark ? "#1f2937" : "#cbd5e1",
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -492,7 +518,7 @@ function ReviewForm({ productId, latestReview, onSubmit, isDelivered }) {
       }}
     >
       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-        <span style={{ color: "#0f172a", fontWeight: 700 }}>Rate</span>
+        <span style={{ color: palette.text, fontWeight: 700 }}>Rate</span>
         {[1, 2, 3, 4, 5].map((value) => (
           <button
             key={value}
@@ -508,7 +534,7 @@ function ReviewForm({ productId, latestReview, onSubmit, isDelivered }) {
               color: value <= rating ? "#f59e0b" : "#cbd5e1",
             }}
           >
-            ★
+            *
           </button>
         ))}
       </div>
@@ -521,9 +547,11 @@ function ReviewForm({ productId, latestReview, onSubmit, isDelivered }) {
         style={{
           padding: "10px 12px",
           borderRadius: 10,
-          border: "1px solid #cbd5e1",
+          border: `1px solid ${palette.border}`,
           resize: "vertical",
           minHeight: 44,
+          background: palette.inputBg,
+          color: palette.text,
         }}
       />
 
@@ -542,7 +570,7 @@ function ReviewForm({ productId, latestReview, onSubmit, isDelivered }) {
       >
         {latestReview ? "Update review" : "Submit"}
       </button>
-      <p style={{ gridColumn: "1 / -1", margin: "6px 0 0", color: "#94a3b8", fontSize: "0.85rem" }}>
+      <p style={{ gridColumn: "1 / -1", margin: "6px 0 0", color: palette.textFaint, fontSize: "0.85rem" }}>
         {isDelivered
           ? "Ratings are saved instantly. Comments appear after manager approval."
           : "Only delivered items can be reviewed."}
@@ -552,17 +580,25 @@ function ReviewForm({ productId, latestReview, onSubmit, isDelivered }) {
 }
 
 function Info({ label, value }) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const palette = {
+    text: isDark ? "#e2e8f0" : "#0f172a",
+    textFaint: isDark ? "#94a3b8" : "#94a3b8",
+    background: isDark ? "#0b1220" : "#f8fafc",
+    border: isDark ? "#1f2937" : "#e2e8f0",
+  };
   return (
     <div
       style={{
         padding: 12,
         borderRadius: 14,
-        border: "1px solid #e2e8f0",
-        backgroundColor: "#f8fafc",
+        border: `1px solid ${palette.border}`,
+        backgroundColor: palette.background,
       }}
     >
-      <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.85rem" }}>{label}</p>
-      <p style={{ margin: "6px 0 0", color: "#0f172a", fontWeight: 700 }}>{value}</p>
+      <p style={{ margin: 0, color: palette.textFaint, fontSize: "0.85rem" }}>{label}</p>
+      <p style={{ margin: "6px 0 0", color: palette.text, fontWeight: 700 }}>{value}</p>
     </div>
   );
 }

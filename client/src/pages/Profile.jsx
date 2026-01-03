@@ -80,7 +80,13 @@ const handleCancelOrder = async (orderId) => {
     }
     const controller = new AbortController();
     fetchUserOrders(user.id, controller.signal)
-      .then((data) => setOrders(data))
+      .then((data) => {
+        if (Array.isArray(data) && data.length) {
+          setOrders(data);
+          return;
+        }
+        setOrders([]);
+      })
       .catch((err) => {
         console.error("Order history load failed", err);
         setOrders([]);
@@ -99,7 +105,7 @@ const handleCancelOrder = async (orderId) => {
       <main
         style={{
           padding: "40px 24px",
-          backgroundColor: "#f5f7fb",
+          backgroundColor: isDark ? "#0b0f14" : "#f5f7fb",
           minHeight: "75vh",
           fontFamily: "Arial, sans-serif",
           display: "flex",
@@ -110,11 +116,11 @@ const handleCancelOrder = async (orderId) => {
         }}
       >
         <h1 style={{ margin: 0, color: "#0f172a" }}>Profile</h1>
-        <p style={{ color: "#475569" }}>Please sign in to view your profile.</p>
+        <p style={{ color: isDark ? "#a3b3c6" : "#475569" }}>Please sign in to view your profile.</p>
         <Link
           to="/login"
           style={{
-            backgroundColor: "#0058a3",
+            backgroundColor: isDark ? "#7dd3fc" : "#0058a3",
             color: "white",
             padding: "12px 20px",
             borderRadius: 999,
@@ -156,7 +162,7 @@ const handleCancelOrder = async (orderId) => {
     <main
       style={{
         padding: "40px 24px",
-        backgroundColor: "#f5f7fb",
+        backgroundColor: isDark ? "#0b0f14" : "#f5f7fb",
         minHeight: "75vh",
         fontFamily: "Arial, sans-serif",
       }}
@@ -172,12 +178,12 @@ const handleCancelOrder = async (orderId) => {
         }}
       >
         <div>
-          <p style={{ margin: 0, color: "#4b5563", letterSpacing: 1 }}>WELCOME</p>
-          <h1 style={{ margin: "4px 0 0", color: "#0058a3" }}>{profile?.name}</h1>
-          <span style={{ color: "#6b7280" }}>
-            {profile?.email} • SUHome member since {profile?.memberSince ?? "2025"}
+          <p style={{ margin: 0, color: isDark ? "#7dd3fc" : "#4b5563", letterSpacing: 1 }}>WELCOME</p>
+          <h1 style={{ margin: "4px 0 0", color: isDark ? "#7dd3fc" : "#0058a3" }}>{profile?.name}</h1>
+          <span style={{ color: isDark ? "#94a3b8" : "#6b7280" }}>
+            {profile?.email} - SUHome member since {profile?.memberSince ?? "2025"}
           </span>
-          <p style={{ margin: "8px 0 0", color: "#475569" }}>{profile?.address}</p>
+          <p style={{ margin: "8px 0 0", color: isDark ? "#a3b3c6" : "#475569" }}>{profile?.address}</p>
         </div>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -188,11 +194,11 @@ const handleCancelOrder = async (orderId) => {
               setEditing(true);
             }}
             style={{
-              backgroundColor: "#ffffff",
-              color: "#0058a3",
+              backgroundColor: isDark ? "#0b1220" : "#ffffff",
+                color: isDark ? "#cbd5e1" : "#0058a3",
               padding: "10px 16px",
               borderRadius: 999,
-              border: "1px solid #cbd5e1",
+              border: isDark ? "1px solid #1f2937" : "1px solid #cbd5e1",
               fontWeight: 700,
               cursor: "pointer",
             }}
@@ -202,7 +208,7 @@ const handleCancelOrder = async (orderId) => {
           <Link
             to="/orders"
             style={{
-              backgroundColor: "#0058a3",
+              backgroundColor: isDark ? "#7dd3fc" : "#0058a3",
               color: "white",
               padding: "12px 20px",
               borderRadius: 999,
@@ -223,23 +229,25 @@ const handleCancelOrder = async (orderId) => {
           marginBottom: 32,
         }}
       >
-        {[
-          { label: "Active membership", value: profile?.memberSince ?? "2025" },
-          { label: "Completed orders", value: completedOrders },
-          { label: "Favorite address", value: (profile?.address || "").split(",")[0] || "Not set" },
-        ].map((card) => (
-          <div
-            key={card.label}
-            style={{
-              backgroundColor: "#ffffff",
-              borderRadius: 16,
-              padding: 24,
-              boxShadow: "0 12px 25px rgba(0,0,0,0.06)",
-            }}
-          >
-            <p style={{ margin: 0, color: "#6b7280", fontSize: "0.85rem" }}>{card.label}</p>
-            <h3 style={{ margin: "12px 0 0", color: "#111827" }}>{card.value}</h3>
-          </div>
+          {[
+            { label: "Active membership", value: profile?.memberSince ?? "2025" },
+            { label: "Completed orders", value: completedOrders },
+            { label: "Favorite address", value: (profile?.address || "").split(",")[0] || "Not set" },
+          ].map((card) => (
+            <div
+              key={card.label}
+              style={{
+                backgroundColor: isDark ? "#0f172a" : "#ffffff",
+                borderRadius: 16,
+                padding: 24,
+                boxShadow: isDark
+                  ? "0 12px 25px rgba(0,0,0,0.6)"
+                  : "0 12px 25px rgba(0,0,0,0.06)",
+              }}
+            >
+              <p style={{ margin: 0, color: isDark ? "#94a3b8" : "#6b7280", fontSize: "0.85rem" }}>{card.label}</p>
+              <h3 style={{ margin: "12px 0 0", color: isDark ? "#e2e8f0" : "#111827" }}>{card.value}</h3>
+            </div>
         ))}
       </section>
 
@@ -250,15 +258,19 @@ const handleCancelOrder = async (orderId) => {
           gap: 24,
         }}
       >
-        <section
-          style={{
-            backgroundColor: "#ffffff",
-            borderRadius: 18,
-            padding: 24,
-            boxShadow: "0 18px 35px rgba(0,0,0,0.05)",
-          }}
-        >
-          <h2 style={{ marginTop: 0, color: "#0058a3" }}>Recent orders</h2>
+          <section
+            style={{
+              backgroundColor: isDark ? "#0f172a" : "#ffffff",
+              borderRadius: 18,
+              padding: 24,
+              boxShadow: isDark
+                ? "0 18px 35px rgba(0,0,0,0.6)"
+                : "0 18px 35px rgba(0,0,0,0.05)",
+            }}
+          >
+            <h2 style={{ marginTop: 0, color: isDark ? "#7dd3fc" : "#0058a3" }}>
+              Recent orders
+            </h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {orders.slice(0, 3).map((order) => {
                 console.log("RAW STATUS >>>", order.status);
@@ -292,9 +304,10 @@ const handleCancelOrder = async (orderId) => {
                   <article
                     key={formattedId}
                   style={{
-                    border: "1px solid #e5e7eb",
+                    border: isDark ? "1px solid #1f2937" : "1px solid #e5e7eb",
                     borderRadius: 12,
                     padding: 16,
+                    backgroundColor: isDark ? "#0b1220" : "transparent",
                   }}
                 >
                   <div
@@ -305,14 +318,14 @@ const handleCancelOrder = async (orderId) => {
                       marginBottom: 8,
                     }}
                   >
-                    <strong>{formattedId}</strong>
-                    <span style={{ color: "#6b7280", fontSize: "0.9rem" }}>{order.date}</span>
+                    <strong style={{ color: isDark ? "#e2e8f0" : "#0f172a" }}>{formattedId}</strong>
+                    <span style={{ color: isDark ? "#94a3b8" : "#6b7280", fontSize: "0.9rem" }}>{order.date}</span>
                   </div>
-                  <p style={{ margin: "4px 0", color: "#4b5563" }}>
+                  <p style={{ margin: "4px 0", color: isDark ? "#cbd5e1" : "#4b5563" }}>
                     {order.items.map((it) => it.name).join(", ")}
                   </p>
                   <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-  <span style={{ fontWeight: 600 }}>
+  <span style={{ fontWeight: 600, color: isDark ? "#e2e8f0" : "#0f172a" }}>
     {formatPrice(order.total)}
   </span>
 
@@ -360,26 +373,33 @@ const handleCancelOrder = async (orderId) => {
 
         <aside
           style={{
-            backgroundColor: "#ffffff",
+            backgroundColor: isDark ? "#0f172a" : "#ffffff",
             borderRadius: 18,
             padding: 24,
-            boxShadow: "0 18px 35px rgba(0,0,0,0.05)",
+            boxShadow: isDark
+              ? "0 18px 35px rgba(0,0,0,0.6)"
+              : "0 18px 35px rgba(0,0,0,0.05)",
           }}
         >
-          <h2 style={{ marginTop: 0, color: "#0058a3" }}>Preferences</h2>
+          <h2 style={{ marginTop: 0, color: isDark ? "#7dd3fc" : "#0058a3" }}>
+            Preferences
+          </h2>
           <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 12 }}>
             <li
               style={{
                 display: "flex",
                 justifyContent: "space-between",
-                border: "1px solid #e5e7eb",
+                border: isDark ? "1px solid #1f2937" : "1px solid #e5e7eb",
                 borderRadius: 12,
                 padding: "10px 14px",
                 alignItems: "center",
                 gap: 10,
+                backgroundColor: isDark ? "#0b0f14" : "#ffffff",
               }}
             >
-              <span>Email notifications</span>
+              <span style={{ color: isDark ? "#e2e8f0" : "#0f172a" }}>
+                Email notifications
+              </span>
               <button
                 type="button"
                 onClick={handleToggleEmailNotifications}
@@ -389,8 +409,8 @@ const handleCancelOrder = async (orderId) => {
                   width: 46,
                   height: 26,
                   borderRadius: 999,
-                  border: "1px solid #cbd5e1",
-                  background: emailNotifications ? "#0f172a" : "#e2e8f0",
+                  border: isDark ? "1px solid #1f2937" : "1px solid #cbd5e1",
+                  background: emailNotifications ? "#38bdf8" : (isDark ? "#0f172a" : "#e2e8f0"),
                   padding: 2,
                   cursor: "pointer",
                   transition: "background 0.2s ease, border-color 0.2s ease",
@@ -402,7 +422,7 @@ const handleCancelOrder = async (orderId) => {
                     width: 22,
                     height: 22,
                     borderRadius: "50%",
-                    background: "#ffffff",
+                    background: isDark ? "#0b0f14" : "#ffffff",
                     transform: emailNotifications ? "translateX(20px)" : "translateX(0)",
                     transition: "transform 0.2s ease",
                   }}
@@ -413,14 +433,17 @@ const handleCancelOrder = async (orderId) => {
               style={{
                 display: "flex",
                 justifyContent: "space-between",
-                border: "1px solid #e5e7eb",
+                border: isDark ? "1px solid #1f2937" : "1px solid #e5e7eb",
                 borderRadius: 12,
                 padding: "10px 14px",
                 alignItems: "center",
                 gap: 10,
+                backgroundColor: isDark ? "#0b0f14" : "#ffffff",
               }}
             >
-              <span>Dark mode</span>
+              <span style={{ color: isDark ? "#e2e8f0" : "#0f172a" }}>
+                Dark mode
+              </span>
               <button
                 type="button"
                 onClick={toggleTheme}
@@ -430,8 +453,8 @@ const handleCancelOrder = async (orderId) => {
                   width: 46,
                   height: 26,
                   borderRadius: 999,
-                  border: "1px solid #cbd5e1",
-                  background: isDark ? "#0f172a" : "#e2e8f0",
+                  border: isDark ? "1px solid #1f2937" : "1px solid #cbd5e1",
+                  background: isDark ? "#38bdf8" : "#e2e8f0",
                   padding: 2,
                   cursor: "pointer",
                   transition: "background 0.2s ease, border-color 0.2s ease",
@@ -443,7 +466,7 @@ const handleCancelOrder = async (orderId) => {
                     width: 22,
                     height: 22,
                     borderRadius: "50%",
-                    background: "#ffffff",
+                    background: isDark ? "#0b0f14" : "#ffffff",
                     transform: isDark ? "translateX(20px)" : "translateX(0)",
                     transition: "transform 0.2s ease",
                   }}
@@ -454,10 +477,10 @@ const handleCancelOrder = async (orderId) => {
         </aside>
       </div>
 
-      <Modal open={editing} onClose={() => setEditing(false)}>
-        <h3 style={{ marginTop: 0, color: "#0f172a" }}>Edit profile</h3>
+      <Modal open={editing} onClose={() => setEditing(false)} isDark={isDark}>
+        <h3 style={{ marginTop: 0, color: isDark ? "#7dd3fc" : "#0f172a" }}>Edit profile</h3>
         <div style={{ display: "grid", gap: 10 }}>
-          <label style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1f2937" }}>
+          <label style={{ fontSize: "0.9rem", fontWeight: 700, color: isDark ? "#e2e8f0" : "#1f2937" }}>
             Name
             <input
               type="text"
@@ -468,11 +491,13 @@ const handleCancelOrder = async (orderId) => {
                 padding: 10,
                 marginTop: 6,
                 borderRadius: 10,
-                border: "1px solid #e2e8f0",
+                  background: isDark ? "#0b0f14" : "#ffffff",
+                  color: isDark ? "#e2e8f0" : "#0f172a",
+                border: isDark ? "1px solid #1f2937" : "1px solid #e2e8f0",
               }}
             />
           </label>
-          <label style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1f2937" }}>
+          <label style={{ fontSize: "0.9rem", fontWeight: 700, color: isDark ? "#e2e8f0" : "#1f2937" }}>
             Address
             <textarea
               value={draft.address || ""}
@@ -482,7 +507,9 @@ const handleCancelOrder = async (orderId) => {
                 padding: 10,
                 marginTop: 6,
                 borderRadius: 10,
-                border: "1px solid #e2e8f0",
+                  background: isDark ? "#0b0f14" : "#ffffff",
+                  color: isDark ? "#e2e8f0" : "#0f172a",
+                border: isDark ? "1px solid #1f2937" : "1px solid #e2e8f0",
                 minHeight: 80,
               }}
             />
@@ -492,8 +519,9 @@ const handleCancelOrder = async (orderId) => {
               type="button"
               onClick={() => setEditing(false)}
               style={{
-                border: "1px solid #cbd5e1",
-                background: "white",
+                border: isDark ? "1px solid #1f2937" : "1px solid #cbd5e1",
+                background: isDark ? "#0b0f14" : "#ffffff",
+                color: isDark ? "#e2e8f0" : "#0f172a",
                 borderRadius: 10,
                 padding: "10px 14px",
                 cursor: "pointer",
@@ -507,8 +535,8 @@ const handleCancelOrder = async (orderId) => {
               onClick={handleSave}
               style={{
                 border: "none",
-                background: "#0058a3",
-                color: "white",
+                background: isDark ? "#38bdf8" : "#0058a3",
+                color: isDark ? "#0b0f14" : "white",
                 borderRadius: 10,
                 padding: "10px 14px",
                 cursor: "pointer",
@@ -545,7 +573,7 @@ function saveProfile(key, value) {
   }
 }
 
-function Modal({ open, onClose, children }) {
+function Modal({ open, onClose, children, isDark }) {
   if (!open) return null;
   return (
     <div
@@ -557,16 +585,18 @@ function Modal({ open, onClose, children }) {
         placeItems: "center",
         zIndex: 2000,
         padding: 16,
-      }}
+                    backgroundColor: isDark ? "#0b1220" : "transparent",
+                  }}
     >
       <div
         style={{
-          background: "white",
+          background: isDark ? "#0f172a" : "white",
           borderRadius: 16,
           padding: 20,
           width: "100%",
           maxWidth: 480,
           boxShadow: "0 18px 45px rgba(0,0,0,0.18)",
+          border: isDark ? "1px solid #1f2937" : "none",
         }}
       >
         {children}
@@ -575,8 +605,9 @@ function Modal({ open, onClose, children }) {
             type="button"
             onClick={onClose}
             style={{
-              background: "none",
-              border: "1px solid #cbd5e1",
+              background: isDark ? "#0b0f14" : "none",
+              border: isDark ? "1px solid #1f2937" : "1px solid #cbd5e1",
+              color: isDark ? "#e2e8f0" : "#0f172a",
               borderRadius: 10,
               padding: "8px 12px",
               cursor: "pointer",
@@ -589,4 +620,14 @@ function Modal({ open, onClose, children }) {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
 

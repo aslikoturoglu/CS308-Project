@@ -6,6 +6,7 @@ import { useWishlist } from "../context/WishlistContext";
 import Spinner from "../components/ui/Spinner";
 import { updateStock } from "../services/api.js";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 
 
 const categories = [
@@ -25,6 +26,7 @@ const PAGE_SIZE = 12;
 function ProductList({openMiniCart}) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isDark } = useTheme();
   const [products, setProducts] = useState([]);
   const [category, setCategory] = useState("All");
   const [roomFilter, setRoomFilter] = useState("");
@@ -298,12 +300,12 @@ const handleWishlist = (product) => {
           <div>
             <p style={{ margin: 0, color: "#94a3b8", letterSpacing: 1 }}>CATEGORIES</p>
             <h1 style={{ margin: "6px 0 8px", color: "#0f172a" }}>Browse our products</h1>
-            <p style={{ margin: 0, color: "#475569" }}>
+            <p style={{ margin: 0, color: isDark ? "#7dd3fc" : "#475569" }}>
               Filter by category, search, sort, check stock, and jump into details.
             </p>
             {searchTerm && (
-              <p style={{ margin: "6px 0 0", color: "#0f172a", fontWeight: 700 }}>
-                Showing results for “{searchTerm}”
+              <p style={{ margin: "6px 0 0", color: isDark ? "#e2e8f0" : "#0f172a", fontWeight: 700 }}>
+                Showing results for "{searchTerm}"
               </p>
             )}
             {roomFilter && (
@@ -348,9 +350,9 @@ const handleWishlist = (product) => {
                 }}
                 style={{
                   border: "1px solid",
-                  borderColor: cat.label === category ? "#0058a3" : "#cbd5f5",
-                  background: cat.label === category ? "#0058a3" : "#ffffff",
-                  color: cat.label === category ? "#ffffff" : "#0f172a",
+                  borderColor: cat.label === category ? (isDark ? "#38bdf8" : "#0058a3") : (isDark ? "#1f2937" : "#cbd5f5"),
+                  background: isDark ? "#0f172a" : (cat.label === category ? "#0058a3" : "#ffffff"),
+                  color: cat.label === category ? (isDark ? "#7dd3fc" : "#ffffff") : (isDark ? "#e5e7eb" : "#0f172a"),
                   padding: "8px 12px",
                   borderRadius: 10,
                   fontWeight: 700,
@@ -364,12 +366,13 @@ const handleWishlist = (product) => {
               value={sort}
               onChange={(e) => setSort(e.target.value)}
               style={{
-                border: "1px solid #cbd5e1",
+                border: isDark ? "1px solid #1f2937" : "1px solid #cbd5e1",
                 borderRadius: 10,
                 padding: "8px 12px",
                 fontWeight: 700,
                 cursor: "pointer",
-                background: "white",
+                background: isDark ? "#0f172a" : "white",
+                color: isDark ? "#e5e7eb" : "#0f172a",
               }}
             >
               <option value="popularity">Sort: Popularity</option>
@@ -412,10 +415,10 @@ const handleWishlist = (product) => {
                 <article
                   key={p.id}
                   style={{
-                    background: "#ffffff",
+                    background: isDark ? "#2b2f36" : "#ffffff",
                     borderRadius: 16,
-                    border: "1px solid #e2e8f0",
-                    boxShadow: "0 14px 30px rgba(15,23,42,0.06)",
+                    border: isDark ? "1px solid #3a4250" : "1px solid #e2e8f0",
+                    boxShadow: isDark ? "0 14px 30px rgba(0,0,0,0.5)" : "0 14px 30px rgba(15,23,42,0.06)",
                     overflow: "hidden",
                     display: "flex",
                     flexDirection: "column",
@@ -450,18 +453,18 @@ const handleWishlist = (product) => {
                       )}
                     </div>
                     <div style={{ padding: 14, display: "grid", gap: 6 }}>
-                      <h3 style={{ margin: 0, color: "#0f172a" }}>{p.name}</h3>
+                      <h3 style={{ margin: 0, color: isDark ? "#e2e8f0" : "#0f172a" }}>{p.name}</h3>
                       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                         <span style={{ color: "#f59e0b", fontWeight: 700 }}>⭐ {p.averageRating}</span>
-                        <span style={{ color: "#64748b", fontSize: "0.9rem" }}>({p.ratingCount})</span>
+                        <span style={{ color: isDark ? "#cbd5e1" : "#64748b", fontSize: "0.9rem" }}>({p.ratingCount})</span>
                       </div>
                       <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
-                        <p style={{ margin: 0, fontWeight: 800, color: "#0f172a" }}>
+                        <p style={{ margin: 0, fontWeight: 800, color: isDark ? "#e2e8f0" : "#0f172a" }}>
                           ₺{p.price.toLocaleString("tr-TR")}
                         </p>
                         {p.hasDiscount && (
                           <>
-                            <p style={{ margin: 0, color: "#94a3b8", textDecoration: "line-through" }}>
+                            <p style={{ margin: 0, color: isDark ? "#a3b3c6" : "#94a3b8", textDecoration: "line-through" }}>
                               ₺{p.originalPrice.toLocaleString("tr-TR")}
                             </p>
                             <span style={{ color: "#059669", fontWeight: 800, fontSize: "0.9rem" }}>
@@ -566,11 +569,14 @@ const handleWishlist = (product) => {
                           style={{
                             width:48,
                             borderRadius:10,
-                            border:"1px solid #cbd5e1",
-                            background:inWishlist(p.id)?"#fee2e2":"#fff",
+                            border: isDark ? "1px solid #3a4250" : "1px solid #cbd5e1",
+                            background: inWishlist(p.id)
+                              ? (isDark ? "#3b1f26" : "#fee2e2")
+                              : (isDark ? "#2b2f36" : "#fff"),
                             cursor:"pointer",
                             fontSize:"1.1rem",
-                            fontWeight:700
+                            fontWeight:700,
+                            color: isDark ? "#cbd5e1" : "#0f172a"
                           }}
                         >
                           {inWishlist(p.id) ? "♥" : "♡"}
@@ -593,7 +599,7 @@ const handleWishlist = (product) => {
                 flexWrap: "wrap",
               }}
             >
-              <p style={{ margin: 0, color: "#475569" }}>
+              <p style={{ margin: 0, color: isDark ? "#7dd3fc" : "#475569" }}>
                 Showing {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length}
               </p>
               <div style={{ display: "flex", gap: 8 }}>
@@ -602,9 +608,9 @@ const handleWishlist = (product) => {
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
                   style={{
-                    border: "1px solid #cbd5e1",
-                    background: "#ffffff",
-                    color: "#0f172a",
+                    border: isDark ? "1px solid #1f2937" : "1px solid #cbd5e1",
+                    background: isDark ? "#0f172a" : "#ffffff",
+                    color: isDark ? "#e5e7eb" : "#0f172a",
                     padding: "8px 12px",
                     borderRadius: 10,
                     cursor: currentPage === 1 ? "not-allowed" : "pointer",
@@ -617,9 +623,9 @@ const handleWishlist = (product) => {
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
                   style={{
-                    border: "1px solid #cbd5e1",
-                    background: "#ffffff",
-                    color: "#0f172a",
+                    border: isDark ? "1px solid #1f2937" : "1px solid #cbd5e1",
+                    background: isDark ? "#0f172a" : "#ffffff",
+                    color: isDark ? "#e5e7eb" : "#0f172a",
                     padding: "8px 12px",
                     borderRadius: 10,
                     cursor: currentPage === totalPages ? "not-allowed" : "pointer",
@@ -637,3 +643,7 @@ const handleWishlist = (product) => {
 }
 
 export default ProductList;
+
+
+
+

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
+import { useTheme } from "../context/ThemeContext";
 
 function Wishlist({ openMiniCart }) {
   const { items, removeItem: removeWishlistItem } = useWishlist();
@@ -11,6 +12,7 @@ function Wishlist({ openMiniCart }) {
     decrement,
     removeItem: removeCartItem,
   } = useCart();
+  const { isDark } = useTheme();
 
   const cartQty = (id) => {
     const cartItem = cartItems.find((item) => item.id === id);
@@ -54,20 +56,21 @@ function Wishlist({ openMiniCart }) {
           alignItems: "center",
           justifyContent: "center",
           gap: 12,
-          color: "#0f172a",
+          color: isDark ? "#e5e7eb" : "#0f172a",
           textAlign: "center",
           padding: 24,
+          backgroundColor: isDark ? "#0b0f14" : "transparent",
         }}
       >
         <h2 style={{ margin: 0 }}>Your wishlist is empty</h2>
-        <p style={{ margin: 0, color: "#475569" }}>
+        <p style={{ margin: 0, color: isDark ? "#94a3b8" : "#475569" }}>
           Tap the heart icon on products to save your favorites.
         </p>
         <Link
           to="/products"
           style={{
-            backgroundColor: "#0058a3",
-            color: "white",
+            backgroundColor: isDark ? "#38bdf8" : "#0058a3",
+            color: isDark ? "#0b0f14" : "white",
             padding: "10px 20px",
             borderRadius: 999,
             textDecoration: "none",
@@ -96,7 +99,7 @@ function Wishlist({ openMiniCart }) {
           <div>
             <p style={{ margin: 0, color: "#94a3b8", letterSpacing: 1 }}>WISHLIST</p>
             <h1 style={{ margin: "6px 0 8px", color: "#0f172a" }}>Wishlist</h1>
-            <p style={{ margin: 0, color: "#475569" }}>
+            <p style={{ margin: 0, color: isDark ? "#94a3b8" : "#475569" }}>
               Saved products ready to add to your cart.
             </p>
           </div>
@@ -155,7 +158,7 @@ function Wishlist({ openMiniCart }) {
                           top: 10,
                           right: 10,
                           background: "#b91c1c",
-                          color: "white",
+                          color: isDark ? "#0b0f14" : "white",
                           padding: "6px 10px",
                           borderRadius: 12,
                           fontWeight: 800,
@@ -309,6 +312,10 @@ function Wishlist({ openMiniCart }) {
 }
 
 export default Wishlist;
+
+
+
+
 
 
 

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { fetchProductsWithMeta } from "../services/productService";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useTheme } from "../context/ThemeContext";
 gsap.registerPlugin(ScrollTrigger);
 
 const highlights = [
@@ -44,6 +45,7 @@ const categories = [
 function Home() {
   const [featured, setFeatured] = useState([]);
   const [lightPos, setLightPos] = useState({ x: "50%", y: "50%" });
+  const { isDark } = useTheme();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -166,12 +168,12 @@ function Home() {
         </div>
       </section>
 
-      <section style={{ padding: "50px 24px", backgroundColor: "#ffffff" }}>
+      <section style={{ padding: "50px 24px", backgroundColor: isDark ? "#0b0f14" : "#ffffff" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
           <div style={{ maxWidth: 520 }}>
-            <p style={{ margin: 0, letterSpacing: 1, color: "#94a3b8" }}>FEATURED</p>
-            <h2 style={{ margin: "6px 0 12px", color: "#0f172a" }}>Handpicked for this week</h2>
-            <p style={{ margin: "0 0 12px", color: "#475569" }}>
+            <p style={{ margin: 0, letterSpacing: 1, color: isDark ? "#7dd3fc" : "#94a3b8" }}>FEATURED</p>
+            <h2 style={{ margin: "6px 0 12px", color: isDark ? "#e2e8f0" : "#0f172a" }}>Handpicked for this week</h2>
+            <p style={{ margin: "0 0 12px", color: isDark ? "#a3b3c6" : "#475569" }}>
               Limited stock picks with high ratings. Add to cart while they last.
             </p>
           </div>
@@ -179,12 +181,13 @@ function Home() {
             to="/products"
             style={{
               alignSelf: "center",
-              color: "#0058a3",
+              color: isDark ? "#7dd3fc" : "#0058a3",
               fontWeight: 800,
               textDecoration: "none",
-              border: "1px solid #cbd5e1",
+              border: isDark ? "1px solid #1f2937" : "1px solid #cbd5e1",
               padding: "10px 14px",
               borderRadius: 10,
+              background: isDark ? "#0f172a" : "transparent",
             }}
           >
             View all products →
@@ -207,23 +210,23 @@ function Home() {
               style={{
                 textDecoration: "none",
                 color: "inherit",
-                background: "#f8fafc",
+                background: isDark ? "#0f172a" : "#f8fafc",
                 borderRadius: 14,
-                border: "1px solid #e2e8f0",
+                border: isDark ? "1px solid #1f2937" : "1px solid #e2e8f0",
                 overflow: "hidden",
                 display: "flex",
                 flexDirection: "column",
-                boxShadow: "0 12px 28px rgba(15,23,42,0.06)",
+                boxShadow: isDark ? "0 12px 28px rgba(0,0,0,0.6)" : "0 12px 28px rgba(15,23,42,0.06)",
               }}
             >
               <img src={item.image} alt={item.name} style={{ width: "100%", height: 170, objectFit: "cover" }} />
               <div style={{ padding: 14, display: "grid", gap: 6 }}>
-                <h4 style={{ margin: 0, color: "#0f172a" }}>{item.name}</h4>
+                <h4 style={{ margin: 0, color: isDark ? "#e2e8f0" : "#0f172a" }}>{item.name}</h4>
                 <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                   <span style={{ color: "#f59e0b", fontWeight: 700 }}>⭐ {item.averageRating}</span>
-                  <span style={{ color: "#64748b", fontSize: "0.9rem" }}>({item.ratingCount})</span>
+                  <span style={{ color: isDark ? "#a3b3c6" : "#64748b", fontSize: "0.9rem" }}>({item.ratingCount})</span>
                 </div>
-                <p style={{ margin: 0, fontWeight: 800, color: "#0f172a" }}>₺{Number(item.price || 0).toLocaleString("tr-TR")}</p>
+                <p style={{ margin: 0, fontWeight: 800, color: isDark ? "#e2e8f0" : "#0f172a" }}>₺{Number(item.price || 0).toLocaleString("tr-TR")}</p>
                 <p style={{ margin: 0, color: item.availableStock > 0 ? "#059669" : "#b91c1c", fontWeight: 700 }}>
                   {item.availableStock > 0 ? `${item.availableStock} in stock` : "Out of stock"}
                 </p>
@@ -233,8 +236,8 @@ function Home() {
         </div>
       </section>
 
-      <section id="ilham" style={{ padding: "60px 24px", backgroundColor: "#f8f9fa" }}>
-        <h2 style={{ textAlign: "center", color: "#0058a3", marginBottom: 32 }}>
+      <section id="ilham" style={{ padding: "60px 24px", backgroundColor: isDark ? "#0b0f14" : "#f8f9fa" }}>
+        <h2 style={{ textAlign: "center", color: isDark ? "#7dd3fc" : "#0058a3", marginBottom: 32 }}>
           Ideas to elevate your home
         </h2>
         <div
@@ -250,10 +253,10 @@ function Home() {
             <article
               key={item.title}
               style={{
-                backgroundColor: "white",
+                backgroundColor: isDark ? "#0f172a" : "white",
                 borderRadius: 16,
                 padding: 24,
-                boxShadow: "0 18px 35px rgba(0,0,0,0.05)",
+                boxShadow: isDark ? "0 18px 35px rgba(0,0,0,0.6)" : "0 18px 35px rgba(0,0,0,0.05)",
                 minHeight: 200,
               }}
             >
@@ -271,8 +274,8 @@ function Home() {
               >
                 {item.badge}
               </span>
-              <h3 style={{ margin: "0 0 8px" }}>{item.title}</h3>
-              <p style={{ color: "#4b5563", margin: 0 }}>{item.desc}</p>
+              <h3 style={{ margin: "0 0 8px", color: isDark ? "#e2e8f0" : "#0f172a" }}>{item.title}</h3>
+              <p style={{ color: isDark ? "#a3b3c6" : "#4b5563", margin: 0 }}>{item.desc}</p>
             </article>
           ))}
         </div>
@@ -336,3 +339,6 @@ function Home() {
 
 
 export default Home;
+
+
+

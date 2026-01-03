@@ -1,37 +1,42 @@
+import { formatPrice } from "../../utils/formatPrice";
+
 function CartSummary({ subtotal, shipping, discount, total, onCheckout }) {
+  const isDark = typeof document !== "undefined" && document.body.classList.contains("theme-dark");
+
   return (
     <aside
       style={{
-        backgroundColor: "#ffffff",
+        backgroundColor: isDark ? "#0f172a" : "#ffffff",
         borderRadius: 16,
         padding: 24,
-        boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
+        boxShadow: isDark ? "0 12px 30px rgba(0,0,0,0.6)" : "0 12px 30px rgba(0,0,0,0.08)",
         minWidth: 280,
+        border: isDark ? "1px solid #1f2937" : "none",
       }}
     >
-      <h3 style={{ marginTop: 0, color: "#0058a3" }}>Order Summary</h3>
+      <h3 style={{ marginTop: 0, color: isDark ? "#7dd3fc" : "#0058a3" }}>Order Summary</h3>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, color: isDark ? "#e2e8f0" : "#0f172a" }}>
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <span>Subtotal</span>
-          <strong>₺{subtotal.toLocaleString("tr-TR")}</strong>
+          <strong>{formatPrice(subtotal)}</strong>
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <span>Shipping</span>
-          <strong>{shipping === 0 ? "Free" : `₺${shipping.toLocaleString("tr-TR")}`}</strong>
+          <strong>{shipping === 0 ? "Free" : formatPrice(shipping)}</strong>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", color: "#059669" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", color: isDark ? "#34d399" : "#059669" }}>
           <span>Discount</span>
-          <strong>-₺{discount.toLocaleString("tr-TR")}</strong>
+          <strong>-{formatPrice(discount)}</strong>
         </div>
 
-        <hr style={{ border: "none", borderTop: "1px solid #e5e7eb" }} />
+        <hr style={{ border: "none", borderTop: isDark ? "1px solid #1f2937" : "1px solid #e5e7eb" }} />
 
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1.1rem" }}>
           <span>Total</span>
-          <strong>₺{total.toLocaleString("tr-TR")}</strong>
+          <strong>{formatPrice(total)}</strong>
         </div>
       </div>
 
@@ -44,8 +49,8 @@ function CartSummary({ subtotal, shipping, discount, total, onCheckout }) {
           padding: "12px 16px",
           border: "none",
           borderRadius: 10,
-          backgroundColor: "#0058a3",
-          color: "white",
+          backgroundColor: isDark ? "#38bdf8" : "#0058a3",
+          color: isDark ? "#0b0f14" : "white",
           fontWeight: 700,
           cursor: "pointer",
         }}

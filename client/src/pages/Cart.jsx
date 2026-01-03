@@ -2,11 +2,13 @@ import { Link, useNavigate } from "react-router-dom";
 import CartItem from "../components/cart/CartItem";
 import CartSummary from "../components/cart/CartSummary";
 import { useCart } from "../context/CartContext";
+import { useTheme } from "../context/ThemeContext";
 import { updateStock } from "../services/api.js"; // products/:id/stock endpoint
 
 function Cart() {
   const navigate = useNavigate();
   const { items, subtotal, increment, decrement, removeItem } = useCart();
+  const { isDark } = useTheme();
 
   const handleIncrease = async (id) => {
     const item = items.find((p) => p.id === id);
@@ -105,18 +107,19 @@ function Cart() {
           alignItems: "center",
           justifyContent: "center",
           gap: 16,
-          color: "#0058a3",
+          color: isDark ? "#e5e7eb" : "#0058a3",
           textAlign: "center",
           padding: 24,
+          backgroundColor: isDark ? "#0b0f14" : "transparent",
         }}
       >
-        <h2>Your cart is empty 🛍️</h2>
-        <p>Browse popular items and add what you like.</p>
+        <h2>Your cart is empty</h2>
+        <p style={{ color: isDark ? "#94a3b8" : "#475569" }}>Browse popular items and add what you like.</p>
         <Link
           to="/products"
           style={{
-            backgroundColor: "#0058a3",
-            color: "white",
+            backgroundColor: isDark ? "#38bdf8" : "#0058a3",
+            color: isDark ? "#0b0f14" : "white",
             padding: "10px 20px",
             borderRadius: 999,
             textDecoration: "none",
@@ -133,12 +136,12 @@ function Cart() {
     <section
       style={{
         padding: "40px 24px",
-        backgroundColor: "#f5f7fb",
+        backgroundColor: isDark ? "#0b0f14" : "#f5f7fb",
         minHeight: "70vh",
         fontFamily: "Arial, sans-serif",
       }}
     >
-      <h1 style={{ color: "#0058a3", marginBottom: 24 }}>My Cart</h1>
+      <h1 style={{ color: isDark ? "#e5e7eb" : "#0058a3", marginBottom: 24 }}>My Cart</h1>
 
       <div
         style={{
@@ -173,3 +176,5 @@ function Cart() {
 }
 
 export default Cart;
+
+

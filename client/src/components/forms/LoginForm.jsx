@@ -11,6 +11,7 @@ function LoginForm({ onSuccess }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const isDark = typeof document !== "undefined" && document.body.classList.contains("theme-dark");
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -57,27 +58,35 @@ function LoginForm({ onSuccess }) {
   return (
     <div
       style={{
-        backgroundColor: "#ffffff",
+        backgroundColor: isDark ? "#0f172a" : "#ffffff",
         borderRadius: "16px",
-        boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
+        boxShadow: isDark ? "0 12px 30px rgba(0,0,0,0.6)" : "0 12px 30px rgba(0,0,0,0.08)",
         padding: "36px 32px",
         width: "100%",
         maxWidth: 360,
-        borderTop: "6px solid #0058a3",
+        borderTop: isDark ? "6px solid #38bdf8" : "6px solid #0058a3",
       }}
     >
       <h2
         style={{
-          color: "#0058a3",
+          color: isDark ? "#7dd3fc" : "#0058a3",
           marginBottom: 12,
           fontWeight: 700,
         }}
       >
-        🔐 Sign In
+        Sign In
       </h2>
-      <p style={{ marginTop: 0, marginBottom: 12, fontSize: "0.85rem", color: "#475569", lineHeight: 1.4 }}>
+      <p
+        style={{
+          marginTop: 0,
+          marginBottom: 12,
+          fontSize: "0.85rem",
+          color: isDark ? "#cbd5e1" : "#475569",
+          lineHeight: 1.4,
+        }}
+      >
         Demo creds: <br />
-        Customer: test@suhome.com / 1234<br />
+        Customer: demo@suhome.com / demo<br />
         Product Manager: demo1@suhome.com / demo1pass<br />
         Sales Manager: demo2@suhome.com / demo2pass<br />
         Support: support@suhome.com / support
@@ -99,7 +108,7 @@ function LoginForm({ onSuccess }) {
       )}
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <label style={{ textAlign: "left", color: "#1a1a1a", fontSize: "0.85rem", fontWeight: 600 }}>
+        <label style={{ textAlign: "left", color: isDark ? "#e2e8f0" : "#1a1a1a", fontSize: "0.85rem", fontWeight: 600 }}>
           Email
           <input
             type="email"
@@ -112,27 +121,31 @@ function LoginForm({ onSuccess }) {
               padding: 10,
               marginTop: 6,
               borderRadius: 8,
-              border: "1px solid #d4d7dd",
+              border: isDark ? "1px solid #1f2937" : "1px solid #d4d7dd",
               fontSize: "0.95rem",
+              background: isDark ? "#0b0f14" : "#ffffff",
+              color: isDark ? "#e2e8f0" : "#1a1a1a",
             }}
           />
         </label>
 
-        <label style={{ textAlign: "left", color: "#1a1a1a", fontSize: "0.85rem", fontWeight: 600 }}>
+        <label style={{ textAlign: "left", color: isDark ? "#e2e8f0" : "#1a1a1a", fontSize: "0.85rem", fontWeight: 600 }}>
           Password
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            placeholder="••••"
+            placeholder="password"
             style={{
               width: "100%",
               padding: 10,
               marginTop: 6,
               borderRadius: 8,
-              border: "1px solid #d4d7dd",
+              border: isDark ? "1px solid #1f2937" : "1px solid #d4d7dd",
               fontSize: "0.95rem",
+              background: isDark ? "#0b0f14" : "#ffffff",
+              color: isDark ? "#e2e8f0" : "#1a1a1a",
             }}
           />
         </label>
@@ -145,8 +158,8 @@ function LoginForm({ onSuccess }) {
             padding: "10px 12px",
             borderRadius: 8,
             border: "none",
-            backgroundColor: "#0058a3",
-            color: "#f8fafc",
+            backgroundColor: isDark ? "#38bdf8" : "#0058a3",
+            color: isDark ? "#0b0f14" : "#f8fafc",
             fontWeight: 700,
             cursor: "pointer",
             fontSize: "1rem",
@@ -164,7 +177,7 @@ function LoginForm({ onSuccess }) {
           marginTop: 10,
           background: "none",
           border: "none",
-          color: "#0058a3",
+          color: isDark ? "#7dd3fc" : "#0058a3",
           fontWeight: 700,
           cursor: "pointer",
         }}
@@ -172,15 +185,15 @@ function LoginForm({ onSuccess }) {
         Forgot password?
       </button>
 
-      <p style={{ fontSize: "0.85rem", marginTop: 16, color: "#4b5563" }}>
-        Don’t have an account?{" "}
+      <p style={{ fontSize: "0.85rem", marginTop: 16, color: isDark ? "#cbd5e1" : "#4b5563" }}>
+        Don't have an account?{" "}
         <button
           type="button"
           onClick={() => navigate("/register")}
           style={{
             background: "none",
             border: "none",
-            color: "#0058a3",
+            color: isDark ? "#7dd3fc" : "#0058a3",
             cursor: "pointer",
             fontWeight: 600,
             padding: 0,
@@ -194,3 +207,4 @@ function LoginForm({ onSuccess }) {
 }
 
 export default LoginForm;
+

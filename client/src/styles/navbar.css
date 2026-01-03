@@ -156,3 +156,50 @@
 .signout-link::after {
   display: none !important;
 }
+
+body.theme-dark .nav {
+  background-color: #0b0f14;
+  border-bottom: 1px solid #1f2937;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+
+body.theme-dark .nav__brand {
+  color: #e5e7eb;
+}
+
+body.theme-dark .nav__burger {
+  background: #e5e7eb;
+}
+
+body.theme-dark .nav__link {
+  color: #7dd3fc;
+}
+
+body.theme-dark .nav__link:hover {
+  background-color: rgba(125, 211, 252, 0.15);
+}
+
+body.theme-dark .nav__link.active {
+  border-bottom: 3px solid #7dd3fc;
+  color: #7dd3fc;
+}
+
+body.theme-dark .nav__search input {
+  background: #0f172a;
+  color: #e5e7eb;
+  border-color: #1f2937;
+}
+
+body.theme-dark .nav__search button,
+body.theme-dark .nav__chat {
+  border-color: #38bdf8;
+  background: #38bdf8;
+  color: #0b0f14;
+}
+
+@media (max-width: 900px) {
+  body.theme-dark .nav__links {
+    background: #0b0f14;
+    border-bottom: 1px solid #1f2937;
+  }
+}

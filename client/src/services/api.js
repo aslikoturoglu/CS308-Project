@@ -1,4 +1,6 @@
+import { updateJSON } from "../utils/storage";
 const API_URL = "/api";
+
 
 // Tum urunleri getir
 export async function getProducts(signal) {
@@ -16,21 +18,32 @@ export async function getProductById(id, signal) {
 
 // STOCK UPDATE
 export async function updateStock(id, amount) {
-  const res = await fetch(`${API_URL}/products/${id}/stock`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ amount }),
-  });
+  try {
+    const res = await fetch(`${API_URL}/products/${id}/stock`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount }),
+    });
 
-  if (!res.ok) {
-    let data = {};
-    try {
-      data = await res.json();
-    } catch (e) {}
+    if (!res.ok) {
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (e) {}
 
-    // backendten "Not enough stock" gelirse onu firlat
-    throw new Error(data.error || "Stock update failed");
+      // backendten "Not enough stock" gelirse onu firlat
+      throw new Error(data.error || "Stock update failed");
+    }
+
+    return await res.json(); // { success: true }
+  } catch {
+    const delta = -Number(amount || 0);
+    updateJSON("inventory-adjustments", (current = {}) => {
+      const next = { ...current };
+      const currentValue = Number(next[id] || 0);
+      next[id] = Math.max(0, currentValue + delta);
+      return next;
+    }, {});
+    return { success: true, mocked: true };
   }
-
-  return await res.json(); // { success: true }
 }

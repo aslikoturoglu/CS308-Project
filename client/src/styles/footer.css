@@ -56,3 +56,18 @@
     color: #94a3b8;
     font-size: 0.9rem;
 }
+
+body.theme-dark .footer {
+    background: #0b0f14;
+    color: #e5e7eb;
+}
+
+body.theme-dark .footer-subtitle,
+body.theme-dark .footer__cols p {
+    color: #94a3b8;
+}
+
+body.theme-dark .footer__bottom {
+    border-top-color: #1f2937;
+    color: #64748b;
+}

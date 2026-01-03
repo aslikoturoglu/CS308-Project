@@ -16,14 +16,131 @@ body {
 }
 
 body.theme-dark {
-  filter: invert(1) hue-rotate(180deg);
+  background-color: #0b0f14;
+  color: #e5e7eb;
 }
 
-body.theme-dark img,
-body.theme-dark video,
-body.theme-dark iframe,
-body.theme-dark svg {
-  filter: invert(1) hue-rotate(180deg);
+body.theme-dark .app-shell,
+body.theme-dark .app-content {
+  background-color: #0b0f14;
+}
+
+body.theme-dark main,
+body.theme-dark section {
+  background-color: #0b0f14 !important;
+  color: #e5e7eb;
+}
+
+body.theme-dark a {
+  color: #7dd3fc;
+}
+
+body.theme-dark header {
+  background-color: #0b0f14 !important;
+  color: #e5e7eb !important;
+}
+
+body.theme-dark .ticker-track {
+  color: #e5e7eb !important;
+}
+
+body.theme-dark header img {
+  filter: none;
+}
+
+body.theme-dark input,
+body.theme-dark textarea,
+body.theme-dark select {
+  background-color: #0f172a;
+  color: #e5e7eb;
+  border-color: #1f2937;
+}
+
+body.theme-dark select option,
+body.theme-dark select optgroup {
+  background-color: #0f172a;
+  color: #e5e7eb;
+}
+
+body.theme-dark button {
+  color: inherit;
+}
+
+body.theme-dark [style*="background: #ffffff"],
+body.theme-dark [style*="background-color: #ffffff"],
+body.theme-dark [style*="background: #f5f7fb"],
+body.theme-dark [style*="background-color: #f5f7fb"],
+body.theme-dark [style*="background: #f8f9fa"],
+body.theme-dark [style*="background-color: #f8f9fa"],
+body.theme-dark [style*="background: #f8fafc"],
+body.theme-dark [style*="background-color: #f8fafc"] {
+  background-color: #0f172a !important;
+  color: #e5e7eb !important;
+}
+
+body.theme-dark [style*="background: white"],
+body.theme-dark [style*="background: \"white\""],
+body.theme-dark [style*="background-color: white"],
+body.theme-dark [style*="background-color: \"white\""] {
+  background-color: #0f172a !important;
+  color: #e5e7eb !important;
+}
+
+body.theme-dark [style*="backgroundColor: #ffffff"],
+body.theme-dark [style*="backgroundColor: \"#ffffff\""],
+body.theme-dark [style*="backgroundColor: #f5f7fb"],
+body.theme-dark [style*="backgroundColor: \"#f5f7fb\""],
+body.theme-dark [style*="backgroundColor: #f8fafc"],
+body.theme-dark [style*="backgroundColor: \"#f8fafc\""] {
+  background-color: #0f172a !important;
+  color: #e5e7eb !important;
+}
+
+body.theme-dark [style*="background: #ffffff"],
+body.theme-dark [style*="background: white"],
+body.theme-dark [style*="background-color: #ffffff"],
+body.theme-dark [style*="background-color: white"] {
+  box-shadow: 0 18px 35px rgba(0, 0, 0, 0.6) !important;
+}
+
+body.theme-dark [style*="color: #0f172a"],
+body.theme-dark [style*="color: #111827"],
+body.theme-dark [style*="color: #1a1a1a"] {
+  color: #7dd3fc !important;
+}
+
+body.theme-dark [style*="color: #475569"],
+body.theme-dark [style*="color: #64748b"] {
+  color: #cbd5e1 !important;
+}
+
+body.theme-dark [style*="color: #94a3b8"] {
+  color: #e2e8f0 !important;
+}
+
+body.theme-dark [style*="color: green"],
+body.theme-dark [style*="color: red"] {
+  color: #e2e8f0 !important;
+}
+
+body.theme-dark h1,
+body.theme-dark h2,
+body.theme-dark h3 {
+  color: #7dd3fc !important;
+}
+
+body.theme-dark [style*="border: 1px solid #e5e7eb"],
+body.theme-dark [style*="border: 1px solid #e2e8f0"],
+body.theme-dark [style*="border: 1px solid #cbd5e1"],
+body.theme-dark [style*="border: 1px solid #cbd5f5"] {
+  border-color: #1f2937 !important;
+}
+
+body.theme-dark [style*="box-shadow: 0 14px 30px"],
+body.theme-dark [style*="boxShadow: 0 14px 30px"],
+body.theme-dark [style*="box-shadow: 0 18px 35px"],
+body.theme-dark [style*="boxShadow: 0 18px 35px"] {
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6) !important;
 }
 
 .checkout-page {

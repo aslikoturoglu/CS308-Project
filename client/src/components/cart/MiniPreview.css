@@ -198,3 +198,61 @@
   background: #cbd5f5;
   border-radius: 4px;
 }
+
+body.theme-dark .mini-cart {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6);
+}
+
+body.theme-dark .mini-cart-header {
+  border-bottom-color: #1f2937;
+}
+
+body.theme-dark .mini-cart-header h3,
+body.theme-dark .mini-cart-footer .total,
+body.theme-dark .mini-cart-item .name,
+body.theme-dark .mini-cart-item .price {
+  color: #e2e8f0;
+}
+
+body.theme-dark .mini-cart-header button {
+  color: #94a3b8;
+}
+
+body.theme-dark .mini-cart-body p {
+  color: #cbd5e1;
+}
+
+body.theme-dark .mini-cart-qty {
+  background: #0b0f14;
+  border-color: #1f2937;
+}
+
+body.theme-dark .mini-cart-qty-btn {
+  background: #0f172a;
+  border-color: #1f2937;
+  color: #7dd3fc;
+}
+
+body.theme-dark .mini-cart-qty-value {
+  color: #e2e8f0;
+}
+
+body.theme-dark .mini-cart-footer {
+  border-top-color: #1f2937;
+}
+
+body.theme-dark .mini-cart-footer .btn {
+  background: #0b0f14;
+  color: #e2e8f0;
+}
+
+body.theme-dark .mini-cart-footer .btn.primary {
+  background: #38bdf8;
+  color: #0b0f14;
+}
+
+body.theme-dark .mini-cart-footer .btn.primary:hover {
+  background: #22aee0;
+}

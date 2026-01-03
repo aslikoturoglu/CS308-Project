@@ -4,6 +4,7 @@ import { useCart } from "../context/CartContext";
 import { fetchProductById } from "../services/productService";
 import { useWishlist } from "../context/WishlistContext";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 
 import { addComment, fetchProductComments, hasDelivered } from "../services/commentService";
 
@@ -14,6 +15,7 @@ function ProductDetail({ openMiniCart }) {
   const { addItem, items: cartItems } = useCart();
   const { toggleItem, inWishlist } = useWishlist();
   const { user } = useAuth();
+  const { isDark } = useTheme();
   const isProductManager = user?.role === "product_manager";
 
   const [product, setProduct] = useState(null);
@@ -43,9 +45,14 @@ function ProductDetail({ openMiniCart }) {
     async function loadProduct() {
       try {
         setLoading(true);
+        setError("");
         const found = await fetchProductById(productId, controller.signal);
-        if (!found) setError("Product not found.");
-        else setProduct(found);
+        if (!found) {
+          setError("Product not found.");
+        } else {
+          setProduct(found);
+          setError("");
+        }
       } catch (err) {
         if (err.name !== "AbortError") setError("Failed to load product");
       } finally {
@@ -60,7 +67,11 @@ function ProductDetail({ openMiniCart }) {
   async function loadComments() {
     try {
       const list = await fetchProductComments(productId, { userId: user?.id });
-      setComments(list || []);
+      if (Array.isArray(list) && list.length > 0) {
+        setComments(list);
+        return;
+      }
+      setComments([]);
     } catch {
       setComments([]);
     }
@@ -250,18 +261,22 @@ function ProductDetail({ openMiniCart }) {
           <h2>₺{product.price.toLocaleString("tr-TR")}</h2>
 
           {product.description && (
-               <section
-               style={{
-                 background: "#f8fafc",
-                 borderRadius: 12,
-                 padding: 12,
-                 border: "1px solid #e2e8f0",
-               }}
-             >
-               <h3 style={{ margin: 0, marginBottom: 6, color: "#0f172a" }}>Description</h3>
-               <p style={{ margin: 0, lineHeight: 1.5, color: "#475569" }}>{product.description}</p>
-             </section>
-           )}
+            <section
+              style={{
+                background: isDark ? "#0b0f14" : "#f8fafc",
+                borderRadius: 12,
+                padding: 12,
+                border: isDark ? "1px solid #1f2937" : "1px solid #e2e8f0",
+              }}
+            >
+              <h3 style={{ margin: 0, marginBottom: 6, color: isDark ? "#7dd3fc" : "#0f172a" }}>
+                Description
+              </h3>
+              <p style={{ margin: 0, lineHeight: 1.5, color: isDark ? "#e2e8f0" : "#475569" }}>
+                {product.description}
+              </p>
+            </section>
+          )}
 
           <section
             style={{
@@ -287,10 +302,10 @@ function ProductDetail({ openMiniCart }) {
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
               gap: 10,
-              background: "#f8fafc",
+              background: isDark ? "#0b0f14" : "#f8fafc",
               padding: 12,
               borderRadius: 12,
-              border: "1px solid #e2e8f0",
+              border: isDark ? "1px solid #1f2937" : "1px solid #e2e8f0",
             }}
             >
             <Info label="Model" value={`SU-${String(product.id).padStart(4, "0")}`} />
@@ -302,9 +317,9 @@ function ProductDetail({ openMiniCart }) {
               <div style={buttonRow}>
                 <button
                   onClick={() => toggleItem(product)}
-                  style={wishlistBtn(inWishlist(product.id))}
+                  style={wishlistBtn(inWishlist(product.id), isDark)}
                 >
-                  <span style={{ color: inWishlist(product.id) ? "#e11d48" : "#1e293b" }}>
+                  <span style={{ color: inWishlist(product.id) ? "#e11d48" : (isDark ? "#7dd3fc" : "#1e293b") }}>
                     {inWishlist(product.id) ? "♥" : "♡"}
                   </span>
                 </button>
@@ -337,10 +352,12 @@ function ProductDetail({ openMiniCart }) {
         </div>
       </div>
 
-      <section style={reviewCard}>
-        <h2>Customer Reviews</h2>
+      <section style={reviewCard(isDark)}>
+        <h2 style={{ color: isDark ? "#7dd3fc" : "#0f172a" }}>Customer Reviews</h2>
 
-        {comments.length === 0 && <p>No reviews yet.</p>}
+        {comments.length === 0 && (
+          <p style={{ color: isDark ? "#cbd5e1" : "#475569" }}>No reviews yet.</p>
+        )}
 
         {comments.map((c) => {
           const status = c.status || "approved";
@@ -351,7 +368,7 @@ function ProductDetail({ openMiniCart }) {
           const hasText = (c.comment_text || "").trim().length > 0;
 
       return (
-        <div key={c.comment_id} style={reviewBlock}>
+        <div key={c.comment_id} style={reviewBlock(isDark)}>
           <div
             style={{
               display: "flex",
@@ -361,7 +378,9 @@ function ProductDetail({ openMiniCart }) {
               marginBottom: 6,
             }}
           >
-            <strong>{c.display_name || "Verified buyer"}</strong>
+            <strong style={{ color: isDark ? "#e2e8f0" : "#0f172a" }}>
+              {c.display_name || "Verified buyer"}
+            </strong>
             {hasText && user?.id === c.user_id && status !== "approved" && (
               <span
                 style={{
@@ -385,15 +404,17 @@ function ProductDetail({ openMiniCart }) {
               </div>
 
               {c.comment_text ? (
-                <p style={{ margin: "4px 0" }}>{c.comment_text}</p>
+                <p style={{ margin: "4px 0", color: isDark ? "#e2e8f0" : "#0f172a" }}>
+                  {c.comment_text}
+                </p>
               ) : (
-                <p style={{ margin: "4px 0", color: "#94a3b8" }}>
+                <p style={{ margin: "4px 0", color: isDark ? "#cbd5e1" : "#94a3b8" }}>
                   No comment text provided.
                 </p>
               )}
 
               {createdLabel && (
-                <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>
+                <span style={{ color: isDark ? "#cbd5e1" : "#94a3b8", fontSize: "0.85rem" }}>
                   {createdLabel}
                 </span>
               )}
@@ -407,10 +428,21 @@ function ProductDetail({ openMiniCart }) {
 }
 
 function Info({ label, value }) {
+  const { isDark } = useTheme();
   return (
     <div>
-      <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.9rem" }}>{label}</p>
-      <p style={{ margin: "4px 0 0", color: "#0f172a", fontWeight: 700 }}>{value}</p>
+      <p style={{ margin: 0, color: isDark ? "#cbd5e1" : "#94a3b8", fontSize: "0.9rem" }}>
+        {label}
+      </p>
+      <p
+        style={{
+          margin: "4px 0 0",
+          color: isDark ? "#e2e8f0" : "#0f172a",
+          fontWeight: 700,
+        }}
+      >
+        {value}
+      </p>
     </div>
   );
 }
@@ -467,7 +499,7 @@ const infoCard = {
   gap: 12,
 };
 
-const wishlistBtn = (active) => ({
+const wishlistBtn = (active, isDark) => ({
   width: 42,
   height: 42,
   borderRadius: "50%",
@@ -475,8 +507,8 @@ const wishlistBtn = (active) => ({
   justifyContent: "center",
   alignItems: "center",
 
-  background: active ? "#ffe4e6" : "#ffffff", 
-  border: active ? "1px solid #e11d48" : "1px solid #e2e8f0",
+  background: active ? "#ffe4e6" : (isDark ? "#0f172a" : "#ffffff"), 
+  border: active ? "1px solid #e11d48" : (isDark ? "1px solid #1f2937" : "1px solid #e2e8f0"),
 
   cursor: "pointer",
   transition: "all 0.2s ease",
@@ -515,21 +547,21 @@ const buttonRow = {
   flexWrap: "wrap",
 };
 
-const reviewCard = {
+const reviewCard = (isDark) => ({
   marginTop: 30,
-  background: "white",
+  background: isDark ? "#0f172a" : "white",
   padding: 20,
   borderRadius: 12,
-  border: "1px solid #e5e7eb",
-};
+  border: isDark ? "1px solid #1f2937" : "1px solid #e5e7eb",
+});
 
-const reviewBlock = {
+const reviewBlock = (isDark) => ({
   padding: 12,
   borderRadius: 10,
-  border: "1px solid #e2e8f0",
+  border: isDark ? "1px solid #1f2937" : "1px solid #e2e8f0",
   marginBottom: 12,
-  background: "#f8fafc",
-};
+  background: isDark ? "#0b0f14" : "#f8fafc",
+});
 
 const statusColors = {
   approved: "#15803d",
@@ -571,3 +603,6 @@ const submitBtn = {
 };
 
 export default ProductDetail;
+
+
+

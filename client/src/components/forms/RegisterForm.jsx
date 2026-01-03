@@ -15,6 +15,7 @@ function RegisterForm({ onSuccess }) {
   const [taxId, setTaxId] = useState("");
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+  const isDark = typeof document !== "undefined" && document.body.classList.contains("theme-dark");
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -77,23 +78,23 @@ function RegisterForm({ onSuccess }) {
   return (
     <div
       style={{
-        backgroundColor: "#ffffff",
+        backgroundColor: isDark ? "#0f172a" : "#ffffff",
         borderRadius: "16px",
-        boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
+        boxShadow: isDark ? "0 12px 30px rgba(0,0,0,0.6)" : "0 12px 30px rgba(0,0,0,0.08)",
         padding: "36px 32px",
         width: "100%",
         maxWidth: 420,
-        borderTop: "6px solid #0058a3",
+        borderTop: isDark ? "6px solid #38bdf8" : "6px solid #0058a3",
       }}
     >
       <h2
         style={{
-          color: "#0058a3",
+          color: isDark ? "#7dd3fc" : "#0058a3",
           marginBottom: 24,
           fontWeight: 700,
         }}
       >
-        📝 Create Account
+        Create Account
       </h2>
 
       {error && (
@@ -105,7 +106,7 @@ function RegisterForm({ onSuccess }) {
       )}
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1a1a1a" }}>
+        <label style={{ fontSize: "0.85rem", fontWeight: 600, color: isDark ? "#e2e8f0" : "#1a1a1a" }}>
           Full Name
           <input
             type="text"
@@ -118,13 +119,15 @@ function RegisterForm({ onSuccess }) {
               padding: 10,
               marginTop: 6,
               borderRadius: 8,
-              border: "1px solid #d4d7dd",
+              border: isDark ? "1px solid #1f2937" : "1px solid #d4d7dd",
               fontSize: "0.95rem",
+              background: isDark ? "#0b0f14" : "#ffffff",
+              color: isDark ? "#e2e8f0" : "#1a1a1a",
             }}
           />
         </label>
 
-        <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1a1a1a" }}>
+        <label style={{ fontSize: "0.85rem", fontWeight: 600, color: isDark ? "#e2e8f0" : "#1a1a1a" }}>
           Email
           <input
             type="email"
@@ -137,33 +140,37 @@ function RegisterForm({ onSuccess }) {
               padding: 10,
               marginTop: 6,
               borderRadius: 8,
-              border: "1px solid #d4d7dd",
+              border: isDark ? "1px solid #1f2937" : "1px solid #d4d7dd",
               fontSize: "0.95rem",
+              background: isDark ? "#0b0f14" : "#ffffff",
+              color: isDark ? "#e2e8f0" : "#1a1a1a",
             }}
           />
         </label>
 
-        <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1a1a1a" }}>
+        <label style={{ fontSize: "0.85rem", fontWeight: 600, color: isDark ? "#e2e8f0" : "#1a1a1a" }}>
           Password
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            minLength={4}
+            minLength={6}
             required
-            placeholder="••••••"
+            placeholder="password"
             style={{
               width: "100%",
               padding: 10,
               marginTop: 6,
               borderRadius: 8,
-              border: "1px solid #d4d7dd",
+              border: isDark ? "1px solid #1f2937" : "1px solid #d4d7dd",
               fontSize: "0.95rem",
+              background: isDark ? "#0b0f14" : "#ffffff",
+              color: isDark ? "#e2e8f0" : "#1a1a1a",
             }}
           />
         </label>
 
-        <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1a1a1a" }}>
+        <label style={{ fontSize: "0.85rem", fontWeight: 600, color: isDark ? "#e2e8f0" : "#1a1a1a" }}>
           Confirm Password
           <input
             type="password"
@@ -171,19 +178,21 @@ function RegisterForm({ onSuccess }) {
             onChange={(e) => setConfirmPassword(e.target.value)}
             minLength={6}
             required
-            placeholder="••••••"
+            placeholder="password"
             style={{
               width: "100%",
               padding: 10,
               marginTop: 6,
               borderRadius: 8,
-              border: "1px solid #d4d7dd",
+              border: isDark ? "1px solid #1f2937" : "1px solid #d4d7dd",
               fontSize: "0.95rem",
+              background: isDark ? "#0b0f14" : "#ffffff",
+              color: isDark ? "#e2e8f0" : "#1a1a1a",
             }}
           />
         </label>
 
-        <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1a1a1a" }}>
+        <label style={{ fontSize: "0.85rem", fontWeight: 600, color: isDark ? "#e2e8f0" : "#1a1a1a" }}>
           Tax ID
           <input
             type="text"
@@ -196,8 +205,10 @@ function RegisterForm({ onSuccess }) {
               padding: 10,
               marginTop: 6,
               borderRadius: 8,
-              border: "1px solid #d4d7dd",
+              border: isDark ? "1px solid #1f2937" : "1px solid #d4d7dd",
               fontSize: "0.95rem",
+              background: isDark ? "#0b0f14" : "#ffffff",
+              color: isDark ? "#e2e8f0" : "#1a1a1a",
             }}
           />
         </label>
@@ -210,8 +221,8 @@ function RegisterForm({ onSuccess }) {
             padding: "12px 12px",
             borderRadius: 8,
             border: "none",
-            backgroundColor: "#0058a3",
-            color: "white",
+            backgroundColor: isDark ? "#38bdf8" : "#0058a3",
+            color: isDark ? "#0b0f14" : "white",
             fontWeight: 700,
             cursor: "pointer",
             fontSize: "1rem",
@@ -222,7 +233,7 @@ function RegisterForm({ onSuccess }) {
         </button>
       </form>
 
-      <p style={{ fontSize: "0.85rem", marginTop: 16, color: "#4b5563" }}>
+      <p style={{ fontSize: "0.85rem", marginTop: 16, color: isDark ? "#cbd5e1" : "#4b5563" }}>
         Already have an account?{" "}
         <button
           type="button"
@@ -230,7 +241,7 @@ function RegisterForm({ onSuccess }) {
           style={{
             background: "none",
             border: "none",
-            color: "#0058a3",
+            color: isDark ? "#7dd3fc" : "#0058a3",
             cursor: "pointer",
             fontWeight: 600,
             padding: 0,
