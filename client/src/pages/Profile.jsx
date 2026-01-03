@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { updateUserProfile } from "../services/userService";
-import { formatOrderId, getOrders, fetchUserOrders } from "../services/orderService";
+import { cancelOrder, fetchUserOrders, formatOrderId, getOrders, refundOrder } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
-import { cancelOrder } from "../services/orderService";
 import { useTheme } from "../context/ThemeContext";
 
 
@@ -72,7 +71,7 @@ const handleRefundOrder = async (orderId) => {
   if (!window.confirm("Request a refund for this delivered order?")) return;
 
   try {
-    // TODO: hook into backend refund endpoint when available.
+    await refundOrder(orderId);
     setOrders(prev =>
       prev.map(o =>
         o.id === orderId
@@ -291,6 +290,11 @@ const handleRefundOrder = async (orderId) => {
                     color: "#15803d",
                     border: "#22c55e",
                   },
+                  Refunded: {
+                    bg: "rgba(15,118,110,0.15)",
+                    color: "#0f766e",
+                    border: "#5eead4",
+                  },
                   "In-transit": {
                     bg: "rgba(59,130,246,0.15)",
                     color: "#1d4ed8",
@@ -368,7 +372,7 @@ const handleRefundOrder = async (orderId) => {
     )}
     {order.status?.toLowerCase().trim() === "delivered" && (
       <button
-        onClick={() => handleRefundOrder(order.order_id)}
+        onClick={() => handleRefundOrder(order.id)}
         style={{
           backgroundColor: "#e0f2fe",
           color: "#0369a1",
@@ -622,4 +626,3 @@ function Modal({ open, onClose, children }) {
     </div>
   );
 }
-

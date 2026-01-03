@@ -9,10 +9,9 @@ import { sendInvoiceEmailForOrder } from "./invoiceController.js";
  * Basit versiyon: cart_items tablosundaki TÃœM kayÄ±tlarÄ± tek bir sipariÅŸ sayÄ±yoruz.
  */
 export function checkout(req, res) {
-  let { user_id, shipping_address, billing_address, items, email_notifications } = req.body;
+  let { user_id, shipping_address, billing_address, items } = req.body;
   const shippingAddressPayload = normalizeAddressPayload(shipping_address);
   const billingAddressPayload = normalizeAddressPayload(billing_address);
-  const emailNotificationsEnabled = email_notifications !== false;
 
   // ğŸ”¹ user_id gÃ¼venli hale getir (email vs gelirse 1'e dÃ¼ÅŸ)
   const safeUserId = Number(user_id);
@@ -124,12 +123,10 @@ export function checkout(req, res) {
                       console.error("Sepet temizlenemedi:", err);
                     }
 
-                    if (emailNotificationsEnabled) {
                     // Invoice email (fire-and-forget)
                     sendInvoiceEmailForOrder(order_id).catch((e) =>
                       console.error("Invoice email error:", e)
                     );
-                  }
 
                     return res.json({
                       success: true,
@@ -449,7 +446,7 @@ export function updateDeliveryStatus(req, res) {
   });
 }
 export function cancelOrder(req, res) {
-  const orderId = Number(req.params.id); // ✅ BURASI
+  const orderId = Number(req.params.id);
 
   if (!Number.isFinite(orderId)) {
     return res.status(400).json({ error: "Invalid order id" });
@@ -473,33 +470,37 @@ export function cancelOrder(req, res) {
 
     const { order_status } = rows[0];
 
+    // 🔥 ASIL KURAL
     if (order_status !== "processing") {
       return res.status(400).json({
         error: "Only processing orders can be cancelled"
       });
     }
 
-    db.query("UPDATE orders SET status = 'cancelled' WHERE order_id = ?", [orderId], () => {
-      db.query("UPDATE deliveries SET delivery_status = 'cancelled' WHERE order_id = ?", [orderId], () => {
+    // orders → cancelled
+    db.query(
+      "UPDATE orders SET status = 'cancelled' WHERE order_id = ?",
+      [orderId],
+      () => {
         db.query(
-          `
-          UPDATE products p
-          JOIN order_items oi ON oi.product_id = p.product_id
-          SET p.product_stock = p.product_stock + oi.quantity
-          WHERE oi.order_id = ?
-          `,
+          "UPDATE deliveries SET delivery_status = 'cancelled' WHERE order_id = ?",
           [orderId],
           () => {
-            res.json({ success: true, order_id: orderId });
+            db.query(
+              `
+              UPDATE products p
+              JOIN order_items oi ON oi.product_id = p.product_id
+              SET p.product_stock = p.product_stock + oi.quantity
+              WHERE oi.order_id = ?
+              `,
+              [orderId],
+              () => {
+                res.json({ success: true, order_id: orderId });
+              }
+            );
           }
         );
-      });
-    });
+      }
+    );
   });
 }
-
-
-
-
-
-
