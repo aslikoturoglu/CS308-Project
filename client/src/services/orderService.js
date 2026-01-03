@@ -318,6 +318,7 @@ export function advanceOrderStatus(id, actor) {
 
 function backendToFrontendStatus(value) {
   const normalized = String(value || "").toLowerCase();
+  if (normalized === "cancelled") return "Cancelled";
   if (normalized.includes("transit") || normalized === "shipped" || normalized === "in_transit")
     return "In-transit";
   if (normalized === "delivered") return "Delivered";

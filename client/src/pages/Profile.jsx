@@ -247,15 +247,38 @@ const handleCancelOrder = async (orderId) => {
           }}
         >
           <h2 style={{ marginTop: 0, color: "#0058a3" }}>Recent orders</h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {orders.slice(0, 3).map((order) => {
-              console.log("RAW STATUS >>>", order.status);
-              const formattedId = order.formattedId;
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {orders.slice(0, 3).map((order) => {
+                console.log("RAW STATUS >>>", order.status);
+                const formattedId = order.formattedId;
+                const statusStyle = {
+                  Cancelled: {
+                    bg: "rgba(248,113,113,0.18)",
+                    color: "#b91c1c",
+                    border: "#f87171",
+                  },
+                  Delivered: {
+                    bg: "rgba(34,197,94,0.15)",
+                    color: "#15803d",
+                    border: "#22c55e",
+                  },
+                  "In-transit": {
+                    bg: "rgba(59,130,246,0.15)",
+                    color: "#1d4ed8",
+                    border: "#60a5fa",
+                  },
+                  Processing: {
+                    bg: "rgba(234,179,8,0.2)",
+                    color: "#b45309",
+                    border: "#eab308",
+                  },
+                };
+                const pill = statusStyle[order.status] || statusStyle.Processing;
 
 
-              return (
-                <article
-                  key={formattedId}
+                return (
+                  <article
+                    key={formattedId}
                   style={{
                     border: "1px solid #e5e7eb",
                     borderRadius: 12,
@@ -284,13 +307,12 @@ const handleCancelOrder = async (orderId) => {
   <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
     <span
   style={{
-    color:
-      order.status === "Cancelled"
-        ? "#b91c1c"
-        : order.status === "Delivered"
-        ? "#2563eb"
-        : "#059669",
-    fontWeight: 600,
+      backgroundColor: pill.bg,
+      color: pill.color,
+      border: `1px solid ${pill.border}`,
+      padding: "4px 10px",
+      borderRadius: 999,
+      fontWeight: 700,
   }}
 >
   {order.status}
