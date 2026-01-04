@@ -12,7 +12,8 @@ function ProductGrid({openMiniCart}) {
   const [error, setError] = useState("");
   const { toggleItem, inWishlist } = useWishlist();
   const { addItem, items: cartItems } = useCart();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const isStaff = user?.role && user.role !== "customer";
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -56,42 +57,46 @@ function ProductGrid({openMiniCart}) {
             <p className="rating">⭐ {p.averageRating} ({p.ratingCount})</p>
             <div className="product-cta">View Details</div>
           </Link>
-          <div className="product-actions">
-            <button
-              type="button"
-              className="product-add"
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                const existingQty = cartItems.find((item) => item.id === p.id)?.quantity ?? 0;
-                if (existingQty + 1 > p.availableStock) {
-                  alert("Not enough stock for this item.");
-                  return;
-                }
-                addItem(p, 1);
-                openMiniCart?.();
-              }}
-              disabled={p.availableStock <= 0}
-            >
-              {p.availableStock > 0 ? "Add to Cart" : "Out of stock"}
-            </button>
-          </div>
-          <button
-            type="button"
-            className={`wishlist-btn ${inWishlist(p.id) ? "active" : ""}`}
-            aria-label="Toggle wishlist"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              if (!isAuthenticated) {
-                navigate("/login", { state: { from: location } });
-                return;
-              }
-              toggleItem(p);
-            }}
-          >
-            {inWishlist(p.id) ? "♥" : "♡"}
-          </button>
+          {!isStaff && (
+            <>
+              <div className="product-actions">
+                <button
+                  type="button"
+                  className="product-add"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const existingQty = cartItems.find((item) => item.id === p.id)?.quantity ?? 0;
+                    if (existingQty + 1 > p.availableStock) {
+                      alert("Not enough stock for this item.");
+                      return;
+                    }
+                    addItem(p, 1);
+                    openMiniCart?.();
+                  }}
+                  disabled={p.availableStock <= 0}
+                >
+                  {p.availableStock > 0 ? "Add to Cart" : "Out of stock"}
+                </button>
+              </div>
+              <button
+                type="button"
+                className={`wishlist-btn ${inWishlist(p.id) ? "active" : ""}`}
+                aria-label="Toggle wishlist"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (!isAuthenticated) {
+                    navigate("/login", { state: { from: location } });
+                    return;
+                  }
+                  toggleItem(p);
+                }}
+              >
+                {inWishlist(p.id) ? "\u2665" : "\u2661"}
+              </button>
+            </>
+          )}
         </div>
       ))}
     </div>

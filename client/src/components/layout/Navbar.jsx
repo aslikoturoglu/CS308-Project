@@ -27,6 +27,8 @@ function Navbar({showMiniCart, setShowMiniCart }) {
   const { items: wishlistItems } = useWishlist();
   const userLoggedIn = !!user;
   const isProductManager = user?.role === "product_manager";
+  const isSalesManager = user?.role === "sales_manager";
+  const isStaff = isProductManager || isSalesManager;
   const canAccessAdmin = ["admin", "product_manager", "sales_manager", "support"].includes(
     user?.role
   );
@@ -117,9 +119,9 @@ function Navbar({showMiniCart, setShowMiniCart }) {
           {[...baseLinks, ...(canAccessAdmin ? [{ to: "/admin", label: "Admin" }] : [])]
             .filter((link) => {
               if (userLoggedIn && link.to === "/login") return false;
-              if (isProductManager && (link.to === "/cart" || link.to === "/wishlist"))
+              if (isStaff && (link.to === "/cart" || link.to === "/wishlist"))
                 return false;
-              if (isProductManager && link.to === "/profile") return false;
+              if (isStaff && link.to === "/profile") return false;
               return true;
             })
             .map((link) => (
@@ -134,7 +136,7 @@ function Navbar({showMiniCart, setShowMiniCart }) {
               </NavLink>
             ))}
 
-          {userLoggedIn && (
+          {userLoggedIn && !isStaff && (
             <div className="nav__notifications">
               <button
                 type="button"
@@ -217,11 +219,11 @@ function Navbar({showMiniCart, setShowMiniCart }) {
         </div>
       </div>
 
-      {showMiniCart && (
-  <MiniCartPreview
-    onClose={() => setShowMiniCart(false)}
-  />
-)}
+      {showMiniCart && !isStaff && (
+        <MiniCartPreview
+          onClose={() => setShowMiniCart(false)}
+        />
+      )}
     </nav>
   );
 }

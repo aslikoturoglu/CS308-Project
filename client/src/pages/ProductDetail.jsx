@@ -16,7 +16,7 @@ function ProductDetail({ openMiniCart }) {
   const { toggleItem, inWishlist } = useWishlist();
   const { user } = useAuth();
   const { isDark } = useTheme();
-  const isProductManager = user?.role === "product_manager";
+  const isStaff = user?.role && user.role !== "customer";
 
   const [product, setProduct] = useState(null);
   const [error, setError] = useState("");
@@ -344,7 +344,7 @@ function ProductDetail({ openMiniCart }) {
             <Info label="Distributor" value={product.distributor ?? "SUHome Logistics"} />
             </div>
 
-            {!isProductManager && (
+            {!isStaff && (
               <div style={buttonRow}>
                 <button
                   onClick={() => toggleItem(product)}

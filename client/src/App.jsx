@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, useLocation, useNavigate } from "react-router-dom";
 import Header from "./components/layout/Header";
 import Navbar from "./components/layout/Navbar";
@@ -6,6 +6,7 @@ import Footer from "./components/layout/Footer";
 import ChatButton from "./components/chat/ChatButton";
 import AppRouter from "./router/AppRouter";
 import { useAuth } from "./context/AuthContext";
+import { useTheme } from "./context/ThemeContext";
 import MiniCartPreview from "./components/cart/MiniPreview";
 
 import "./styles/globals.css";
@@ -78,16 +79,30 @@ function AdminTopbar() {
 function AppChrome() {
   const location = useLocation();
   const hideShell = location.pathname.startsWith("/admin");
+  const { isDark, setTheme } = useTheme();
+  const { user } = useAuth();
   const [showMiniCart, setShowMiniCart] = useState(false);
   const openMiniCart = () => setShowMiniCart(true);
+  const adminShellStyle = { background: "#0b0f14" };
+
+  useEffect(() => {
+    document.body.classList.toggle("admin-dark", hideShell);
+    return () => document.body.classList.remove("admin-dark");
+  }, [hideShell]);
+
+  useEffect(() => {
+    if (user && user.role !== "customer" && isDark) {
+      setTheme("light");
+    }
+  }, [user, isDark, setTheme]);
 
 
   return (
     <>
       {hideShell ? (
-        <div className="app-shell">
+        <div className="app-shell admin-shell" style={adminShellStyle}>
           <AdminTopbar />
-          <div className="app-content">
+          <div className="app-content" style={adminShellStyle}>
             <AppRouter />
           </div>
         </div>

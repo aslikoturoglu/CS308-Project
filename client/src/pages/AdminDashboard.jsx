@@ -237,7 +237,12 @@ function AdminDashboard() {
   }, [activeSection, permittedSections]);
 
   const totals = useMemo(() => {
-    const revenue = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    const todayUtc = new Date().toISOString().slice(0, 10);
+    const revenue = orders.reduce((sum, o) => {
+      const orderDay = o?.date ? new Date(o.date).toISOString().slice(0, 10) : null;
+      if (orderDay !== todayUtc) return sum;
+      return sum + (Number(o.total) || 0);
+    }, 0);
     const lowStock = products.filter((p) => p.availableStock < 5).length;
     return { revenue, lowStock };
   }, [orders, products]);

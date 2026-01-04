@@ -38,7 +38,7 @@ function ProductList({openMiniCart}) {
   const { addItem, items: cartItems, increment, decrement, removeItem } = useCart();
   const { toggleItem, inWishlist } = useWishlist();
   const { user, isAuthenticated } = useAuth();
-  const isProductManager = user?.role === "product_manager";
+  const isStaff = user?.role && user.role !== "customer";
 
 const cartQty = (id) => {
   const item = cartItems.find((i) => i.id === id);
@@ -106,13 +106,14 @@ const handleDecrease = (p) => {
   );
 };
 
-const handleWishlist = (product) => {
-  if (!isAuthenticated) {
-    navigate("/login", { state: { from: location } });
-    return;
-  }
-  toggleItem(product);
-};
+  const handleWishlist = (product) => {
+    if (isStaff) return;
+    if (!isAuthenticated) {
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+    toggleItem(product);
+  };
 
 
 
@@ -462,7 +463,7 @@ const handleWishlist = (product) => {
                       </p>
                     </div>
                   </Link>
-                  {!isProductManager && (
+                  {!isStaff && (
                     <>
                       {/* ---------- Add to cart buton alanı ---------- */}
                       <div style={{ display:"flex", gap:8, padding:"0 14px 14px" }}>

@@ -12,6 +12,7 @@ function Profile() {
   const { user, updateUser } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const { addToast } = useToast();
+  const canUseDarkMode = user?.role === "customer";
 
   // Product managers should stay on the admin dashboard
   if (user?.role === "product_manager") {
@@ -485,50 +486,72 @@ const handleRefundOrder = async (orderId) => {
                 />
               </button>
             </li>
-            <li
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                border: isDark ? "1px solid #1f2937" : "1px solid #e5e7eb",
-                borderRadius: 12,
-                padding: "10px 14px",
-                alignItems: "center",
-                gap: 10,
-                backgroundColor: isDark ? "#0b0f14" : "#ffffff",
-              }}
-            >
-              <span style={{ color: isDark ? "#e2e8f0" : "#0f172a" }}>
-                Dark mode
-              </span>
-              <button
-                type="button"
-                onClick={toggleTheme}
-                aria-pressed={isDark}
+            {canUseDarkMode ? (
+              <li
                 style={{
-                  position: "relative",
-                  width: 46,
-                  height: 26,
-                  borderRadius: 999,
-                  border: isDark ? "1px solid #1f2937" : "1px solid #cbd5e1",
-                  background: isDark ? "#38bdf8" : "#e2e8f0",
-                  padding: 2,
-                  cursor: "pointer",
-                  transition: "background 0.2s ease, border-color 0.2s ease",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  border: isDark ? "1px solid #1f2937" : "1px solid #e5e7eb",
+                  borderRadius: 12,
+                  padding: "10px 14px",
+                  alignItems: "center",
+                  gap: 10,
+                  backgroundColor: isDark ? "#0b0f14" : "#ffffff",
                 }}
               >
-                <span
+                <span style={{ color: isDark ? "#e2e8f0" : "#0f172a" }}>
+                  Dark mode
+                </span>
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  aria-pressed={isDark}
                   style={{
-                    display: "block",
-                    width: 22,
-                    height: 22,
-                    borderRadius: "50%",
-                    background: isDark ? "#0b0f14" : "#ffffff",
-                    transform: isDark ? "translateX(20px)" : "translateX(0)",
-                    transition: "transform 0.2s ease",
+                    position: "relative",
+                    width: 46,
+                    height: 26,
+                    borderRadius: 999,
+                    border: isDark ? "1px solid #1f2937" : "1px solid #cbd5e1",
+                    background: isDark ? "#38bdf8" : "#e2e8f0",
+                    padding: 2,
+                    cursor: "pointer",
+                    transition: "background 0.2s ease, border-color 0.2s ease",
                   }}
-                />
-              </button>
-            </li>
+                >
+                  <span
+                    style={{
+                      display: "block",
+                      width: 22,
+                      height: 22,
+                      borderRadius: "50%",
+                      background: isDark ? "#0b0f14" : "#ffffff",
+                      transform: isDark ? "translateX(20px)" : "translateX(0)",
+                      transition: "transform 0.2s ease",
+                    }}
+                  />
+                </button>
+              </li>
+            ) : (
+              <li
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  border: "1px dashed #cbd5e1",
+                  borderRadius: 12,
+                  padding: "10px 14px",
+                  alignItems: "center",
+                  gap: 10,
+                  backgroundColor: isDark ? "#0b0f14" : "#ffffff",
+                }}
+              >
+                <span style={{ color: isDark ? "#e2e8f0" : "#0f172a" }}>
+                  Dark mode
+                </span>
+                <span style={{ color: isDark ? "#94a3b8" : "#64748b", fontSize: "0.9rem" }}>
+                  Dark mode is only provided for users.
+                </span>
+              </li>
+            )}
           </ul>
         </aside>
       </div>
