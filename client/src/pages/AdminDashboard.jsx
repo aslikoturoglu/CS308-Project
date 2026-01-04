@@ -1442,13 +1442,13 @@ function AdminDashboard() {
                     style={inputStyle}
                   />
                   <input
-                    type="datetime-local"
+                    type="date"
                     value={discountForm.startAt}
                     onChange={(e) => setDiscountForm((p) => ({ ...p, startAt: e.target.value }))}
                     style={inputStyle}
                   />
                   <input
-                    type="datetime-local"
+                    type="date"
                     value={discountForm.endAt}
                     onChange={(e) => setDiscountForm((p) => ({ ...p, endAt: e.target.value }))}
                     style={inputStyle}
