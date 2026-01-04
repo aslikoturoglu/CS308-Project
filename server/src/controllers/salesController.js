@@ -143,23 +143,37 @@ export function createDiscount(req, res) {
 
     const discountId = result.insertId;
     const values = productIds.map((id) => [discountId, id]);
-    const linkSql = `
-      INSERT INTO discount_products (discount_id, product_id)
-      VALUES ?
+    const deactivateSql = `
+      UPDATE discount_products
+      SET is_active = 0
+      WHERE product_id IN (?)
     `;
 
-    db.query(linkSql, [values], async (linkErr) => {
-      if (linkErr) {
-        console.error("Discount link failed:", linkErr);
-        return res.status(500).json({ error: "Discount link failed" });
+    db.query(deactivateSql, [productIds], (deactivateErr) => {
+      if (deactivateErr) {
+        console.error("Discount deactivate failed:", deactivateErr);
+        return res.status(500).json({ error: "Discount deactivate failed" });
       }
 
-      const notified = await notifyWishlistUsers(productIds, {
-        rate,
-        startAt,
-        endAt,
+      const values = productIds.map((id) => [discountId, id, 1]);
+      const linkSql = `
+        INSERT INTO discount_products (discount_id, product_id, is_active)
+        VALUES ?
+      `;
+
+      db.query(linkSql, [values], async (linkErr) => {
+        if (linkErr) {
+          console.error("Discount link failed:", linkErr);
+          return res.status(500).json({ error: "Discount link failed" });
+        }
+
+        const notified = await notifyWishlistUsers(productIds, {
+          rate,
+          startAt,
+          endAt,
+        });
+        return res.json({ success: true, discount_id: discountId, notified });
       });
-      return res.json({ success: true, discount_id: discountId, notified });
     });
   });
 }

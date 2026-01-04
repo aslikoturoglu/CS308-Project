@@ -70,6 +70,7 @@ CREATE TABLE discounts (
 CREATE TABLE discount_products (
   discount_id INT NOT NULL,
   product_id INT NOT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (discount_id, product_id),
   FOREIGN KEY (discount_id) REFERENCES discounts(discount_id)
     ON UPDATE CASCADE ON DELETE CASCADE,

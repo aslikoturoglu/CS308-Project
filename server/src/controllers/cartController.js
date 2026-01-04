@@ -121,6 +121,7 @@ export function addToCart(req, res) {
       JOIN discounts d ON d.discount_id = dp.discount_id
       JOIN products p2 ON p2.product_id = dp.product_id
       WHERE d.status = 'active'
+        AND dp.is_active = 1
         AND NOW() BETWEEN d.start_at AND d.end_at
       GROUP BY dp.product_id
     ) disc ON disc.product_id = p.product_id
@@ -255,6 +256,7 @@ export function syncCart(req, res) {
               JOIN discounts d ON d.discount_id = dp.discount_id
               JOIN products p2 ON p2.product_id = dp.product_id
               WHERE d.status = 'active'
+                AND dp.is_active = 1
                 AND NOW() BETWEEN d.start_at AND d.end_at
               GROUP BY dp.product_id
             ) disc ON disc.product_id = p.product_id
