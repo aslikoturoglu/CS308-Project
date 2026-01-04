@@ -212,6 +212,12 @@ function ProductDetail({ openMiniCart }) {
     );
   }
 
+  const hasDiscount =
+    Number(product.originalPrice || 0) > 0 &&
+    Number(product.originalPrice) > Number(product.price);
+  const priceLabel = `\u20BA${Number(product.price).toLocaleString("tr-TR")}`;
+  const originalPriceLabel = `\u20BA${Number(product.originalPrice).toLocaleString("tr-TR")}`;
+
   return (
     <section style={pageStyle}>
       {/* HEADER */}
@@ -263,7 +269,27 @@ function ProductDetail({ openMiniCart }) {
         </div>
 
         <div style={infoCard}>
-          <h2>₺{product.price.toLocaleString("tr-TR")}</h2>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+            <h2 style={{ margin: 0 }}>{priceLabel}</h2>
+            {hasDiscount && (
+              <>
+                <span
+                  style={{
+                    color: isDark ? "#94a3b8" : "#64748b",
+                    textDecoration: "line-through",
+                    fontWeight: 700,
+                  }}
+                >
+                  {originalPriceLabel}
+                </span>
+                {product.discountLabel && (
+                  <span style={{ color: "#059669", fontWeight: 800 }}>
+                    {product.discountLabel}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
 
           {product.description && (
             <section

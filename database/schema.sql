@@ -46,6 +46,17 @@ CREATE TABLE product_stock (
     ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE product_costs (
+  cost_id INT PRIMARY KEY AUTO_INCREMENT,
+  product_id INT NOT NULL,
+  cost DECIMAL(10,2) NOT NULL,
+  effective_from DATETIME NOT NULL,
+  effective_to DATETIME NULL,
+  FOREIGN KEY (product_id) REFERENCES Products(product_id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  INDEX idx_product_costs_product (product_id, effective_from)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE discounts (
   discount_id INT PRIMARY KEY AUTO_INCREMENT,
   code VARCHAR(50) NOT NULL UNIQUE,
@@ -59,6 +70,7 @@ CREATE TABLE discounts (
 CREATE TABLE discount_products (
   discount_id INT NOT NULL,
   product_id INT NOT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (discount_id, product_id),
   FOREIGN KEY (discount_id) REFERENCES discounts(discount_id)
     ON UPDATE CASCADE ON DELETE CASCADE,

@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useWishlist } from "../context/WishlistContext";
+import { fetchProductsWithMeta } from "../services/productService";
 import { useCart } from "../context/CartContext";
 import { useTheme } from "../context/ThemeContext";
 
@@ -13,6 +15,33 @@ function Wishlist({ openMiniCart }) {
     removeItem: removeCartItem,
   } = useCart();
   const { isDark } = useTheme();
+
+  const [displayItems, setDisplayItems] = useState(items);
+
+  useEffect(() => {
+    setDisplayItems(items);
+    if (!items.length) return undefined;
+    const controller = new AbortController();
+    let isActive = true;
+
+    fetchProductsWithMeta(controller.signal)
+      .then((products) => {
+        if (!isActive) return;
+        const byId = new Map(products.map((p) => [String(p.id), p]));
+        setDisplayItems(items.map((item) => {
+          const updated = byId.get(String(item.id));
+          return updated ? { ...item, ...updated } : item;
+        }));
+      })
+      .catch((error) => {
+        console.error("Wishlist refresh failed", error);
+      });
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, [items]);
 
   const cartQty = (id) => {
     const cartItem = cartItems.find((item) => item.id === id);
@@ -132,7 +161,7 @@ function Wishlist({ openMiniCart }) {
             gap: 16,
           }}
         >
-          {items.map((item) => {
+          {displayItems.map((item) => {
             const qty = cartQty(item.id);
             const stockLeft = displayStock(item);
             const rating = Number.isFinite(Number(item.averageRating)) ? item.averageRating : 0;

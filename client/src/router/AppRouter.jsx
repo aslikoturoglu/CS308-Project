@@ -11,6 +11,9 @@ import ResetPassword from "../pages/ResetPassword";
 import OrderHistory from "../pages/OrderHistory";
 import ProductDetail from "../pages/ProductDetail";
 import Checkout from "../pages/Checkout";
+import PaymentDetails from "../pages/PaymentDetails";
+import PaymentBank from "../pages/PaymentBank";
+import PaymentBankResult from "../pages/PaymentBankResult";
 import NotFound from "../pages/NotFound";
 import AdminDashboard from "../pages/AdminDashboard";
 import Invoice from "../pages/Invoice";
@@ -27,6 +30,9 @@ function AppRouter({ openMiniCart }) {
         <Route path="/wishlist" element={<Wishlist openMiniCart={openMiniCart} />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/checkout" element={<Checkout />} />
+        <Route path="/payment-details" element={<PaymentDetails />} />
+        <Route path="/payment-bank" element={<PaymentBank />} />
+        <Route path="/payment-bank-result" element={<PaymentBankResult />} />
         <Route path="/invoice/:id" element={<Invoice />} />
         <Route path="/orders" element={<OrderHistory />} />
       </Route>

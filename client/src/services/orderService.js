@@ -349,6 +349,9 @@ const frontendToBackendStatus = {
   Processing: "preparing",
   "In-transit": "in_transit",
   Delivered: "delivered",
+  Cancelled: "cancelled",
+  Canceled: "cancelled",
+  Refunded: "refunded",
 };
 
 export async function fetchAllOrders(signal) {

@@ -1,4 +1,3 @@
-// server/src/controllers/orderController.js
 import db from "../db.js";
 import { sendInvoiceEmailForOrder } from "./invoiceController.js";
 import { sendMail } from "../utils/mailer.js";
@@ -147,6 +146,16 @@ export function checkout(req, res) {
               .json({ error: "Order item ekleme sÄ±rasÄ±nda hata" });
           }
 
+          const sqlInvoice = `
+            INSERT INTO invoices (order_id, amount, status)
+            VALUES (?, ?, 'issued')
+          `;
+
+          db.query(sqlInvoice, [order_id, totalAmount], (invoiceErr) => {
+            if (invoiceErr) {
+              console.error("Invoice insert failed:", invoiceErr);
+            }
+          });
           // 5) Stok azalt
           const sqlStock =
             "UPDATE products SET product_stock = product_stock - ? WHERE product_id = ?";
