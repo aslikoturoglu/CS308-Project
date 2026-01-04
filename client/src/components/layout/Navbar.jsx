@@ -1,9 +1,11 @@
-import { useState } from "react"; 
+import { useEffect, useMemo, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useChat } from "../../context/ChatContext";
 import "../../styles/navbar.css";
 import { useAuth } from "../../context/AuthContext";
 import MiniCartPreview from "../cart/MiniPreview";
+import { useWishlist } from "../../context/WishlistContext";
+import { fetchProductsWithMeta } from "../../services/productService";
 
 const baseLinks = [
   { to: "/", label: "Home", end: true },
@@ -18,13 +20,61 @@ function Navbar({showMiniCart, setShowMiniCart }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { openChat } = useChat();
 
   const { user, logout } = useAuth();
+  const { items: wishlistItems } = useWishlist();
   const userLoggedIn = !!user;
   const isProductManager = user?.role === "product_manager";
   const canAccessAdmin = ["admin", "product_manager", "sales_manager", "support"].includes(
     user?.role
+  );
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    if (!userLoggedIn) {
+      setNotifications([]);
+      return undefined;
+    }
+    if (!wishlistItems.length) {
+      setNotifications([]);
+      return undefined;
+    }
+    const controller = new AbortController();
+    let isActive = true;
+
+    fetchProductsWithMeta(controller.signal)
+      .then((products) => {
+        if (!isActive) return;
+        const byId = new Map(products.map((product) => [String(product.id), product]));
+        const matches = wishlistItems
+          .map((item) => {
+            const updated = byId.get(String(item.id));
+            return updated ? { ...item, ...updated } : item;
+          })
+          .filter((item) => item.hasDiscount);
+        setNotifications(matches);
+      })
+      .catch((error) => {
+        console.error("Notification refresh failed", error);
+      });
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, [userLoggedIn, wishlistItems]);
+
+  const notificationCount = notifications.length;
+  const notificationLabel = useMemo(
+    () =>
+      notifications.map((item) => ({
+        id: item.id,
+        name: item.name,
+        discountLabel: item.discountLabel || "Discount",
+      })),
+    [notifications]
   );
 
   const handleLogout = () => {
@@ -32,7 +82,10 @@ function Navbar({showMiniCart, setShowMiniCart }) {
     navigate("/");
   };
 
-  const handleNavClick = () => setOpen(false);
+  const handleNavClick = () => {
+    setOpen(false);
+    setNotificationsOpen(false);
+  };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -80,6 +133,53 @@ function Navbar({showMiniCart, setShowMiniCart }) {
                 {link.label}
               </NavLink>
             ))}
+
+          {userLoggedIn && (
+            <div className="nav__notifications">
+              <button
+                type="button"
+                className="nav__bell"
+                onClick={() => setNotificationsOpen((prev) => !prev)}
+                aria-label="Notifications"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  className="nav__bell-icon"
+                >
+                  <path
+                    d="M12 22a2.3 2.3 0 0 0 2.2-2h-4.4A2.3 2.3 0 0 0 12 22Zm7-6V11a7 7 0 1 0-14 0v5l-2 2v1h18v-1l-2-2Z"
+                    fill="currentColor"
+                  />
+                </svg>
+                {notificationCount > 0 && (
+                  <span className="nav__badge">{notificationCount}</span>
+                )}
+              </button>
+              {notificationsOpen && (
+                <div className="nav__dropdown">
+                  <div className="nav__dropdown-title">Notifications</div>
+                  {notificationCount === 0 ? (
+                    <p className="nav__dropdown-empty">No notifications yet.</p>
+                  ) : (
+                    <ul className="nav__dropdown-list">
+                      {notificationLabel.map((item) => (
+                        <li key={item.id}>
+                          <NavLink
+                            to={`/products/${item.id}`}
+                            className="nav__dropdown-link"
+                            onClick={handleNavClick}
+                          >
+                            {item.discountLabel} on {item.name}
+                          </NavLink>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {userLoggedIn && (
             <a
