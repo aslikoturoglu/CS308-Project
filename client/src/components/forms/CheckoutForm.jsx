@@ -1,12 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 
-const shippingOptions = [
+export const shippingOptions = [
   { id: "standard", label: "Standard Delivery (2-4 days)", fee: 49.9 },
   { id: "express", label: "Express Delivery (1 day)", fee: 129.9 },
 ];
 
-function CheckoutForm({ cartTotal = 0, onSubmit }) {
+function CheckoutForm({ cartTotal = 0, onSubmit, onShippingChange }) {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
     firstName: "",
@@ -36,6 +36,16 @@ function CheckoutForm({ cartTotal = 0, onSubmit }) {
     const selected = shippingOptions.find((option) => option.id === formData.shipping);
     return selected ? selected.fee : 0;
   }, [formData.shipping]);
+
+  useEffect(() => {
+    if (typeof onShippingChange !== "function") return;
+    const selected = shippingOptions.find((option) => option.id === formData.shipping);
+    onShippingChange({
+      id: formData.shipping,
+      fee: selected ? selected.fee : 0,
+      label: selected ? selected.label : "",
+    });
+  }, [formData.shipping, onShippingChange]);
 
   const grandTotal = useMemo(() => Number(cartTotal || 0) + shippingFee, [cartTotal, shippingFee]);
 

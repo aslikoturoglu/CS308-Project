@@ -44,9 +44,8 @@ function Cart() {
     removeItem(id);
   };
 
-  const shipping = items.length === 0 ? 0 : 89;
-  const discount = subtotal > 4000 ? 250 : 0;
-  const total = Math.max(subtotal + shipping - discount, 0);
+  const discount = 0;
+  const total = Math.max(subtotal - discount, 0);
 
   const handleCheckout = () => {
     if (!items.length) {
@@ -60,7 +59,6 @@ function Cart() {
       state: {
         items,
         subtotal,
-        shipping,
         discount,
         merchandiseTotal,
       },
@@ -135,7 +133,6 @@ function Cart() {
 
         <CartSummary
           subtotal={subtotal}
-          shipping={shipping}
           discount={discount}
           total={total}
           onCheckout={handleCheckout}

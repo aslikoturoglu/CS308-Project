@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import CheckoutForm from "../components/forms/CheckoutForm";
+import CheckoutForm, { shippingOptions } from "../components/forms/CheckoutForm";
 import { useCart } from "../context/CartContext";
 import { addOrder } from "../services/orderService";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 
 const fallbackItems = [
   { id: 1, name: "Modern Chair", price: 799, quantity: 1 },
@@ -13,7 +14,8 @@ const fallbackItems = [
 function Checkout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth(); // login varsa gerçek user_id’ye geçebilirsin
+  const { user } = useAuth(); // login varsa gercek user_id'ye gecebilirsin
+  const { isDark } = useTheme();
   const { items: cartItems, clearCart, subtotal: cartSubtotal } = useCart();
   const emailNotificationsEnabled = useMemo(() => {
     if (typeof window === "undefined") return true;
@@ -45,19 +47,16 @@ function Checkout() {
     [items]
   );
 
-  const discount =
-    typeof location.state?.discount === "number"
-      ? location.state.discount
-      : cartItems.length
-      ? Math.max(cartSubtotal > 4000 ? 250 : 0, 0)
-      : subtotal > 4000
-      ? 250
-      : 0;
+  const discount = 0;
 
   const merchandiseTotal =
     typeof location.state?.merchandiseTotal === "number"
       ? location.state.merchandiseTotal
       : Math.max(subtotal - discount, 0);
+  const defaultShipping = shippingOptions[0] || { fee: 0, label: "" };
+  const [shippingFee, setShippingFee] = useState(defaultShipping.fee);
+  const [shippingLabel, setShippingLabel] = useState(defaultShipping.label);
+  const grandTotal = Math.max(merchandiseTotal + Number(shippingFee || 0), 0);
 
   // 🔥 Gerçek checkout akışı: önce /cart/sync sonra /orders/checkout
   const handleSubmit = async (payload) => {
@@ -126,8 +125,9 @@ function Checkout() {
 
       navigate("/payment-details", {
         state: {
-          orderId: newOrder.id,
-          amount: payload.grandTotal ?? merchandiseTotal,
+          orderId: backendOrderId,
+          userId: user?.id || 1,
+          amount: payload.grandTotal ?? grandTotal,
           cardNumber: payload.cardNumber,
           expiry: payload.expiry,
           cardName: payload.cardName,
@@ -158,7 +158,14 @@ function Checkout() {
       </div>
 
       <div className="checkout-grid">
-        <CheckoutForm cartTotal={merchandiseTotal} onSubmit={handleSubmit} />
+        <CheckoutForm
+          cartTotal={merchandiseTotal}
+          onSubmit={handleSubmit}
+          onShippingChange={(selection) => {
+            setShippingFee(selection.fee);
+            setShippingLabel(selection.label);
+          }}
+        />
 
         <aside className="checkout-summary">
           <h3>Order Summary</h3>
@@ -186,20 +193,34 @@ function Checkout() {
             <Row
               label="Subtotal"
               value={`₺${subtotal.toLocaleString("tr-TR")}`}
+              isDark={isDark}
             />
-            <Row
-              label="Discount"
-              value={`-₺${discount.toLocaleString("tr-TR")}`}
-              accent
-            />
+            {discount > 0 && (
+              <Row
+                label="Discount"
+                value={`-₺${discount.toLocaleString("tr-TR")}`}
+                accent
+                isDark={isDark}
+              />
+            )}
             <Row
               label="Items total"
               value={`₺${merchandiseTotal.toLocaleString("tr-TR")}`}
               bold
+              isDark={isDark}
             />
-            <p className="summary-note">
-              You will choose shipping in the next step.
-            </p>
+            <Row
+              label={shippingLabel ? `Shipping (${shippingLabel})` : "Shipping"}
+              value={`₺${Number(shippingFee || 0).toLocaleString("tr-TR")}`}
+              isDark={isDark}
+            />
+            <div
+              style={{
+                borderTop: isDark ? "1px solid #1f2937" : "1px solid #e5e7eb",
+                marginTop: 6,
+              }}
+            />
+            <Row label="Total" value={`₺${grandTotal.toLocaleString("tr-TR")}`} bold isDark={isDark} />
           </div>
         </aside>
       </div>
@@ -207,13 +228,13 @@ function Checkout() {
   );
 }
 
-function Row({ label, value, accent = false, bold = false }) {
+function Row({ label, value, accent = false, bold = false, isDark = false }) {
   return (
     <div
       style={{
         display: "flex",
         justifyContent: "space-between",
-        color: accent ? "#059669" : "#0f172a",
+        color: accent ? (isDark ? "#34d399" : "#059669") : isDark ? "#e2e8f0" : "#0f172a",
       }}
     >
       <span style={{ fontWeight: bold ? 700 : 600 }}>{label}</span>

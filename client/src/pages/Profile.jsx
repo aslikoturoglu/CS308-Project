@@ -556,7 +556,44 @@ const handleRefundOrder = async (orderId) => {
         </aside>
       </div>
 
-      <Modal open={editing} onClose={handleCloseEditing} isDark={isDark}>
+      <Modal
+        open={editing}
+        onClose={handleCloseEditing}
+        isDark={isDark}
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={handleCloseEditing}
+              style={{
+                background: isDark ? "#0b0f14" : "none",
+                border: isDark ? "1px solid #1f2937" : "1px solid #cbd5e1",
+                color: isDark ? "#e2e8f0" : "#0f172a",
+                borderRadius: 10,
+                padding: "8px 12px",
+                cursor: "pointer",
+              }}
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              style={{
+                border: "none",
+                background: isDark ? "#38bdf8" : "#0058a3",
+                color: isDark ? "#0b0f14" : "white",
+                borderRadius: 10,
+                padding: "10px 14px",
+                cursor: "pointer",
+                fontWeight: 800,
+              }}
+            >
+              Save
+            </button>
+          </>
+        }
+      >
         <h3 style={{ marginTop: 0, color: isDark ? "#7dd3fc" : "#0f172a" }}>Edit profile</h3>
         <div style={{ display: "grid", gap: 10 }}>
           <label style={{ fontSize: "0.9rem", fontWeight: 700, color: isDark ? "#e2e8f0" : "#1f2937" }}>
@@ -593,23 +630,6 @@ const handleRefundOrder = async (orderId) => {
               }}
             />
           </label>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 6 }}>
-            <button
-              type="button"
-              onClick={handleSave}
-              style={{
-                border: "none",
-                background: isDark ? "#38bdf8" : "#0058a3",
-                color: isDark ? "#0b0f14" : "white",
-                borderRadius: 10,
-                padding: "10px 14px",
-                cursor: "pointer",
-                fontWeight: 800,
-              }}
-            >
-              Save
-            </button>
-          </div>
         </div>
       </Modal>
     </main>
@@ -637,7 +657,7 @@ function saveProfile(key, value) {
   }
 }
 
-function Modal({ open, onClose, children, isDark }) {
+function Modal({ open, onClose, children, isDark, actions }) {
   if (!open) return null;
   return (
     <div
@@ -663,25 +683,30 @@ function Modal({ open, onClose, children, isDark }) {
         }}
       >
         {children}
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              background: isDark ? "#0b0f14" : "none",
-              border: isDark ? "1px solid #1f2937" : "1px solid #cbd5e1",
-              color: isDark ? "#e2e8f0" : "#0f172a",
-              borderRadius: 10,
-              padding: "8px 12px",
-              cursor: "pointer",
-            }}
-          >
-            Close
-          </button>
-        </div>
+        {actions ? (
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginTop: 12 }}>
+            {actions}
+          </div>
+        ) : (
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                background: isDark ? "#0b0f14" : "none",
+                border: isDark ? "1px solid #1f2937" : "1px solid #cbd5e1",
+                color: isDark ? "#e2e8f0" : "#0f172a",
+                borderRadius: 10,
+                padding: "8px 12px",
+                cursor: "pointer",
+              }}
+            >
+              Close
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
 

@@ -81,6 +81,9 @@ function AppChrome() {
   const hideShell = location.pathname.startsWith("/admin");
   const { isDark, setTheme } = useTheme();
   const { user } = useAuth();
+  const hideMiniCart =
+    location.pathname.startsWith("/checkout") ||
+    location.pathname.startsWith("/payment-");
   const [showMiniCart, setShowMiniCart] = useState(false);
   const openMiniCart = () => setShowMiniCart(true);
   const adminShellStyle = { background: "#0b0f14" };
@@ -96,6 +99,11 @@ function AppChrome() {
     }
   }, [user, isDark, setTheme]);
 
+  useEffect(() => {
+    if (hideMiniCart && showMiniCart) {
+      setShowMiniCart(false);
+    }
+  }, [hideMiniCart, showMiniCart]);
 
   return (
     <>
@@ -111,14 +119,16 @@ function AppChrome() {
           <Header />
 
           <Navbar
-          showMiniCart={showMiniCart}
-          setShowMiniCart={setShowMiniCart}
+            showMiniCart={!hideMiniCart && showMiniCart}
+            setShowMiniCart={setShowMiniCart}
           />
 
-          <MiniCartPreview
-            open={showMiniCart}
-            onClose={() => setShowMiniCart(false)}
-          />
+          {!hideMiniCart && (
+            <MiniCartPreview
+              open={showMiniCart}
+              onClose={() => setShowMiniCart(false)}
+            />
+          )}
 
           <div className="app-content">
             <AppRouter openMiniCart={openMiniCart} />

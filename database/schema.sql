@@ -187,6 +187,11 @@ CREATE TABLE payments (
   status ENUM('initiated','authorized','captured','failed','refunded') NOT NULL,
   paid_at DATETIME NULL,
   transaction_ref VARCHAR(100),
+  card_holder_enc TEXT,
+  card_number_enc TEXT,
+  card_expiry_enc TEXT,
+  card_last4 VARCHAR(4),
+  UNIQUE KEY uniq_payment_order_ref (order_id, transaction_ref),
   FOREIGN KEY (order_id) REFERENCES orders(order_id)
     ON UPDATE CASCADE ON DELETE RESTRICT,
   FOREIGN KEY (user_id) REFERENCES users(user_id)

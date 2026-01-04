@@ -1,6 +1,6 @@
 import { formatPrice } from "../../utils/formatPrice";
 
-function CartSummary({ subtotal, shipping, discount, total, onCheckout }) {
+function CartSummary({ subtotal, discount, total, onCheckout }) {
   const isDark = typeof document !== "undefined" && document.body.classList.contains("theme-dark");
 
   return (
@@ -22,15 +22,12 @@ function CartSummary({ subtotal, shipping, discount, total, onCheckout }) {
           <strong>{formatPrice(subtotal)}</strong>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <span>Shipping</span>
-          <strong>{shipping === 0 ? "Free" : formatPrice(shipping)}</strong>
-        </div>
-
-        <div style={{ display: "flex", justifyContent: "space-between", color: isDark ? "#34d399" : "#059669" }}>
-          <span>Discount</span>
-          <strong>-{formatPrice(discount)}</strong>
-        </div>
+        {discount > 0 && (
+          <div style={{ display: "flex", justifyContent: "space-between", color: isDark ? "#34d399" : "#059669" }}>
+            <span>Discount</span>
+            <strong>-{formatPrice(discount)}</strong>
+          </div>
+        )}
 
         <hr style={{ border: "none", borderTop: isDark ? "1px solid #1f2937" : "1px solid #e5e7eb" }} />
 
