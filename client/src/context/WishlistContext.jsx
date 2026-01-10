@@ -31,13 +31,14 @@ export function WishlistProvider({ children }) {
   }, [items]);
 
   const numericUserId = Number(user?.id);
-  const canSync = Number.isFinite(numericUserId);
+  const userEmail = user?.email ? String(user.email).trim() : "";
+  const canSync = Number.isFinite(numericUserId) || Boolean(userEmail);
 
   useEffect(() => {
     if (!canSync) return undefined;
     const controller = new AbortController();
 
-    fetchWishlist(numericUserId, controller.signal)
+    fetchWishlist({ userId: Number.isFinite(numericUserId) ? numericUserId : null, email: userEmail, signal: controller.signal })
       .then((serverItems) => {
         const normalized = (serverItems || []).map((item) => ({
           id: item.id ?? item.product_id,
@@ -53,7 +54,11 @@ export function WishlistProvider({ children }) {
           prev.forEach((item) => {
             if (!seen.has(String(item.id))) {
               merged.push(item);
-              addWishlistItemApi(numericUserId, item.id).catch(() => {});
+              addWishlistItemApi({
+                userId: Number.isFinite(numericUserId) ? numericUserId : null,
+                email: userEmail,
+                productId: item.id,
+              }).catch(() => {});
             }
           });
           return merged;
@@ -71,7 +76,11 @@ export function WishlistProvider({ children }) {
     setItems((prev) => {
       if (prev.some((item) => item.id === product.id)) return prev;
       if (canSync) {
-        addWishlistItemApi(numericUserId, product.id).catch((error) => {
+        addWishlistItemApi({
+          userId: Number.isFinite(numericUserId) ? numericUserId : null,
+          email: userEmail,
+          productId: product.id,
+        }).catch((error) => {
           console.error("Wishlist add failed", error);
           setItems((current) => current.filter((item) => item.id !== product.id));
         });
@@ -83,7 +92,11 @@ export function WishlistProvider({ children }) {
   const removeItem = (id) => {
     setItems((prev) => prev.filter((item) => item.id !== id));
     if (canSync) {
-      removeWishlistItemApi(numericUserId, id).catch((error) => {
+      removeWishlistItemApi({
+        userId: Number.isFinite(numericUserId) ? numericUserId : null,
+        email: userEmail,
+        productId: id,
+      }).catch((error) => {
         console.error("Wishlist remove failed", error);
       });
     }
@@ -94,7 +107,11 @@ export function WishlistProvider({ children }) {
       const exists = prev.some((item) => item.id === product.id);
       if (exists) {
         if (canSync) {
-          removeWishlistItemApi(numericUserId, product.id).catch((error) => {
+          removeWishlistItemApi({
+            userId: Number.isFinite(numericUserId) ? numericUserId : null,
+            email: userEmail,
+            productId: product.id,
+          }).catch((error) => {
             console.error("Wishlist remove failed", error);
             setItems((current) => [...current, product]);
           });
@@ -102,7 +119,11 @@ export function WishlistProvider({ children }) {
         return prev.filter((item) => item.id !== product.id);
       }
       if (canSync) {
-        addWishlistItemApi(numericUserId, product.id).catch((error) => {
+        addWishlistItemApi({
+          userId: Number.isFinite(numericUserId) ? numericUserId : null,
+          email: userEmail,
+          productId: product.id,
+        }).catch((error) => {
           console.error("Wishlist add failed", error);
           setItems((current) => current.filter((item) => item.id !== product.id));
         });

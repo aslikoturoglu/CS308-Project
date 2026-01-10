@@ -10,22 +10,28 @@ async function handleResponse(res) {
   return data;
 }
 
-export async function fetchWishlist(userId, signal) {
-  const res = await fetch(`${WISHLIST_BASE}?user_id=${encodeURIComponent(userId)}`, { signal });
+export async function fetchWishlist({ userId, email, signal }) {
+  const params = new URLSearchParams();
+  if (userId) params.set("user_id", userId);
+  if (email) params.set("email", email);
+  const res = await fetch(`${WISHLIST_BASE}?${params.toString()}`, { signal });
   return handleResponse(res);
 }
 
-export async function addWishlistItem(userId, productId) {
+export async function addWishlistItem({ userId, email, productId }) {
   const res = await fetch(WISHLIST_BASE, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_id: userId, product_id: productId }),
+    body: JSON.stringify({ user_id: userId, email, product_id: productId }),
   });
   return handleResponse(res);
 }
 
-export async function removeWishlistItem(userId, productId) {
-  const res = await fetch(`${WISHLIST_BASE}/${encodeURIComponent(productId)}?user_id=${encodeURIComponent(userId)}`, {
+export async function removeWishlistItem({ userId, email, productId }) {
+  const params = new URLSearchParams();
+  if (userId) params.set("user_id", userId);
+  if (email) params.set("email", email);
+  const res = await fetch(`${WISHLIST_BASE}/${encodeURIComponent(productId)}?${params.toString()}`, {
     method: "DELETE",
   });
   return handleResponse(res);
