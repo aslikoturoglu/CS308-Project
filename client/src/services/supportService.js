@@ -51,6 +51,20 @@ export async function fetchSupportMessages(conversationId) {
   return handleResponse(res);
 }
 
+export async function fetchCustomerWishlist(userId) {
+  const res = await fetch(`${SUPPORT_BASE}/customers/${userId}/wishlist`);
+  return handleResponse(res);
+}
+
+export async function linkConversationToUser({ conversationId, userId, email, name }) {
+  const res = await fetch(`${SUPPORT_BASE}/conversations/${conversationId}/identify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, email, name }),
+  });
+  return handleResponse(res);
+}
+
 export async function sendSupportMessage({ conversationId, agentId, text, attachments = [] }) {
   const hasFiles = Array.isArray(attachments) && attachments.length > 0;
   const options = { method: "POST" };

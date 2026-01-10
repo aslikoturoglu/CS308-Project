@@ -6,12 +6,14 @@ import { fetchProductsWithMeta } from "../services/productService";
 import {
   fetchSupportInbox,
   fetchSupportMessages,
+  fetchCustomerWishlist,
   sendSupportMessage,
   deleteConversation as deleteConversationApi,
 } from "../services/supportService";
 import {
   advanceOrderStatus,
   fetchAllOrders,
+  fetchUserOrders,
   formatOrderId,
   getNextStatus,
   getOrders,
@@ -68,6 +70,9 @@ function AdminDashboard() {
   const CHAT_PAGE_SIZE = 6;
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
+  const [customerOrders, setCustomerOrders] = useState([]);
+  const [customerWishlist, setCustomerWishlist] = useState([]);
+  const [isLoadingCustomerInfo, setIsLoadingCustomerInfo] = useState(false);
   const [replyDraft, setReplyDraft] = useState("");
   const [replyFiles, setReplyFiles] = useState([]);
   const [isLoadingChats, setIsLoadingChats] = useState(false);
@@ -165,6 +170,11 @@ function AdminDashboard() {
     }
   }, [activeConversationId, addToast]);
 
+  const activeChat = useMemo(
+    () => chats.find((chat) => chat.id === activeConversationId) || null,
+    [chats, activeConversationId]
+  );
+
   useEffect(() => {
     loadInbox();
     const interval = setInterval(loadInbox, 4000);
@@ -210,6 +220,49 @@ function AdminDashboard() {
     const interval = setInterval(() => fetchThread({ showSpinner: false }), 3000);
     return () => clearInterval(interval);
   }, [activeConversationId, addToast]);
+
+  useEffect(() => {
+    if (!activeChat?.user_id) {
+      setCustomerOrders([]);
+      setCustomerWishlist([]);
+      return undefined;
+    }
+
+    let isMounted = true;
+    const controller = new AbortController();
+    setIsLoadingCustomerInfo(true);
+
+    Promise.allSettled([
+      fetchUserOrders(activeChat.user_id, controller.signal),
+      fetchCustomerWishlist(activeChat.user_id),
+    ])
+      .then(([ordersResult, wishlistResult]) => {
+        if (!isMounted) return;
+        if (ordersResult.status === "fulfilled") {
+          setCustomerOrders(ordersResult.value);
+        } else {
+          console.error("Customer orders fetch failed", ordersResult.reason);
+          setCustomerOrders([]);
+          addToast("Customer orders could not be loaded", "error");
+        }
+
+        if (wishlistResult.status === "fulfilled") {
+          setCustomerWishlist(Array.isArray(wishlistResult.value) ? wishlistResult.value : []);
+        } else {
+          console.error("Customer wishlist fetch failed", wishlistResult.reason);
+          setCustomerWishlist([]);
+          addToast("Customer wishlist could not be loaded", "error");
+        }
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingCustomerInfo(false);
+      });
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [activeChat?.user_id, addToast]);
 
   const handleDeleteConversation = async (conversationId) => {
     if (!conversationId) return;
@@ -1689,18 +1742,35 @@ function AdminDashboard() {
                               {chat.order_id ? formatOrderId(chat.order_id) : "No order linked"}
                             </p>
                           </div>
-                          <span
-                            style={{
-                              fontWeight: 700,
-                              color: chat.status === "closed" ? "#9ca3af" : "#0ea5e9",
-                              padding: "4px 10px",
-                              borderRadius: 999,
-                              background: "rgba(14,165,233,0.12)",
-                              border: "1px solid rgba(14,165,233,0.2)",
-                            }}
-                          >
-                            {chat.status}
-                          </span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            {chat.unread_count > 0 && (
+                              <span
+                                style={{
+                                  fontWeight: 700,
+                                  color: "#b91c1c",
+                                  padding: "4px 10px",
+                                  borderRadius: 999,
+                                  background: "#fee2e2",
+                                  border: "1px solid #fecaca",
+                                  fontSize: "0.85rem",
+                                }}
+                              >
+                                {chat.unread_count} unread
+                              </span>
+                            )}
+                            <span
+                              style={{
+                                fontWeight: 700,
+                                color: chat.status === "closed" ? "#9ca3af" : "#0ea5e9",
+                                padding: "4px 10px",
+                                borderRadius: 999,
+                                background: "rgba(14,165,233,0.12)",
+                                border: "1px solid rgba(14,165,233,0.2)",
+                              }}
+                            >
+                              {chat.status}
+                            </span>
+                          </div>
                         </div>
                         <p style={{ margin: 0, color: "#0f172a" }}>{chat.last_message}</p>
                         <small style={{ color: "#6b7280" }}>
@@ -1797,6 +1867,110 @@ function AdminDashboard() {
                 }}
               >
                 <h3 style={{ margin: "0 0 8px", color: "#0f172a" }}>Conversation</h3>
+                {activeConversationId && activeChat && (
+                  <div
+                    style={{
+                      border: "1px solid #e5e7eb",
+                      borderRadius: 12,
+                      padding: 12,
+                      background: "#f8fafc",
+                      display: "grid",
+                      gap: 10,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                      <div>
+                        <strong style={{ color: "#0f172a" }}>{activeChat.customer_name}</strong>
+                        <p style={{ margin: "4px 0 0", color: "#475569" }}>
+                          {activeChat.customer_email || `User #${activeChat.user_id}`}
+                        </p>
+                      </div>
+                      <div style={{ display: "flex", gap: 12 }}>
+                        <div style={{ textAlign: "right" }}>
+                          <p
+                            style={{
+                              margin: 0,
+                              color: "#94a3b8",
+                              fontSize: "0.75rem",
+                              textTransform: "uppercase",
+                              letterSpacing: 1,
+                            }}
+                          >
+                            Orders
+                          </p>
+                          <strong>{customerOrders.length}</strong>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <p
+                            style={{
+                              margin: 0,
+                              color: "#94a3b8",
+                              fontSize: "0.75rem",
+                              textTransform: "uppercase",
+                              letterSpacing: 1,
+                            }}
+                          >
+                            Wishlist
+                          </p>
+                          <strong>{customerWishlist.length}</strong>
+                        </div>
+                      </div>
+                    </div>
+                    {isLoadingCustomerInfo ? (
+                      <p style={{ margin: 0, color: "#64748b" }}>Loading customer data...</p>
+                    ) : (
+                      <div style={{ display: "grid", gap: 12 }}>
+                        <div>
+                          <p style={{ margin: "0 0 6px", color: "#475569", fontWeight: 700 }}>Recent orders</p>
+                          {customerOrders.length === 0 ? (
+                            <p style={{ margin: 0, color: "#94a3b8" }}>No orders yet.</p>
+                          ) : (
+                            <div style={{ display: "grid", gap: 6 }}>
+                              {customerOrders.slice(0, 3).map((order) => (
+                                <div key={order.id} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                                  <span style={{ color: "#0f172a" }}>
+                                    {order.formattedId || formatOrderId(order.id)}
+                                  </span>
+                                  <span
+                                    style={{
+                                      padding: "2px 8px",
+                                      borderRadius: 999,
+                                      fontSize: "0.8rem",
+                                      background: "#e0f2fe",
+                                      color: "#0369a1",
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    {order.status}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <p style={{ margin: "0 0 6px", color: "#475569", fontWeight: 700 }}>Wishlist items</p>
+                          {customerWishlist.length === 0 ? (
+                            <p style={{ margin: 0, color: "#94a3b8" }}>No wishlist items.</p>
+                          ) : (
+                            <div style={{ display: "grid", gap: 6 }}>
+                              {customerWishlist.slice(0, 4).map((item) => (
+                                <div key={item.id} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                                  <span style={{ color: "#0f172a" }}>{item.name}</span>
+                                  {item.price != null && (
+                                    <span style={{ color: "#0f172a", fontWeight: 700 }}>
+                                      {Number(item.price).toLocaleString("tr-TR")} TL
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {activeConversationId ? (
                   <>
                     <div

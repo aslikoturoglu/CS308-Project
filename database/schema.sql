@@ -244,6 +244,7 @@ CREATE TABLE support_messages (
   conversation_id INT NOT NULL,
   sender_id INT NOT NULL,
   message_text TEXT NOT NULL,
+  is_read_by_support TINYINT(1) NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (conversation_id) REFERENCES support_conversations(conversation_id)
     ON UPDATE CASCADE ON DELETE CASCADE,

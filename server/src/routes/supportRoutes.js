@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import {
   getConversation,
   getConversationMessages,
+  getCustomerWishlist,
+  identifyConversation,
   listConversations,
   postCustomerMessage,
   postSupportReply,
@@ -43,6 +45,8 @@ router.post("/message", withAttachments, postCustomerMessage);
 // Support agent side
 router.get("/inbox", listConversations);
 router.get("/conversations/:conversation_id/messages", getConversationMessages);
+router.get("/customers/:user_id/wishlist", getCustomerWishlist);
+router.post("/conversations/:conversation_id/identify", identifyConversation);
 router.post("/conversations/:conversation_id/reply", withAttachments, postSupportReply);
 router.delete("/conversations/:conversation_id", deleteConversation);
 

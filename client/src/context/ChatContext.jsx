@@ -9,6 +9,7 @@ import {
 import { useAuth } from "./AuthContext";
 import {
   fetchUserConversation,
+  linkConversationToUser,
   sendUserMessage,
 } from "../services/supportService";
 
@@ -172,6 +173,28 @@ export function ChatProvider({ children }) {
   useEffect(() => {
     if (isOpen) setUnreadCount(0);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!conversationId || !user?.id) return;
+    const numericUserId = Number(user.id);
+    if (!Number.isFinite(numericUserId)) return;
+    if (serverUserId && Number(serverUserId) === numericUserId) return;
+
+    linkConversationToUser({
+      conversationId,
+      userId: numericUserId,
+      email: user?.email,
+      name: user?.name,
+    })
+      .then((data) => {
+        if (data?.user_id) {
+          setServerUserId(data.user_id);
+        }
+      })
+      .catch((error) => {
+        console.error("Support conversation link failed", error);
+      });
+  }, [conversationId, user?.id, user?.email, user?.name, serverUserId]);
 
   const sendMessage = (input) => {
     const payload = typeof input === "string" ? { text: input } : input || {};

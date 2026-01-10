@@ -82,10 +82,38 @@ function pickAgentId(rawId) {
   return DEFAULT_AGENT_ID;
 }
 
+function maybeUpdateUserName(userId, currentName, nextName, callback) {
+  const trimmed = nextName && String(nextName).trim();
+  if (!trimmed) return callback();
+  const normalizedCurrent = (currentName || "").trim();
+  if (normalizedCurrent && normalizedCurrent.toLowerCase() !== "guest") {
+    return callback();
+  }
+  const updateSql = "UPDATE users SET full_name = ? WHERE user_id = ?";
+  db.query(updateSql, [trimmed, userId], (err) => {
+    if (err) {
+      console.error("User name update failed:", err);
+    }
+    callback();
+  });
+}
+
 function ensureUser({ user_id, email, name }, callback) {
   const numericId = Number(user_id);
   if (Number.isFinite(numericId) && numericId > 0) {
-    return callback(null, numericId);
+    const findByIdSql = "SELECT user_id, full_name FROM users WHERE user_id = ?";
+    return db.query(findByIdSql, [numericId], (idErr, idRows) => {
+      if (idErr) {
+        console.error("User lookup failed:", idErr);
+        return callback(idErr);
+      }
+      if (idRows.length > 0) {
+        return maybeUpdateUserName(numericId, idRows[0].full_name, name, () =>
+          callback(null, numericId)
+        );
+      }
+      return ensureUser({ user_id: null, email, name }, callback);
+    });
   }
 
   const safeEmail =
@@ -95,14 +123,17 @@ function ensureUser({ user_id, email, name }, callback) {
   const displayName =
     name && String(name).trim().length > 0 ? String(name).trim() : "Guest";
 
-  const findSql = "SELECT user_id FROM users WHERE email = ?";
+  const findSql = "SELECT user_id, full_name FROM users WHERE email = ?";
   db.query(findSql, [safeEmail], (findErr, rows) => {
     if (findErr) {
       console.error("User lookup failed:", findErr);
       return callback(findErr);
     }
     if (rows.length > 0) {
-      return callback(null, rows[0].user_id);
+      const existing = rows[0];
+      return maybeUpdateUserName(existing.user_id, existing.full_name, name, () =>
+        callback(null, existing.user_id)
+      );
     }
 
     const insertSql = `
@@ -160,6 +191,7 @@ function mapMessages(rows, userId, attachmentMap = new Map()) {
     sender_id: row.sender_id,
     from: row.sender_id === userId ? "customer" : "support",
     timestamp: row.created_at,
+    is_read_by_support: row.is_read_by_support ?? 0,
     attachments: attachmentMap.get(row.message_id) || [],
   }));
 }
@@ -180,7 +212,7 @@ export function getConversation(req, res) {
       }
 
       const messagesSql = `
-        SELECT message_id, sender_id, message_text, created_at
+        SELECT message_id, sender_id, message_text, created_at, is_read_by_support
         FROM support_messages
         WHERE conversation_id = ?
         ORDER BY created_at ASC
@@ -297,6 +329,7 @@ export function listConversations(req, res) {
       sc.status,
       sc.created_at,
       u.full_name AS customer_name,
+      u.email AS customer_email,
       (
         SELECT message_text FROM support_messages sm 
         WHERE sm.conversation_id = sc.conversation_id
@@ -308,7 +341,13 @@ export function listConversations(req, res) {
         WHERE sm.conversation_id = sc.conversation_id
         ORDER BY sm.created_at DESC
         LIMIT 1
-      ) AS last_message_at
+      ) AS last_message_at,
+      (
+        SELECT COUNT(*) FROM support_messages sm
+        WHERE sm.conversation_id = sc.conversation_id
+          AND sm.sender_id = sc.user_id
+          AND sm.is_read_by_support = 0
+      ) AS unread_count
     FROM support_conversations sc
     LEFT JOIN users u ON u.user_id = sc.user_id
     ORDER BY last_message_at DESC, sc.created_at DESC
@@ -328,8 +367,10 @@ export function listConversations(req, res) {
         status: row.status,
         created_at: row.created_at,
         customer_name: row.customer_name || `User #${row.user_id}`,
+        customer_email: row.customer_email || null,
         last_message: row.last_message || "No message yet",
         last_message_at: row.last_message_at || row.created_at,
+        unread_count: Number(row.unread_count) || 0,
       }))
     );
   });
@@ -387,11 +428,25 @@ export function getConversationMessages(req, res) {
     const conversation = metaRows[0];
 
     const sqlMessages = `
-      SELECT message_id, sender_id, message_text, created_at
+      SELECT message_id, sender_id, message_text, created_at, is_read_by_support
       FROM support_messages
       WHERE conversation_id = ?
       ORDER BY created_at ASC
     `;
+
+    const markReadSql = `
+      UPDATE support_messages
+      SET is_read_by_support = 1
+      WHERE conversation_id = ?
+        AND sender_id = ?
+        AND is_read_by_support = 0
+    `;
+
+    db.query(markReadSql, [conversationId, conversation.user_id], (markErr) => {
+      if (markErr) {
+        console.error("Support read flag update failed:", markErr);
+      }
+    });
 
     db.query(sqlMessages, [conversationId], (err, rows) => {
       if (err) {
@@ -411,6 +466,110 @@ export function getConversationMessages(req, res) {
           user_id: conversation.user_id,
           order_id: conversation.order_id,
           messages: mapMessages(rows, conversation.user_id, attachmentMap),
+        });
+      });
+    });
+  });
+}
+
+export function getCustomerWishlist(req, res) {
+  const userId = Number(req.params.user_id);
+  if (!userId) {
+    return res.status(400).json({ error: "user_id zorunlu" });
+  }
+
+  const sql = `
+    SELECT
+      wi.wishlist_item_id,
+      wi.added_at,
+      p.product_id,
+      p.product_name,
+      p.product_image,
+      p.product_price
+    FROM wishlists w
+    JOIN wishlist_items wi ON wi.wishlist_id = w.wishlist_id
+    LEFT JOIN products p ON p.product_id = wi.product_id
+    WHERE w.user_id = ?
+    ORDER BY wi.added_at DESC
+  `;
+
+  db.query(sql, [userId], (err, rows) => {
+    if (err) {
+      console.error("Wishlist fetch failed:", err);
+      return res.status(500).json({ error: "Wishlist alnamad" });
+    }
+
+    res.json(
+      rows.map((row) => ({
+        id: row.wishlist_item_id,
+        product_id: row.product_id,
+        name: row.product_name || `Product #${row.product_id}`,
+        image: row.product_image || null,
+        price: Number(row.product_price) || null,
+        added_at: row.added_at,
+      }))
+    );
+  });
+}
+
+export function identifyConversation(req, res) {
+  const conversationId = Number(req.params.conversation_id);
+  if (!conversationId) {
+    return res.status(400).json({ error: "conversation_id zorunlu" });
+  }
+
+  const { user_id, email, name } = req.body || {};
+
+  ensureUser({ user_id, email, name }, (userErr, targetUserId) => {
+    if (userErr) {
+      return res.status(500).json({ error: "Kullanc bulunamad" });
+    }
+
+    const findSql = `
+      SELECT conversation_id, user_id
+      FROM support_conversations
+      WHERE conversation_id = ?
+      LIMIT 1
+    `;
+
+    db.query(findSql, [conversationId], (findErr, rows) => {
+      if (findErr) {
+        console.error("Support conversation lookup failed:", findErr);
+        return res.status(500).json({ error: "KonuŸma okunamad" });
+      }
+      if (!rows.length) {
+        return res.status(404).json({ error: "KonuŸma bulunamad" });
+      }
+
+      const currentUserId = rows[0].user_id;
+      if (Number(currentUserId) === Number(targetUserId)) {
+        return res.json({ conversation_id: conversationId, user_id: targetUserId });
+      }
+
+      const updateConversationSql = `
+        UPDATE support_conversations
+        SET user_id = ?
+        WHERE conversation_id = ?
+      `;
+
+      db.query(updateConversationSql, [targetUserId, conversationId], (updErr) => {
+        if (updErr) {
+          console.error("Support conversation update failed:", updErr);
+          return res.status(500).json({ error: "KonuŸma gncellenemedi" });
+        }
+
+        const updateMessagesSql = `
+          UPDATE support_messages
+          SET sender_id = ?
+          WHERE conversation_id = ?
+            AND sender_id = ?
+        `;
+
+        db.query(updateMessagesSql, [targetUserId, conversationId, currentUserId], (msgErr) => {
+          if (msgErr) {
+            console.error("Support messages update failed:", msgErr);
+          }
+          return res.json({ conversation_id: conversationId, user_id: targetUserId });
         });
       });
     });
