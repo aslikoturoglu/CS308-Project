@@ -1,17 +1,18 @@
 import { updateJSON } from "../utils/storage";
-const API_URL = "/api";
+const API_BASE = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) || "";
+const API_URL = `${API_BASE}/api`;
 
 
 // Tum urunleri getir
 export async function getProducts(signal) {
-  const res = await fetch(`${API_URL}/products`, { signal });
+  const res = await fetch(`${API_URL}/products`, { signal, cache: "no-store" });
   if (!res.ok) throw new Error("Products fetch failed");
   return res.json();
 }
 
 // ID ile urun getir
 export async function getProductById(id, signal) {
-  const res = await fetch(`${API_URL}/products/${id}`, { signal });
+  const res = await fetch(`${API_URL}/products/${id}`, { signal, cache: "no-store" });
   if (!res.ok) throw new Error("Product fetch failed");
   return res.json();
 }

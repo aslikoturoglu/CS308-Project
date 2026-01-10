@@ -60,6 +60,7 @@ export function WishlistProvider({ children }) {
         });
       })
       .catch((error) => {
+        if (error?.name === "AbortError") return;
         console.error("Wishlist fetch failed", error);
       });
 

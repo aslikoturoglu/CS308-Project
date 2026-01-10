@@ -105,7 +105,10 @@ function AdminDashboard() {
     const controller = new AbortController();
     fetchProductsWithMeta(controller.signal)
       .then((data) => setProducts(data))
-      .catch(() => addToast("Failed to load products", "error"));
+      .catch((error) => {
+        if (error?.name === "AbortError") return;
+        addToast("Failed to load products", "error");
+      });
     return () => controller.abort();
   }, [addToast]);
 
@@ -1720,10 +1723,17 @@ function AdminDashboard() {
                     .map((chat) => {
                     const isActive = chat.id === activeConversationId;
                     return (
-                      <button
+                      <div
                         key={chat.id}
-                        type="button"
+                        role="button"
+                        tabIndex={0}
                         onClick={() => handleSelectConversation(chat.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            handleSelectConversation(chat.id);
+                          }
+                        }}
                         style={{
                           textAlign: "left",
                           border: isActive ? "2px solid #0ea5e9" : "1px solid #e5e7eb",
@@ -1808,7 +1818,7 @@ function AdminDashboard() {
                             Delete
                           </button>
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
                   {chats.length > CHAT_PAGE_SIZE && (
