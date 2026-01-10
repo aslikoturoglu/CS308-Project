@@ -24,6 +24,7 @@ function OrderHistory() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
   const [filter, setFilter] = useState("All");
   const [orders, setOrders] = useState([]);
   const [reviews, setReviews] = useState({});
@@ -236,6 +237,10 @@ function OrderHistory() {
             const pill = statusPills[order.status];
             const progressIndex = order.progressIndex ?? timelineSteps.indexOf(order.status) ?? 0;
             const formattedId = order.formattedId || formatOrderId(order.id);
+            const rawOrderId = order.order_id ?? order.id ?? formattedId;
+            const numericOrderMatch = String(rawOrderId).match(/\d+/);
+            const cleanOrderId = numericOrderMatch ? numericOrderMatch[0] : rawOrderId;
+            const invoiceUrl = `${API_BASE_URL}/api/orders/${encodeURIComponent(cleanOrderId)}/invoice`;
 
             return (
               <article
@@ -463,9 +468,10 @@ function OrderHistory() {
                           </span>
                         )}
                       </div>
-                      <Link
-                        to={`/invoice/${encodeURIComponent(formattedId)}`}
-                        state={{ order }}
+                      <a
+                        href={invoiceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         style={{
                           border: `1px solid ${isDark ? "#38bdf8" : "#0058a3"}`,
                           color: palette.link,
@@ -477,7 +483,7 @@ function OrderHistory() {
                         }}
                       >
                         View invoice
-                      </Link>
+                      </a>
                     </div>
                   </>
                 )}
