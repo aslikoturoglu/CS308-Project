@@ -51,6 +51,20 @@ export async function fetchSupportMessages(conversationId) {
   return handleResponse(res);
 }
 
+export async function claimSupportConversation(conversationId) {
+  const res = await fetch(`${SUPPORT_BASE}/conversations/${conversationId}/claim`, {
+    method: "POST",
+  });
+  return handleResponse(res);
+}
+
+export async function unclaimSupportConversation(conversationId) {
+  const res = await fetch(`${SUPPORT_BASE}/conversations/${conversationId}/unclaim`, {
+    method: "POST",
+  });
+  return handleResponse(res);
+}
+
 export async function fetchCustomerWishlist(userId) {
   const res = await fetch(`${SUPPORT_BASE}/customers/${userId}/wishlist`);
   return handleResponse(res);

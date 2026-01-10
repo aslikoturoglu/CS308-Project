@@ -6,6 +6,8 @@ import { fetchProductsWithMeta } from "../services/productService";
 import {
   fetchSupportInbox,
   fetchSupportMessages,
+  claimSupportConversation,
+  unclaimSupportConversation,
   fetchCustomerWishlist,
   sendSupportMessage,
   deleteConversation as deleteConversationApi,
@@ -52,6 +54,25 @@ const rolesToSections = {
   support: ["support"],
 };
 
+const API_BASE = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) || "";
+
+function resolveUploadUrl(url) {
+  if (!url) return url;
+  if (url.startsWith("/uploads")) return `${API_BASE}${url}`;
+  return url;
+}
+
+function resolveAttachmentUrl(attachment, fallbackOrderId) {
+  if (!attachment?.url) return attachment?.url;
+  const fileName = attachment.file_name || "";
+  const match = fileName.match(/invoice_ORD-(\d+)/i);
+  const orderId = match ? Number(match[1]) : Number(fallbackOrderId);
+  if (Number.isFinite(orderId)) {
+    return `${API_BASE}/api/orders/${encodeURIComponent(orderId)}/invoice`;
+  }
+  return resolveUploadUrl(attachment.url);
+}
+
 function AdminDashboard() {
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -70,6 +91,7 @@ function AdminDashboard() {
   const CHAT_PAGE_SIZE = 6;
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
+  const [showUnclaimedOnly, setShowUnclaimedOnly] = useState(true);
   const [customerOrders, setCustomerOrders] = useState([]);
   const [customerWishlist, setCustomerWishlist] = useState([]);
   const [isLoadingCustomerInfo, setIsLoadingCustomerInfo] = useState(false);
@@ -78,6 +100,8 @@ function AdminDashboard() {
   const [isLoadingChats, setIsLoadingChats] = useState(false);
   const [isLoadingThread, setIsLoadingThread] = useState(false);
   const [isSendingReply, setIsSendingReply] = useState(false);
+  const [returnRequests, setReturnRequests] = useState([]);
+  const [isLoadingReturns, setIsLoadingReturns] = useState(false);
   const [filters, setFilters] = useState({ invoiceFrom: "", invoiceTo: "" });
   const [invoices, setInvoices] = useState([]);
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
@@ -177,6 +201,23 @@ function AdminDashboard() {
     () => chats.find((chat) => chat.id === activeConversationId) || null,
     [chats, activeConversationId]
   );
+  const filteredChats = useMemo(() => {
+    if (!showUnclaimedOnly) return chats;
+    return chats.filter((chat) => chat.status === "open");
+  }, [chats, showUnclaimedOnly]);
+
+  useEffect(() => {
+    setChatPage(1);
+  }, [showUnclaimedOnly]);
+
+  useEffect(() => {
+    if (!showUnclaimedOnly) return;
+    if (!activeConversationId) return;
+    const stillVisible = filteredChats.some((chat) => chat.id === activeConversationId);
+    if (!stillVisible && filteredChats.length > 0) {
+      setActiveConversationId(filteredChats[0].id);
+    }
+  }, [showUnclaimedOnly, filteredChats, activeConversationId]);
 
   useEffect(() => {
     loadInbox();
@@ -187,6 +228,26 @@ function AdminDashboard() {
   useEffect(() => {
     refreshPendingReviews();
   }, [refreshPendingReviews]);
+
+  useEffect(() => {
+    if (activeSection !== "support") return;
+    setIsLoadingReturns(true);
+    fetch("/api/sales/return-requests")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setReturnRequests(data);
+        } else {
+          setReturnRequests([]);
+        }
+      })
+      .catch((error) => {
+        console.error("Return requests fetch failed", error);
+        addToast("Return requests could not be loaded", "error");
+        setReturnRequests([]);
+      })
+      .finally(() => setIsLoadingReturns(false));
+  }, [activeSection, addToast]);
 
   const handleViewLowStock = () => {
     setShowLowStockOnly(true);
@@ -615,6 +676,32 @@ function AdminDashboard() {
   const handleSelectConversation = (id) => {
     setActiveConversationId(id);
     setReplyDraft("");
+  };
+
+  const handleClaimConversation = async (conversationId) => {
+    try {
+      await claimSupportConversation(conversationId);
+      setChats((prev) =>
+        prev.map((chat) => (chat.id === conversationId ? { ...chat, status: "pending" } : chat))
+      );
+      addToast("Conversation claimed", "info");
+    } catch (error) {
+      console.error("Support claim failed", error);
+      addToast("Conversation could not be claimed", "error");
+    }
+  };
+
+  const handleUnclaimConversation = async (conversationId) => {
+    try {
+      await unclaimSupportConversation(conversationId);
+      setChats((prev) =>
+        prev.map((chat) => (chat.id === conversationId ? { ...chat, status: "open" } : chat))
+      );
+      addToast("Conversation unclaimed", "info");
+    } catch (error) {
+      console.error("Support unclaim failed", error);
+      addToast("Conversation could not be unclaimed", "error");
+    }
   };
 
   const handleAdvanceOrder = async (orderId) => {
@@ -1712,157 +1799,289 @@ function AdminDashboard() {
                 minWidth: 0,
               }}
             >
-              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Active chat queue</h3>
-                  {isLoadingChats && <span style={{ color: "#0ea5e9", fontWeight: 700 }}>Syncing…</span>}
-                </div>
-                <div style={{ display: "grid", gap: 12 }}>
-                  {chats
-                    .slice((chatPage - 1) * CHAT_PAGE_SIZE, chatPage * CHAT_PAGE_SIZE)
-                    .map((chat) => {
-                    const isActive = chat.id === activeConversationId;
-                    return (
-                      <div
-                        key={chat.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => handleSelectConversation(chat.id)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            handleSelectConversation(chat.id);
+
+              <div style={{ display: "grid", gap: 14 }}>
+                <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                    <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Active chat queue</h3>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <label style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#475569", fontSize: "0.85rem" }}>
+                        <input
+                          type="checkbox"
+                          checked={showUnclaimedOnly}
+                          onChange={(event) => setShowUnclaimedOnly(event.target.checked)}
+                        />
+                        Unclaimed only
+                      </label>
+                      {isLoadingChats && <span style={{ color: "#0ea5e9", fontWeight: 700 }}>Syncing...</span>}
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gap: 12 }}>
+                    {filteredChats
+                      .slice((chatPage - 1) * CHAT_PAGE_SIZE, chatPage * CHAT_PAGE_SIZE)
+                      .map((chat) => {
+                      const isActive = chat.id === activeConversationId;
+                      return (
+                        <div
+                          key={chat.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handleSelectConversation(chat.id)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              handleSelectConversation(chat.id);
+                            }
+                          }}
+                          style={{
+                            textAlign: "left",
+                            border: isActive ? "2px solid #0ea5e9" : "1px solid #e5e7eb",
+                            background: isActive ? "rgba(14,165,233,0.08)" : "white",
+                            borderRadius: 12,
+                            padding: 12,
+                            cursor: "pointer",
+                            display: "grid",
+                            gap: 6,
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div>
+                              <strong>{chat.customer_name}</strong>
+                              <p style={{ margin: "2px 0 0", color: "#475569" }}>
+                                {chat.order_id ? formatOrderId(chat.order_id) : "No order linked"}
+                              </p>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              {chat.unread_count > 0 && (
+                                <span
+                                  style={{
+                                    fontWeight: 700,
+                                    color: "#b91c1c",
+                                    padding: "4px 10px",
+                                    borderRadius: 999,
+                                    background: "#fee2e2",
+                                    border: "1px solid #fecaca",
+                                    fontSize: "0.85rem",
+                                  }}
+                                >
+                                  {chat.unread_count} unread
+                                </span>
+                              )}
+                              <span
+                                style={{
+                                  fontWeight: 700,
+                                  color: chat.status === "closed" ? "#9ca3af" : "#0ea5e9",
+                                  padding: "4px 10px",
+                                  borderRadius: 999,
+                                  background: "rgba(14,165,233,0.12)",
+                                  border: "1px solid rgba(14,165,233,0.2)",
+                                }}
+                              >
+                                {chat.status}
+                              </span>
+                            </div>
+                          </div>
+                          <p style={{ margin: 0, color: "#0f172a" }}>{chat.last_message}</p>
+                          <small style={{ color: "#6b7280" }}>
+                            Last update: {new Date(chat.last_message_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+                          </small>
+                          <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+                            <button
+                              type="button"
+                              onClick={() => handleSelectConversation(chat.id)}
+                              style={{
+                                padding: "6px 10px",
+                                borderRadius: 8,
+                                border: "1px solid #e5e7eb",
+                                background: "white",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Open
+                            </button>
+                            {chat.status === "open" && (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleClaimConversation(chat.id);
+                                }}
+                                style={{
+                                  padding: "6px 10px",
+                                  borderRadius: 8,
+                                  border: "1px solid #bfdbfe",
+                                  background: "#eff6ff",
+                                  color: "#1d4ed8",
+                                  cursor: "pointer",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                Claim
+                              </button>
+                            )}
+                            {chat.status === "pending" && (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleUnclaimConversation(chat.id);
+                                }}
+                                style={{
+                                  padding: "6px 10px",
+                                  borderRadius: 8,
+                                  border: "1px solid #fed7aa",
+                                  background: "#fff7ed",
+                                  color: "#c2410c",
+                                  cursor: "pointer",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                Unclaim
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteConversation(chat.id);
+                              }}
+                              style={{
+                                padding: "6px 10px",
+                                borderRadius: 8,
+                                border: "1px solid #fca5a5",
+                                background: "#fef2f2",
+                                color: "#b91c1c",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {filteredChats.length > CHAT_PAGE_SIZE && (
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+                        <button
+                          type="button"
+                          onClick={() => setChatPage((p) => Math.max(1, p - 1))}
+                          disabled={chatPage === 1}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: 10,
+                            border: "1px solid #e5e7eb",
+                            background: chatPage === 1 ? "#f8fafc" : "white",
+                            cursor: chatPage === 1 ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          Prev
+                        </button>
+                        <span style={{ color: "#475569", fontWeight: 600 }}>
+                          Page {chatPage} / {Math.max(1, Math.ceil(filteredChats.length / CHAT_PAGE_SIZE))}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setChatPage((p) => Math.min(Math.ceil(filteredChats.length / CHAT_PAGE_SIZE), p + 1))
                           }
-                        }}
+                          disabled={chatPage >= Math.ceil(filteredChats.length / CHAT_PAGE_SIZE)}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: 10,
+                            border: "1px solid #e5e7eb",
+                            background:
+                              chatPage >= Math.ceil(filteredChats.length / CHAT_PAGE_SIZE) ? "#f8fafc" : "white",
+                            cursor:
+                              chatPage >= Math.ceil(filteredChats.length / CHAT_PAGE_SIZE) ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          Next >
+                        </button>
+                      </div>
+                    )}
+                    {!filteredChats.length && !isLoadingChats && (
+                      <p style={{ margin: 0, color: "#6b7280" }}>
+                        {showUnclaimedOnly ? "No unclaimed chats yet." : "No active chats yet."}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
+                  <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Return requests</h3>
+                  {isLoadingReturns && <p style={{ margin: 0, color: "#64748b" }}>Loading return requests...</p>}
+                  {!isLoadingReturns && returnRequests.length === 0 && (
+                    <p style={{ margin: 0, color: "#94a3b8" }}>No return requests yet.</p>
+                  )}
+                  <div style={{ display: "grid", gap: 12 }}>
+                    {returnRequests.map((item) => (
+                      <div
+                        key={`${item.attachment?.id || item.message_id}`}
                         style={{
-                          textAlign: "left",
-                          border: isActive ? "2px solid #0ea5e9" : "1px solid #e5e7eb",
-                          background: isActive ? "rgba(14,165,233,0.08)" : "white",
+                          border: "1px solid #e5e7eb",
                           borderRadius: 12,
                           padding: 12,
-                          cursor: "pointer",
+                          background: "#f8fafc",
                           display: "grid",
                           gap: 6,
                         }}
                       >
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                           <div>
-                            <strong>{chat.customer_name}</strong>
-                            <p style={{ margin: "2px 0 0", color: "#475569" }}>
-                              {chat.order_id ? formatOrderId(chat.order_id) : "No order linked"}
+                            <strong>{item.customer_name}</strong>
+                            <p style={{ margin: "2px 0 0", color: "#64748b" }}>
+                              {item.customer_email || `User #${item.user_id}`}
+                            </p>
+                            <p style={{ margin: "4px 0 0", color: "#64748b" }}>
+                              {item.order_id ? formatOrderId(item.order_id) : "No order linked"}
                             </p>
                           </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            {chat.unread_count > 0 && (
-                              <span
-                                style={{
-                                  fontWeight: 700,
-                                  color: "#b91c1c",
-                                  padding: "4px 10px",
-                                  borderRadius: 999,
-                                  background: "#fee2e2",
-                                  border: "1px solid #fecaca",
-                                  fontSize: "0.85rem",
-                                }}
-                              >
-                                {chat.unread_count} unread
-                              </span>
-                            )}
-                            <span
-                              style={{
-                                fontWeight: 700,
-                                color: chat.status === "closed" ? "#9ca3af" : "#0ea5e9",
-                                padding: "4px 10px",
-                                borderRadius: 999,
-                                background: "rgba(14,165,233,0.12)",
-                                border: "1px solid rgba(14,165,233,0.2)",
-                              }}
-                            >
-                              {chat.status}
-                            </span>
-                          </div>
+                          <span
+                            style={{
+                              alignSelf: "flex-start",
+                              padding: "4px 10px",
+                              borderRadius: 999,
+                              background: item.return_eligible ? "#dcfce7" : "#fee2e2",
+                              color: item.return_eligible ? "#166534" : "#b91c1c",
+                              fontWeight: 700,
+                              fontSize: "0.85rem",
+                            }}
+                          >
+                            {item.return_eligible ? "Return possible" : "Return not eligible"}
+                          </span>
                         </div>
-                        <p style={{ margin: 0, color: "#0f172a" }}>{chat.last_message}</p>
+                        <p style={{ margin: 0, color: "#0f172a" }}>{item.message_text || "Attachment uploaded"}</p>
+                        {item.attachment?.url && (
+                          <a
+                            href={resolveAttachmentUrl(item.attachment, item.order_id)}
+                            target="_blank"
+                            rel="noreferrer"
+                            download={item.attachment.file_name}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 8,
+                              padding: "8px 10px",
+                              borderRadius: 10,
+                              background: "#e0f2fe",
+                              color: "#0f172a",
+                              textDecoration: "none",
+                              fontWeight: 700,
+                              border: "1px solid #bae6fd",
+                              width: "fit-content",
+                            }}
+                          >
+                            Attachment: {item.attachment.file_name}
+                          </a>
+                        )}
                         <small style={{ color: "#6b7280" }}>
-                          Last update: {new Date(chat.last_message_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+                          {item.message_at
+                            ? new Date(item.message_at).toLocaleString("tr-TR")
+                            : "Date unavailable"}
                         </small>
-                        <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-                          <button
-                            type="button"
-                            onClick={() => handleSelectConversation(chat.id)}
-                            style={{
-                              padding: "6px 10px",
-                              borderRadius: 8,
-                              border: "1px solid #e5e7eb",
-                              background: "white",
-                              cursor: "pointer",
-                            }}
-                          >
-                            Open
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteConversation(chat.id);
-                            }}
-                            style={{
-                              padding: "6px 10px",
-                              borderRadius: 8,
-                              border: "1px solid #fca5a5",
-                              background: "#fef2f2",
-                              color: "#b91c1c",
-                              cursor: "pointer",
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </div>
                       </div>
-                    );
-                  })}
-                  {chats.length > CHAT_PAGE_SIZE && (
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
-                      <button
-                        type="button"
-                        onClick={() => setChatPage((p) => Math.max(1, p - 1))}
-                        disabled={chatPage === 1}
-                        style={{
-                          padding: "6px 12px",
-                          borderRadius: 10,
-                          border: "1px solid #e5e7eb",
-                          background: chatPage === 1 ? "#f8fafc" : "white",
-                          cursor: chatPage === 1 ? "not-allowed" : "pointer",
-                        }}
-                      >
-                        ‹ Prev
-                      </button>
-                      <span style={{ color: "#475569", fontWeight: 600 }}>
-                        Page {chatPage} / {Math.max(1, Math.ceil(chats.length / CHAT_PAGE_SIZE))}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setChatPage((p) => Math.min(Math.ceil(chats.length / CHAT_PAGE_SIZE), p + 1))
-                        }
-                        disabled={chatPage >= Math.ceil(chats.length / CHAT_PAGE_SIZE)}
-                        style={{
-                          padding: "6px 12px",
-                          borderRadius: 10,
-                          border: "1px solid #e5e7eb",
-                          background:
-                            chatPage >= Math.ceil(chats.length / CHAT_PAGE_SIZE) ? "#f8fafc" : "white",
-                          cursor:
-                            chatPage >= Math.ceil(chats.length / CHAT_PAGE_SIZE) ? "not-allowed" : "pointer",
-                        }}
-                      >
-                        Next ›
-                      </button>
-                    </div>
-                  )}
-                  {!chats.length && !isLoadingChats && (
-                    <p style={{ margin: 0, color: "#6b7280" }}>No active chats yet.</p>
-                  )}
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -1874,6 +2093,9 @@ function AdminDashboard() {
                   boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
                   display: "grid",
                   gap: 12,
+                  gridTemplateRows: "auto auto 1fr auto",
+                  maxHeight: "calc(100vh - 220px)",
+                  minHeight: 0,
                 }}
               >
                 <h3 style={{ margin: "0 0 8px", color: "#0f172a" }}>Conversation</h3>
@@ -1988,7 +2210,8 @@ function AdminDashboard() {
                         border: "1px solid #e5e7eb",
                         borderRadius: 12,
                         padding: 12,
-                        maxHeight: 320,
+                        minHeight: 220,
+                        maxHeight: "calc(100vh - 520px)",
                         overflow: "auto",
                         display: "grid",
                         gap: 10,
@@ -2012,9 +2235,10 @@ function AdminDashboard() {
                               {msg.attachments.map((att) => (
                                 <a
                                   key={att.id}
-                                  href={att.url}
+                                  href={resolveAttachmentUrl(att, activeChat?.order_id)}
                                   target="_blank"
                                   rel="noreferrer"
+                                  download={att.file_name}
                                   style={{
                                     display: "inline-flex",
                                     alignItems: "center",

@@ -512,6 +512,54 @@ export function getCustomerWishlist(req, res) {
   });
 }
 
+export function claimConversation(req, res) {
+  const conversationId = Number(req.params.conversation_id);
+  if (!conversationId) {
+    return res.status(400).json({ error: "conversation_id zorunlu" });
+  }
+
+  const sql = `
+    UPDATE support_conversations
+    SET status = 'pending'
+    WHERE conversation_id = ?
+  `;
+
+  db.query(sql, [conversationId], (err, result) => {
+    if (err) {
+      console.error("Support claim failed:", err);
+      return res.status(500).json({ error: "KonuŸma gncellenemedi" });
+    }
+    if (!result.affectedRows) {
+      return res.status(404).json({ error: "KonuŸma bulunamad" });
+    }
+    return res.json({ success: true, conversation_id: conversationId, status: "pending" });
+  });
+}
+
+export function unclaimConversation(req, res) {
+  const conversationId = Number(req.params.conversation_id);
+  if (!conversationId) {
+    return res.status(400).json({ error: "conversation_id zorunlu" });
+  }
+
+  const sql = `
+    UPDATE support_conversations
+    SET status = 'open'
+    WHERE conversation_id = ?
+  `;
+
+  db.query(sql, [conversationId], (err, result) => {
+    if (err) {
+      console.error("Support unclaim failed:", err);
+      return res.status(500).json({ error: "KonuYma g?ncellenemedi" });
+    }
+    if (!result.affectedRows) {
+      return res.status(404).json({ error: "KonuYma bulunamad?" });
+    }
+    return res.json({ success: true, conversation_id: conversationId, status: "open" });
+  });
+}
+
 export function identifyConversation(req, res) {
   const conversationId = Number(req.params.conversation_id);
   if (!conversationId) {

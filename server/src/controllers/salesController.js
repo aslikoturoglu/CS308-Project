@@ -358,3 +358,125 @@ export function getProfitReport(req, res) {
     return res.json({ from, to, totals, series });
   });
 }
+
+export function getReturnRequests(req, res) {
+  const sql = `
+    SELECT
+      sm.message_id,
+      sm.message_text,
+      sm.created_at AS message_at,
+      sc.conversation_id,
+      sc.order_id,
+      sc.user_id,
+      u.full_name AS customer_name,
+      u.email AS customer_email,
+      sa.attachment_id,
+      sa.file_name,
+      sa.url,
+      sa.uploaded_at
+    FROM support_attachments sa
+    JOIN support_messages sm ON sm.message_id = sa.message_id
+    JOIN support_conversations sc ON sc.conversation_id = sm.conversation_id
+    LEFT JOIN users u ON u.user_id = sc.user_id
+    ORDER BY sm.created_at DESC, sa.uploaded_at DESC
+  `;
+
+  db.query(sql, (err, rows = []) => {
+    if (err) {
+      console.error("Return request list failed:", err);
+      return res.status(500).json({ error: "Return requests could not be loaded" });
+    }
+
+    const parseOrderId = (value) => {
+      if (!value) return null;
+      const match = String(value).match(/ORD-(\d+)/i);
+      if (!match) return null;
+      return Number(match[1]);
+    };
+
+    const orderIds = new Set();
+    const normalized = rows.map((row) => {
+      const parsedId = parseOrderId(row.file_name) || parseOrderId(row.message_text);
+      const resolvedOrderId = Number(row.order_id) || parsedId || null;
+      if (resolvedOrderId) orderIds.add(resolvedOrderId);
+
+      return {
+        ...row,
+        resolved_order_id: resolvedOrderId,
+      };
+    });
+
+    const ids = Array.from(orderIds);
+    if (!ids.length) {
+      const payload = normalized.map((row) => ({
+        message_id: row.message_id,
+        message_text: row.message_text,
+        message_at: row.message_at,
+        conversation_id: row.conversation_id,
+        order_id: row.resolved_order_id,
+        user_id: row.user_id,
+        customer_name: row.customer_name || `User #${row.user_id}`,
+        customer_email: row.customer_email || null,
+        order_date: null,
+        status: null,
+        return_eligible: false,
+        attachment: {
+          id: row.attachment_id,
+          file_name: row.file_name,
+          url: row.url,
+          uploaded_at: row.uploaded_at,
+        },
+      }));
+      return res.json(payload);
+    }
+
+    const ordersSql = `
+      SELECT order_id, status, order_date
+      FROM orders
+      WHERE order_id IN (?)
+    `;
+
+    db.query(ordersSql, [ids], (ordersErr, orderRows = []) => {
+      if (ordersErr) {
+        console.error("Return request order lookup failed:", ordersErr);
+      }
+
+      const orderMap = new Map();
+      orderRows.forEach((row) => {
+        orderMap.set(Number(row.order_id), row);
+      });
+
+      const now = Date.now();
+      const payload = normalized.map((row) => {
+        const order = row.resolved_order_id ? orderMap.get(Number(row.resolved_order_id)) : null;
+        const status = String(order?.status || "").toLowerCase();
+        const delivered = status === "delivered";
+        const orderDate = order?.order_date ? new Date(order.order_date) : null;
+        const ageDays = orderDate ? (now - orderDate.getTime()) / (1000 * 60 * 60 * 24) : null;
+        const returnEligible = Boolean(delivered && ageDays !== null && ageDays <= 30);
+
+        return {
+          message_id: row.message_id,
+          message_text: row.message_text,
+          message_at: row.message_at,
+          conversation_id: row.conversation_id,
+          order_id: row.resolved_order_id,
+          user_id: row.user_id,
+          customer_name: row.customer_name || `User #${row.user_id}`,
+          customer_email: row.customer_email || null,
+          order_date: order?.order_date || null,
+          status: order?.status || null,
+          return_eligible: returnEligible,
+          attachment: {
+            id: row.attachment_id,
+            file_name: row.file_name,
+            url: row.url,
+            uploaded_at: row.uploaded_at,
+          },
+        };
+      });
+
+      return res.json(payload);
+    });
+  });
+}

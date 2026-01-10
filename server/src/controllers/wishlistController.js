@@ -145,28 +145,18 @@ export function removeWishlistItem(req, res) {
       return res.status(400).json({ error: "user_id veya email zorunlu" });
     }
 
-    const findSql = "SELECT wishlist_id FROM wishlists WHERE user_id = ? LIMIT 1";
-    db.query(findSql, [resolvedUserId], (findErr, rows) => {
-      if (findErr) {
-        console.error("Wishlist lookup failed:", findErr);
+    const deleteSql = `
+      DELETE wi
+      FROM wishlist_items wi
+      JOIN wishlists w ON w.wishlist_id = wi.wishlist_id
+      WHERE w.user_id = ? AND wi.product_id = ?
+    `;
+    db.query(deleteSql, [resolvedUserId, productId], (delErr) => {
+      if (delErr) {
+        console.error("Wishlist item delete failed:", delErr);
         return res.status(500).json({ error: "Wishlist gncellenemedi" });
       }
-      if (!rows.length) {
-        return res.json({ success: true });
-      }
-
-      const wishlistId = rows[0].wishlist_id;
-      const deleteSql = `
-        DELETE FROM wishlist_items
-        WHERE wishlist_id = ? AND product_id = ?
-      `;
-      db.query(deleteSql, [wishlistId, productId], (delErr) => {
-        if (delErr) {
-          console.error("Wishlist item delete failed:", delErr);
-          return res.status(500).json({ error: "Wishlist gncellenemedi" });
-        }
-        return res.json({ success: true });
-      });
+      return res.json({ success: true });
     });
   });
 }
