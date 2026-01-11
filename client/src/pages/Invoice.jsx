@@ -46,6 +46,7 @@ function Invoice() {
                   name: it.name ?? it.product_name ?? "Item",
                   qty: Number(it.quantity ?? it.qty ?? 1) || 1,
                   price: Number(it.unit_price ?? it.price ?? 0),
+                  originalPrice: Number(it.original_price ?? it.product_price ?? it.price ?? 0),
                 }))
               : [];
 
@@ -98,6 +99,7 @@ function Invoice() {
             name: item.name,
             qty: Number(item.qty ?? item.quantity ?? 1) || 1,
             price: Number(item.price ?? 0),
+            originalPrice: Number(item.originalPrice ?? item.original_price ?? item.product_price ?? item.price ?? 0),
           }))
         : [],
     [order.items]
@@ -111,6 +113,12 @@ function Invoice() {
     (sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1),
     0
   );
+  const originalSubtotal = normalizedItems.reduce(
+    (sum, item) =>
+      sum + Number(item.originalPrice || item.price || 0) * Number(item.qty || 1),
+    0
+  );
+  const discountAmount = Math.max(originalSubtotal - itemsSubtotal, 0);
   const explicitShippingFee = Number(order.shippingFee ?? order.shipping_fee ?? 0);
   const rawTotalPaid = Number(order.total ?? order.total_amount ?? 0);
   const shippingFee =
@@ -220,46 +228,50 @@ function Invoice() {
             overflow: "hidden",
           }}
         >
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "2fr 1fr 1fr",
-              gap: 8,
-              background: isDark ? "#0b1220" : "#f8fafc",
-              padding: "10px 12px",
-              fontWeight: 700,
-              color: isDark ? "#e2e8f0" : "#0f172a",
-            }}
-          >
-            <span>Item</span>
-            <span>Qty</span>
-            <span>Total</span>
-          </div>
-          <div style={{ display: "grid", gap: 8, padding: "12px" }}>
-            {normalizedItems.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "2fr 1fr 1fr",
-                  alignItems: "center",
-                  gap: 8,
-                  border: isDark ? "1px solid #1f2937" : "1px solid #e2e8f0",
-                  borderRadius: 10,
-                  padding: "10px 12px",
-                  background: isDark ? "#0f172a" : "#ffffff",
-                }}
-              >
-                <span style={{ fontWeight: 700, color: isDark ? "#e2e8f0" : "#0f172a" }}>
-                  {item.name}
-                </span>
-                <span style={{ color: isDark ? "#a3b3c6" : "#475569" }}>{item.qty}</span>
-                <span style={{ fontWeight: 800, color: isDark ? "#e2e8f0" : "#0f172a" }}>
-                  {formatPrice(item.price * item.qty)}
-                </span>
-              </div>
-            ))}
-          </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "2fr 0.7fr 1fr 1fr",
+            gap: 8,
+            background: isDark ? "#0b1220" : "#f8fafc",
+            padding: "10px 12px",
+            fontWeight: 700,
+            color: isDark ? "#e2e8f0" : "#0f172a",
+          }}
+        >
+          <span>Item</span>
+          <span>Qty</span>
+          <span>Unit price</span>
+          <span>Total</span>
+        </div>
+        <div style={{ display: "grid", gap: 8, padding: "12px" }}>
+          {normalizedItems.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "2fr 0.7fr 1fr 1fr",
+                alignItems: "center",
+                gap: 8,
+                border: isDark ? "1px solid #1f2937" : "1px solid #e2e8f0",
+                borderRadius: 10,
+                padding: "10px 12px",
+                background: isDark ? "#0f172a" : "#ffffff",
+              }}
+            >
+              <span style={{ fontWeight: 700, color: isDark ? "#e2e8f0" : "#0f172a" }}>
+                {item.name}
+              </span>
+              <span style={{ color: isDark ? "#a3b3c6" : "#475569" }}>{item.qty}</span>
+              <span style={{ color: isDark ? "#e2e8f0" : "#0f172a" }}>
+                {formatPrice(item.originalPrice || item.price)}
+              </span>
+              <span style={{ fontWeight: 800, color: isDark ? "#e2e8f0" : "#0f172a" }}>
+                {formatPrice(item.price * item.qty)}
+              </span>
+            </div>
+          ))}
+        </div>
           <div
             style={{
               display: "flex",
@@ -278,6 +290,12 @@ function Invoice() {
                 gap: 6,
               }}
             >
+              <Line label="Subtotal" value={formatPrice(originalSubtotal)} isDark={isDark} />
+              <Line
+                label="Discount"
+                value={discountAmount > 0 ? `-${formatPrice(discountAmount)}` : formatPrice(0)}
+                isDark={isDark}
+              />
               <Line label="Items total" value={formatPrice(itemsSubtotal)} isDark={isDark} />
               <Line label="Shipping fee" value={formatPrice(shippingFee)} isDark={isDark} />
               <Line label="Total paid" value={formatPrice(totalPaid)} isDark={isDark} bold />
