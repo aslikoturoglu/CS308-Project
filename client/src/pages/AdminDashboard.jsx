@@ -151,6 +151,7 @@ function AdminDashboard() {
   const [activeSection, setActiveSection] = useState("dashboard");
   const [products, setProducts] = useState([]);
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
   const [orders, setOrders] = useState([]);
   const [deliveries, setDeliveries] = useState([]);
   const [deliveryTab, setDeliveryTab] = useState("All");
@@ -484,10 +485,16 @@ function AdminDashboard() {
     return { revenue, lowStock };
   }, [orders, products]);
 
-  const visibleProducts = useMemo(
-    () => (showLowStockOnly ? products.filter((p) => p.availableStock < 5) : products),
-    [products, showLowStockOnly]
-  );
+  const visibleProducts = useMemo(() => {
+    const normalizedSearch = productSearch.trim().toLowerCase();
+    const base = showLowStockOnly ? products.filter((p) => p.availableStock < 5) : products;
+    if (!normalizedSearch) return base;
+    return base.filter((p) => {
+      const name = String(p.name || "").toLowerCase();
+      const category = String(p.category || "").toLowerCase();
+      return name.includes(normalizedSearch) || category.includes(normalizedSearch);
+    });
+  }, [products, productSearch, showLowStockOnly]);
 
   const filteredInvoices = useMemo(() => {
     if (!filters.invoiceFrom && !filters.invoiceTo) return invoices;
@@ -1453,17 +1460,30 @@ function AdminDashboard() {
             }}
             ref={productListRef}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-              <h4 style={{ margin: 0 }}>Product list</h4>
-              {showLowStockOnly ? (
-                <button type="button" style={linkBtn} onClick={() => setShowLowStockOnly(false)}>
-                  Clear low-stock filter
-                </button>
-              ) : (
-                <button type="button" style={linkBtn} onClick={() => setShowLowStockOnly(true)}>
-                  Show low stock
-                </button>
-              )}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <h4 style={{ margin: 0 }}>Product list</h4>
+                {showLowStockOnly ? (
+                  <button type="button" style={linkBtn} onClick={() => setShowLowStockOnly(false)}>
+                    Clear low-stock filter
+                  </button>
+                ) : (
+                  <button type="button" style={linkBtn} onClick={() => setShowLowStockOnly(true)}>
+                    Show low stock
+                  </button>
+                )}
+              </div>
+              <input
+                placeholder="Search products"
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                style={{
+                  ...inputStyle,
+                  maxWidth: 360,
+                  background: "#eef2f7",
+                  borderColor: "#cbd5e1",
+                }}
+              />
             </div>
             <div style={{ maxHeight: 320, overflow: "auto", border: "1px solid #e5e7eb", borderRadius: 12 }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.95rem" }}>
