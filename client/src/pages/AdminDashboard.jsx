@@ -2004,7 +2004,7 @@ function AdminDashboard() {
                               chatPage >= Math.ceil(filteredChats.length / CHAT_PAGE_SIZE) ? "not-allowed" : "pointer",
                           }}
                         >
-                          Next >
+                          Next &gt;
                         </button>
                       </div>
                     )}
