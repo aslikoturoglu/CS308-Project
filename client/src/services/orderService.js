@@ -217,6 +217,10 @@ function mapOrderRows(data = []) {
       date: row.order_date || row.date,
       status,
       total: Number(row.total_amount ?? row.total ?? 0),
+      shippingFee: Number(
+        row.shipping_fee ?? row.shippingFee ?? row.shipping_cost ?? row.shippingCost ?? 0
+      ),
+      shippingLabel: row.shipping_label ?? row.shippingLabel ?? "",
       address: normalizeAddress(
         row.shipping_address ??
           row.shipping_adress /* some payloads use this typo */ ??
@@ -238,7 +242,7 @@ export function getOrderById(id) {
   return orders.find((order) => formatOrderId(order.id) === normalized);
 }
 
-export function addOrder({ items, total, id: providedId, contact }) {
+export function addOrder({ items, total, id: providedId, contact, shippingFee, shippingLabel }) {
   const now = new Date();
   const orders = readOrders();
   const formattedId = formatOrderId(
@@ -268,6 +272,8 @@ export function addOrder({ items, total, id: providedId, contact }) {
     }),
     status: "Processing",
     total,
+    shippingFee: Number(shippingFee ?? 0),
+    shippingLabel: shippingLabel || "",
     shippingCompany: "SUExpress",
     estimate: new Date(
       now.getTime() + 4 * 24 * 60 * 60 * 1000

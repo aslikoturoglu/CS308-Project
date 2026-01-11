@@ -242,14 +242,37 @@ function renderInvoice(doc, order, items, detailPayload = {}) {
   // ============================
   // TOTAL
   // ============================
-  const totalY = rowY + 30;
-
-  doc.font("Helvetica-Bold").fontSize(16).fillColor(blue).text("TOTAL:", 360, totalY);
+  const totalY = rowY + 24;
+  const itemSubtotal = items.reduce(
+    (sum, item) => sum + Number(item.quantity) * Number(item.unit_price),
+    0
+  );
+  const totalAmount = Number(order.total_amount ?? itemSubtotal);
+  const shippingFee = Math.max(totalAmount - itemSubtotal, 0);
 
   doc
     .fillColor("black")
     .font("Helvetica-Bold")
-    .text(`${Number(order.total_amount).toLocaleString("tr-TR")} TL`, 450, totalY);
+    .fontSize(12)
+    .text("SUBTOTAL:", 360, totalY)
+    .text(`${itemSubtotal.toLocaleString("tr-TR")} TL`, 450, totalY);
+
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(12)
+    .text("SHIPPING:", 360, totalY + 18)
+    .text(`${shippingFee.toLocaleString("tr-TR")} TL`, 450, totalY + 18);
+
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(16)
+    .fillColor(blue)
+    .text("TOTAL:", 360, totalY + 42);
+
+  doc
+    .fillColor("black")
+    .font("Helvetica-Bold")
+    .text(`${totalAmount.toLocaleString("tr-TR")} TL`, 450, totalY + 42);
 
   // ============================
   // FOOTER
@@ -257,7 +280,7 @@ function renderInvoice(doc, order, items, detailPayload = {}) {
   doc
     .font("Helvetica")
     .fontSize(12)
-    .text("Thank you for choosing SUHOME.", 0, totalY + 60, { align: "center" });
+    .text("Thank you for choosing SUHOME.", 0, totalY + 80, { align: "center" });
 }
 
 function createPdf(order, items, res, detailPayload = {}) {

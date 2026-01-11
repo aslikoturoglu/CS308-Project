@@ -38,6 +38,7 @@ const DELIVERY_FILTERS = [
 ];
 
 const DELIVERY_STATUSES = DELIVERY_FILTERS.filter((f) => f.id !== "All").map((f) => f.id);
+const PRODUCT_CATEGORIES = ["Living Room", "Bedroom", "Workspace", "Seating", "Tables", "Storage", "Lighting", "Bedding"];
 
 function normalizeDeliveryStatus(value) {
   const normalized = String(value || "").trim().toLowerCase();
@@ -918,12 +919,14 @@ function AdminDashboard() {
                 <h1 style={{ margin: 0, color: "#0f172a" }}>Dashboard</h1>
                 <p style={{ margin: "6px 0 0", color: "#475569" }}>Role: {user?.role || "customer"}</p>
               </div>
-              <div style={{ textAlign: "right" }}>
-                <p style={{ margin: 0, color: "#6b7280" }}>Today&apos;s revenue</p>
-                <strong style={{ fontSize: "1.4rem", color: "#0058a3" }}>
-                  ₺{totals.revenue.toLocaleString("tr-TR")}
-                </strong>
-              </div>
+              {user?.role !== "product_manager" && (
+                <div style={{ textAlign: "right" }}>
+                  <p style={{ margin: 0, color: "#6b7280" }}>Today&apos;s revenue</p>
+                  <strong style={{ fontSize: "1.4rem", color: "#0058a3" }}>
+                    ₺{totals.revenue.toLocaleString("tr-TR")}
+                  </strong>
+                </div>
+              )}
             </header>
           )}
 
@@ -1000,12 +1003,18 @@ function AdminDashboard() {
                     onChange={(e) => setNewProduct((p) => ({ ...p, stock: e.target.value }))}
                     style={inputStyle}
                   />
-                  <input
-                    placeholder="Category"
+                  <select
                     value={newProduct.category}
                     onChange={(e) => setNewProduct((p) => ({ ...p, category: e.target.value }))}
                     style={inputStyle}
-                  />
+                  >
+                    <option value="">Category</option>
+                    {PRODUCT_CATEGORIES.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <button type="button" onClick={handleAddProduct} style={{ ...primaryBtn, marginTop: 10 }}>
                   Add product
@@ -2057,7 +2066,7 @@ function AdminDashboard() {
                               chatPage >= Math.ceil(filteredChats.length / CHAT_PAGE_SIZE) ? "not-allowed" : "pointer",
                           }}
                         >
-                          Next >
+                          Next &gt;
                         </button>
                       </div>
                     )}
