@@ -37,6 +37,7 @@ const DELIVERY_FILTERS = [
 ];
 
 const DELIVERY_STATUSES = DELIVERY_FILTERS.filter((f) => f.id !== "All").map((f) => f.id);
+const PRODUCT_CATEGORIES = ["Living Room", "Bedroom", "Workspace", "Seating", "Tables", "Storage", "Lighting", "Bedding"];
 
 function normalizeDeliveryStatus(value) {
   const normalized = String(value || "").trim().toLowerCase();
@@ -986,12 +987,18 @@ function AdminDashboard() {
                     onChange={(e) => setNewProduct((p) => ({ ...p, stock: e.target.value }))}
                     style={inputStyle}
                   />
-                  <input
-                    placeholder="Category"
+                  <select
                     value={newProduct.category}
                     onChange={(e) => setNewProduct((p) => ({ ...p, category: e.target.value }))}
                     style={inputStyle}
-                  />
+                  >
+                    <option value="">Category</option>
+                    {PRODUCT_CATEGORIES.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <button type="button" onClick={handleAddProduct} style={{ ...primaryBtn, marginTop: 10 }}>
                   Add product
