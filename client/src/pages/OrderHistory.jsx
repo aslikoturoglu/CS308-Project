@@ -4,7 +4,7 @@ import {
   addComment as addCommentApi,
   fetchUserComments,
 } from "../services/commentService";
-import { formatOrderId, fetchUserOrders } from "../services/orderService";
+import { cancelOrder, formatOrderId, fetchUserOrders, refundOrder } from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -19,6 +19,45 @@ const statusPills = {
   Cancelled: { bg: "rgba(248,113,113,0.18)", color: "#b91c1c", border: "#f87171" },
   Refunded: { bg: "rgba(15,118,110,0.15)", color: "#0f766e", border: "#5eead4" },
 };
+
+const REFUND_WINDOW_DAYS = 30;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function getOrderDate(order) {
+  if (!order) return null;
+  const candidate = order.deliveredAt || order.date || order.statusUpdatedAt;
+  if (!candidate) return null;
+  const parsed = new Date(candidate);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+}
+
+function isRefundWindowOpen(order) {
+  const orderDate = getOrderDate(order);
+  if (!orderDate) return true;
+  const diffDays = (Date.now() - orderDate.getTime()) / MS_PER_DAY;
+  return diffDays <= REFUND_WINDOW_DAYS;
+}
+
+function getRefundState(order) {
+  if (order.status === "Refunded") {
+    return { allowed: false, label: "Refunded", reason: "Order already refunded" };
+  }
+  if (order.status !== "Delivered") {
+    return { allowed: false, label: "Refund", reason: "Only delivered orders can be refunded" };
+  }
+  if (!isRefundWindowOpen(order)) {
+    return { allowed: false, label: "Refund", reason: "Returns are only available within 30 days of purchase." };
+  }
+  return { allowed: true, label: "Refund", reason: "Request refund" };
+}
+
+function getCancelState(order) {
+  if (order.status !== "Processing") {
+    return { allowed: false, label: "Cancel", reason: "Only processing orders can be cancelled" };
+  }
+  return { allowed: true, label: "Cancel", reason: "Cancel this order" };
+}
 
 function OrderHistory() {
   const { user } = useAuth();
@@ -124,6 +163,32 @@ function OrderHistory() {
       }
     } catch (err) {
       alert(err.message || "Review could not be submitted.");
+    }
+  };
+
+  const handleCancelOrder = async (orderId) => {
+    if (!window.confirm("Cancel this order?")) return;
+
+    try {
+      await cancelOrder(orderId);
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status: "Cancelled" } : o))
+      );
+    } catch (err) {
+      alert(err?.message || "Only processing orders can be cancelled");
+    }
+  };
+
+  const handleRefundOrder = async (orderId) => {
+    if (!window.confirm("Request a refund for this delivered order?")) return;
+
+    try {
+      await refundOrder(orderId);
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status: "Refunded" } : o))
+      );
+    } catch (err) {
+      alert(err?.message || "Refund failed.");
     }
   };
 
@@ -275,7 +340,7 @@ function OrderHistory() {
                     <p style={{ margin: 0, color: palette.textMuted }}>{order.date}</p>
                   </div>
 
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                     <span
                       style={{
                         padding: "8px 12px",
@@ -287,6 +352,52 @@ function OrderHistory() {
                     >
                       {order.status}
                     </span>
+                    {order.status === "Processing" && (() => {
+                      const cancelState = getCancelState(order);
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => handleCancelOrder(order.id)}
+                          disabled={!cancelState.allowed}
+                          title={cancelState.reason}
+                          style={{
+                            backgroundColor: cancelState.allowed ? "#fee2e2" : "#f1f5f9",
+                            color: cancelState.allowed ? "#b91c1c" : "#94a3b8",
+                            border: `1px solid ${cancelState.allowed ? "#fecaca" : "#e2e8f0"}`,
+                            padding: "6px 12px",
+                            borderRadius: 999,
+                            cursor: cancelState.allowed ? "pointer" : "not-allowed",
+                            fontWeight: 700,
+                            opacity: cancelState.allowed ? 1 : 0.65,
+                          }}
+                        >
+                          {cancelState.label}
+                        </button>
+                      );
+                    })()}
+                    {order.status === "Delivered" && (() => {
+                      const refundState = getRefundState(order);
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => handleRefundOrder(order.id)}
+                          disabled={!refundState.allowed}
+                          title={refundState.reason}
+                          style={{
+                            backgroundColor: refundState.allowed ? "#e0f2fe" : "#f1f5f9",
+                            color: refundState.allowed ? "#0369a1" : "#94a3b8",
+                            border: `1px solid ${refundState.allowed ? "#bae6fd" : "#e2e8f0"}`,
+                            padding: "6px 12px",
+                            borderRadius: 999,
+                            cursor: refundState.allowed ? "pointer" : "not-allowed",
+                            fontWeight: 700,
+                            opacity: refundState.allowed ? 1 : 0.65,
+                          }}
+                        >
+                          {refundState.label}
+                        </button>
+                      );
+                    })()}
                     <p style={{ margin: 0, color: palette.text, fontWeight: 800 }}>{formatPrice(order.total)}</p>
                   </div>
                 </header>
