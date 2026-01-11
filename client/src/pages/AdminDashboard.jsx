@@ -1544,71 +1544,78 @@ function AdminDashboard() {
                 </div>
               </div>
 
-              <div
-                style={{
-                  background: "white",
-                  borderRadius: 14,
-                  padding: 18,
-                  boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
-                  display: "grid",
-                  gap: 10,
-                }}
-              >
-                <h4 style={{ margin: 0 }}>Review approvals</h4>
-                {pendingReviews.length === 0 ? (
-                  <p style={{ margin: 0, color: "#6b7280" }}>No pending reviews.</p>
-                ) : (
-                  <div style={{ display: "grid", gap: 8 }}>
-                    {pendingReviews.map((rev) => {
-                      const productName =
-                        rev.product_name ||
-                        products.find((p) => Number(p.id) === Number(rev.product_id))?.name ||
-                        `Product #${rev.product_id}`;
-                      return (
-                        <div
-                          key={rev.comment_id}
-                          style={{
-                            border: "1px solid #e5e7eb",
-                            borderRadius: 12,
-                            padding: 10,
-                            display: "grid",
-                            gap: 6,
-                            background: "#f8fafc",
-                          }}
-                        >
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <div>
-                              <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>{productName}</p>
-                              <small style={{ color: "#64748b" }}>{rev.user_name || "User"}</small>
-                            </div>
-                            <div style={{ color: "#f59e0b", fontWeight: 800 }}>
-                              {"★".repeat(Number(rev.rating) || 0)}
-                              {"☆".repeat(Math.max(0, 5 - (Number(rev.rating) || 0)))}
-                            </div>
-                          </div>
-                          <p style={{ margin: 0, color: "#0f172a" }}>{rev.comment_text}</p>
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <button
-                              type="button"
-                              onClick={() => handleApproveReview(rev.comment_id)}
-                              style={{ ...primaryBtn, flex: 1 }}
-                            >
-                              Approve
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleRejectReview(rev.comment_id)}
-                              style={{ ...secondaryBtn, flex: 1 }}
-                            >
-                              Reject
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
+              {(user?.role === "product_manager" || user?.role === "admin") && (
+                <div
+                  style={{
+                    background: "white",
+                    borderRadius: 14,
+                    padding: 18,
+                    boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
+                    display: "grid",
+                    gap: 10,
+                  }}
+                >
+                  <div>
+                    <h4 style={{ margin: 0 }}>Review approvals</h4>
+                    <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: "0.9rem" }}>
+                      Approve or reject pending product comments.
+                    </p>
                   </div>
-                )}
-              </div>
+                  {pendingReviews.length === 0 ? (
+                    <p style={{ margin: 0, color: "#6b7280" }}>No pending reviews.</p>
+                  ) : (
+                    <div style={{ display: "grid", gap: 8 }}>
+                      {pendingReviews.map((rev) => {
+                        const productName =
+                          rev.product_name ||
+                          products.find((p) => Number(p.id) === Number(rev.product_id))?.name ||
+                          `Product #${rev.product_id}`;
+                        return (
+                          <div
+                            key={rev.comment_id}
+                            style={{
+                              border: "1px solid #e5e7eb",
+                              borderRadius: 12,
+                              padding: 10,
+                              display: "grid",
+                              gap: 6,
+                              background: "#f8fafc",
+                            }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <div>
+                                <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>{productName}</p>
+                                <small style={{ color: "#64748b" }}>{rev.user_name || "User"}</small>
+                              </div>
+                              <div style={{ color: "#f59e0b", fontWeight: 800 }}>
+                                {"★".repeat(Number(rev.rating) || 0)}
+                                {"☆".repeat(Math.max(0, 5 - (Number(rev.rating) || 0)))}
+                              </div>
+                            </div>
+                            <p style={{ margin: 0, color: "#0f172a" }}>{rev.comment_text}</p>
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button
+                                type="button"
+                                onClick={() => handleApproveReview(rev.comment_id)}
+                                style={{ ...primaryBtn, flex: 1 }}
+                              >
+                                Approve
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRejectReview(rev.comment_id)}
+                                style={{ ...secondaryBtn, flex: 1 }}
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div
                 style={{
@@ -1875,6 +1882,76 @@ function AdminDashboard() {
                   <button type="button" onClick={handleDeliveryStatus} style={primaryBtn}>
                     Update delivery
                   </button>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: "white",
+                  borderRadius: 14,
+                  padding: 18,
+                  boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
+                  display: "grid",
+                  gap: 12,
+                }}
+              >
+                <h3 style={{ margin: "0 0 6px", color: "#0f172a" }}>Invoices</h3>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <input
+                    type="date"
+                    value={filters.invoiceFrom}
+                    onChange={(e) => setFilters((f) => ({ ...f, invoiceFrom: e.target.value }))}
+                    style={inputStyle}
+                  />
+                  <input
+                    type="date"
+                    value={filters.invoiceTo}
+                    onChange={(e) => setFilters((f) => ({ ...f, invoiceTo: e.target.value }))}
+                    style={inputStyle}
+                  />
+                  <button type="button" onClick={handleLoadInvoices} style={primaryBtn} disabled={isLoadingInvoices}>
+                    {isLoadingInvoices ? "Loading..." : "Load invoices"}
+                  </button>
+                </div>
+                <div style={{ display: "grid", gap: 10 }}>
+                  {filteredInvoices.map((inv) => (
+                    <div
+                      key={`${inv.invoice_id}-${inv.order_id}`}
+                      style={{
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 12,
+                        padding: 12,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: 8,
+                      }}
+                    >
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>
+                          #INV-{String(inv.invoice_id).padStart(5, "0")} / #ORD-{String(inv.order_id).padStart(5, "0")}
+                        </p>
+                        <p style={{ margin: "4px 0 0", color: "#64748b" }}>
+                          {inv.issued_at ? new Date(inv.issued_at).toLocaleDateString("tr-TR") : "Issue date N/A"}
+                        </p>
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button type="button" style={linkBtn} onClick={() => handleViewInvoice(inv.order_id)}>
+                          View
+                        </button>
+                        <button type="button" style={linkBtn} onClick={() => handlePrintInvoice(inv.order_id)}>
+                          Print
+                        </button>
+                        <button type="button" style={linkBtn} onClick={() => handleDownloadInvoice(inv.order_id)}>
+                          Download
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {!filteredInvoices.length && !isLoadingInvoices && (
+                    <p style={{ margin: 0, color: "#94a3b8" }}>No invoices available.</p>
+                  )}
                 </div>
               </div>
             </section>
