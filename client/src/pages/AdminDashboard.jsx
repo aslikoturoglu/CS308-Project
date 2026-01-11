@@ -905,12 +905,14 @@ function AdminDashboard() {
                 <h1 style={{ margin: 0, color: "#0f172a" }}>Dashboard</h1>
                 <p style={{ margin: "6px 0 0", color: "#475569" }}>Role: {user?.role || "customer"}</p>
               </div>
-              <div style={{ textAlign: "right" }}>
-                <p style={{ margin: 0, color: "#6b7280" }}>Today&apos;s revenue</p>
-                <strong style={{ fontSize: "1.4rem", color: "#0058a3" }}>
-                  ₺{totals.revenue.toLocaleString("tr-TR")}
-                </strong>
-              </div>
+              {user?.role !== "product_manager" && (
+                <div style={{ textAlign: "right" }}>
+                  <p style={{ margin: 0, color: "#6b7280" }}>Today&apos;s revenue</p>
+                  <strong style={{ fontSize: "1.4rem", color: "#0058a3" }}>
+                    ₺{totals.revenue.toLocaleString("tr-TR")}
+                  </strong>
+                </div>
+              )}
             </header>
           )}
 
