@@ -53,6 +53,37 @@ function Profile() {
     }
   };
 
+const REFUND_WINDOW_DAYS = 30;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+const getOrderDate = (order) => {
+  const candidate = order?.deliveredAt || order?.date || order?.statusUpdatedAt;
+  if (!candidate) return null;
+  const parsed = new Date(candidate);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+};
+
+const isRefundWindowOpen = (order) => {
+  const orderDate = getOrderDate(order);
+  if (!orderDate) return true;
+  const diffDays = (Date.now() - orderDate.getTime()) / MS_PER_DAY;
+  return diffDays <= REFUND_WINDOW_DAYS;
+};
+
+const getRefundState = (order) => {
+  if (order?.status === "Refunded") {
+    return { allowed: false, label: "Refunded", reason: "Order already refunded" };
+  }
+  if (order?.status !== "Delivered") {
+    return { allowed: false, label: "Refund", reason: "Only delivered orders can be refunded" };
+  }
+  if (!isRefundWindowOpen(order)) {
+    return { allowed: false, label: "Refund", reason: "Returns are only available within 30 days of purchase." };
+  }
+  return { allowed: true, label: "Refund", reason: "Request refund" };
+};
+
 const handleCancelOrder = async (orderId) => {
   if (!window.confirm("Cancel this order?")) return;
 
@@ -412,22 +443,28 @@ const handleRefundOrder = async (orderId) => {
         Cancel
       </button>
     )}
-    {order.status?.toLowerCase().trim() === "delivered" && (
+    {order.status?.toLowerCase().trim() === "delivered" && (() => {
+      const refundState = getRefundState(order);
+      return (
       <button
         onClick={() => handleRefundOrder(order.id)}
         style={{
-          backgroundColor: "#e0f2fe",
-          color: "#0369a1",
-          border: "1px solid #bae6fd",
+          backgroundColor: refundState.allowed ? "#e0f2fe" : "#f1f5f9",
+          color: refundState.allowed ? "#0369a1" : "#94a3b8",
+          border: `1px solid ${refundState.allowed ? "#bae6fd" : "#e2e8f0"}`,
           padding: "6px 12px",
           borderRadius: 8,
-          cursor: "pointer",
+          cursor: refundState.allowed ? "pointer" : "not-allowed",
           fontWeight: 700,
+          opacity: refundState.allowed ? 1 : 0.65,
         }}
+        disabled={!refundState.allowed}
+        title={refundState.reason}
       >
-        Refund
+        {refundState.label}
       </button>
-    )}
+      );
+    })()}
   </div>
 </div>
 
