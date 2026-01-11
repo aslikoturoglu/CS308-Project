@@ -285,14 +285,23 @@ function AdminDashboard() {
 
   useEffect(() => {
     setDeliveries(
-      orders.map((order) => ({
-        id: order.id,
-        orderId: formatOrderId(order.id),
-        product: order.items?.[0]?.name || "Order items",
-        status: normalizeDeliveryStatus(order.status),
-        address: order.address,
-        date: order.date,
-      }))
+      orders.map((order) => {
+        const items = Array.isArray(order.items) ? order.items : [];
+        const primaryItem = items[0];
+        const totalQty = items.reduce((sum, item) => sum + Number(item.qty ?? item.quantity ?? 0), 0) || 0;
+        return {
+          id: order.id,
+          orderId: formatOrderId(order.id),
+          customerId: order.userId ?? order.user_id ?? null,
+          productId: primaryItem?.productId ?? primaryItem?.id ?? null,
+          quantity: totalQty,
+          total: Number(order.total || 0),
+          product: primaryItem?.name || "Order items",
+          status: normalizeDeliveryStatus(order.status),
+          address: order.address,
+          date: order.date,
+        };
+      })
     );
   }, [orders]);
 
@@ -1662,7 +1671,13 @@ function AdminDashboard() {
                           <div>
                             <strong>{d.product}</strong>
                             <p style={{ margin: "2px 0 0", color: "#475569" }}>
-                              {d.orderId} • {d.address}
+                              Delivery ID: {d.orderId}
+                            </p>
+                            <p style={{ margin: "2px 0 0", color: "#64748b", fontSize: "0.9rem" }}>
+                              Customer ID: {d.customerId ?? "N/A"} | Product ID: {d.productId ?? "N/A"} | Qty: {d.quantity} | Total: ₺{d.total.toLocaleString("tr-TR")}
+                            </p>
+                            <p style={{ margin: "2px 0 0", color: "#64748b", fontSize: "0.9rem" }}>
+                              Address: {d.address || "Not provided"}
                             </p>
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -1720,6 +1735,14 @@ function AdminDashboard() {
                           const order = getOrderByDeliveryId(d.id);
                           const items = Array.isArray(order?.items) ? order.items : [];
                           const orderTotal = Number(order?.total || 0);
+                          const totalQty = items.reduce(
+                            (sum, item) => sum + Number(item.qty ?? item.quantity ?? 0),
+                            0
+                          );
+                          const productIds = items
+                            .map((item) => item.productId ?? item.id)
+                            .filter((value) => value !== undefined && value !== null);
+                          const customerId = order?.userId ?? d.customerId ?? "N/A";
                           return (
                             <div
                               style={{
@@ -1729,6 +1752,26 @@ function AdminDashboard() {
                                 gap: 10,
                               }}
                             >
+                              <div
+                                style={{
+                                  display: "grid",
+                                  gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
+                                  gap: 8,
+                                  color: "#475569",
+                                  background: "#f8fafc",
+                                  border: "1px solid #e5e7eb",
+                                  borderRadius: 10,
+                                  padding: 10,
+                                }}
+                              >
+                                <span><strong>Delivery ID:</strong> {d.orderId}</span>
+                                <span><strong>Customer ID:</strong> {customerId}</span>
+                                <span><strong>Product ID:</strong> {productIds.length ? productIds.join(", ") : "N/A"}</span>
+                                <span><strong>Quantity:</strong> {totalQty}</span>
+                                <span><strong>Total price:</strong> ₺{orderTotal.toLocaleString("tr-TR")}</span>
+                                <span><strong>Delivery status:</strong> {d.status}</span>
+                                <span><strong>Delivery address:</strong> {order?.address || d.address || "Not provided"}</span>
+                              </div>
                               <div style={{ display: "flex", gap: 12, flexWrap: "wrap", color: "#475569" }}>
                                 <span><strong>Shipping:</strong> {order?.shippingCompany || "SUExpress"}</span>
                                 <span><strong>Address:</strong> {order?.address || d.address}</span>
