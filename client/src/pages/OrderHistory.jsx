@@ -382,13 +382,14 @@ function OrderHistory() {
                     >
                       {displayStatus}
                     </span>
-                    {(() => {
+                    {displayStatus === "Processing" && (() => {
                       const cancelState = getCancelState(order);
                       return (
                         <button
                           type="button"
                           onClick={() => handleCancelOrder(order.id)}
                           disabled={!cancelState.allowed}
+                          title={cancelState.reason}
                           style={{
                             backgroundColor: cancelState.allowed ? "#fee2e2" : "#f1f5f9",
                             color: cancelState.allowed ? "#b91c1c" : "#94a3b8",
@@ -404,13 +405,14 @@ function OrderHistory() {
                         </button>
                       );
                     })()}
-                    {(() => {
+                    {displayStatus === "Delivered" && (() => {
                       const refundState = getRefundState(order);
                       return (
                         <button
                           type="button"
                           onClick={() => handleRefundOrder(order.id)}
                           disabled={!refundState.allowed}
+                          title={refundState.reason}
                           style={{
                             backgroundColor: refundState.allowed ? "#e0f2fe" : "#f1f5f9",
                             color: refundState.allowed ? "#0369a1" : "#94a3b8",
