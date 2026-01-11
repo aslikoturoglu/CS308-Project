@@ -72,6 +72,91 @@ export function getAllProducts(req, res) {
   });
 }
 
+export function createProduct(req, res) {
+  const payload = req.body || {};
+  const name = typeof payload.name === "string" ? payload.name.trim() : "";
+  const rawCategory = typeof payload.category === "string" ? payload.category.trim() : "";
+  const rawMainCategory = typeof payload.mainCategory === "string" ? payload.mainCategory.trim() : "";
+  const rawDescription = typeof payload.description === "string" ? payload.description.trim() : "";
+  const rawMaterial = typeof payload.material === "string" ? payload.material.trim() : "";
+  const rawColor = typeof payload.color === "string" ? payload.color.trim() : "";
+  const rawWarranty = typeof payload.warranty === "string" ? payload.warranty.trim() : "";
+  const rawDistributor = typeof payload.distributor === "string" ? payload.distributor.trim() : "";
+  const rawImage = typeof payload.image === "string" ? payload.image.trim() : "";
+
+  const price = Number(payload.price);
+  const stock = payload.stock === "" || payload.stock == null ? 0 : Number(payload.stock);
+
+  if (!name) {
+    return res.status(400).json({ error: "Product name is required" });
+  }
+  if (!Number.isFinite(price) || price < 0) {
+    return res.status(400).json({ error: "Valid product price is required" });
+  }
+  if (!Number.isFinite(stock) || stock < 0) {
+    return res.status(400).json({ error: "Valid product stock is required" });
+  }
+
+  const selectIdSql = "SELECT MAX(product_id) AS maxId FROM products";
+  db.query(selectIdSql, (selectErr, rows) => {
+    if (selectErr) {
+      console.error("Product id lookup failed:", selectErr);
+      return res.status(500).json({ error: "Product could not be created" });
+    }
+
+    const nextId = Number(rows?.[0]?.maxId || 0) + 1;
+    const sql = `
+      INSERT INTO products
+        (product_id, product_name, product_main_category, product_category, product_material, product_color,
+         product_warranty, product_distributor, product_features, product_stock, product_price, product_image)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const values = [
+      nextId,
+      name,
+      rawMainCategory || null,
+      rawCategory || null,
+      rawMaterial || null,
+      rawColor || null,
+      rawWarranty || null,
+      rawDistributor || null,
+      rawDescription || null,
+      stock,
+      price,
+      rawImage || null,
+    ];
+
+    db.query(sql, values, (err) => {
+      if (err) {
+        console.error("Product create failed:", err);
+        return res.status(500).json({ error: "Product could not be created" });
+      }
+
+      const created = {
+        id: nextId,
+        name,
+        description: rawDescription || null,
+        price,
+        originalPrice: price,
+        stock,
+        category: rawCategory || null,
+        mainCategory: rawMainCategory || null,
+        material: rawMaterial || null,
+        color: rawColor || null,
+        warranty: rawWarranty || null,
+        distributor: rawDistributor || null,
+        image: rawImage || null,
+        rating: 0,
+        averageRating: 0,
+        ratingCount: 0,
+      };
+
+      return res.status(201).json(created);
+    });
+  });
+}
+
 export function updateProductStock(req, res) {
   const { id } = req.params;
   let { amount } = req.body;

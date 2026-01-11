@@ -120,7 +120,19 @@ function AdminDashboard() {
     series: [],
   });
   const [isLoadingReport, setIsLoadingReport] = useState(false);
-  const [newProduct, setNewProduct] = useState({ name: "", price: "", stock: "", category: "" });
+  const [newProduct, setNewProduct] = useState({
+    name: "",
+    price: "",
+    stock: "",
+    category: "",
+    mainCategory: "",
+    material: "",
+    color: "",
+    warranty: "",
+    distributor: "",
+    features: "",
+    image: "",
+  });
   const [discountForm, setDiscountForm] = useState({
     productId: "",
     rate: 10,
@@ -461,23 +473,56 @@ function AdminDashboard() {
     setOrderVisibleCount(10);
   }, [orderTab, orders.length]);
 
-  const handleAddProduct = () => {
+  const handleAddProduct = async () => {
     if (!newProduct.name || !newProduct.price) {
       addToast("Name and price required", "error");
       return;
     }
-    const product = {
-      id: Date.now(),
-      name: newProduct.name,
-      price: Number(newProduct.price),
-      availableStock: Number(newProduct.stock || 0),
-      category: newProduct.category || "General",
-      averageRating: 0,
-      ratingCount: 0,
-    };
-    setProducts((prev) => [...prev, product]);
-    setNewProduct({ name: "", price: "", stock: "", category: "" });
-    addToast("Product added (local only)", "info");
+    try {
+      const res = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newProduct.name,
+          price: Number(newProduct.price),
+          stock: Number(newProduct.stock || 0),
+          category: newProduct.category || "General",
+          mainCategory: newProduct.mainCategory,
+          material: newProduct.material,
+          color: newProduct.color,
+          warranty: newProduct.warranty,
+          distributor: newProduct.distributor,
+          features: newProduct.features,
+          image: newProduct.image,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Product create failed");
+      }
+
+      const controller = new AbortController();
+      const refreshed = await fetchProductsWithMeta(controller.signal);
+      setProducts(refreshed);
+      setNewProduct({
+        name: "",
+        price: "",
+        stock: "",
+        category: "",
+        mainCategory: "",
+        material: "",
+        color: "",
+        warranty: "",
+        distributor: "",
+        features: "",
+        image: "",
+      });
+      addToast("Product added", "info");
+    } catch (error) {
+      console.error("Product create failed:", error);
+      addToast(error.message || "Product create failed", "error");
+    }
   };
 
   const handlePriceUpdate = async () => {
@@ -1027,6 +1072,12 @@ function AdminDashboard() {
                     onChange={(e) => setNewProduct((p) => ({ ...p, stock: e.target.value }))}
                     style={inputStyle}
                   />
+                  <input
+                    placeholder="Main category"
+                    value={newProduct.mainCategory}
+                    onChange={(e) => setNewProduct((p) => ({ ...p, mainCategory: e.target.value }))}
+                    style={inputStyle}
+                  />
                   <select
                     value={newProduct.category}
                     onChange={(e) => setNewProduct((p) => ({ ...p, category: e.target.value }))}
@@ -1039,6 +1090,42 @@ function AdminDashboard() {
                       </option>
                     ))}
                   </select>
+                  <input
+                    placeholder="Material"
+                    value={newProduct.material}
+                    onChange={(e) => setNewProduct((p) => ({ ...p, material: e.target.value }))}
+                    style={inputStyle}
+                  />
+                  <input
+                    placeholder="Color"
+                    value={newProduct.color}
+                    onChange={(e) => setNewProduct((p) => ({ ...p, color: e.target.value }))}
+                    style={inputStyle}
+                  />
+                  <input
+                    placeholder="Warranty"
+                    value={newProduct.warranty}
+                    onChange={(e) => setNewProduct((p) => ({ ...p, warranty: e.target.value }))}
+                    style={inputStyle}
+                  />
+                  <input
+                    placeholder="Distributor"
+                    value={newProduct.distributor}
+                    onChange={(e) => setNewProduct((p) => ({ ...p, distributor: e.target.value }))}
+                    style={inputStyle}
+                  />
+                  <input
+                    placeholder="Features"
+                    value={newProduct.features}
+                    onChange={(e) => setNewProduct((p) => ({ ...p, features: e.target.value }))}
+                    style={inputStyle}
+                  />
+                  <input
+                    placeholder="Image URL"
+                    value={newProduct.image}
+                    onChange={(e) => setNewProduct((p) => ({ ...p, image: e.target.value }))}
+                    style={inputStyle}
+                  />
                 </div>
                 <button type="button" onClick={handleAddProduct} style={{ ...primaryBtn, marginTop: 10 }}>
                   Add product

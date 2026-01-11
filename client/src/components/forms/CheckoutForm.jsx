@@ -362,13 +362,12 @@ function CheckoutForm({ cartTotal = 0, onSubmit, onShippingChange }) {
               </label>
             </div>
             <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
-              Notes*
+              Notes
               <input
                 type="text"
                 value={formData.notes}
                 onChange={handleChange("notes")}
                 placeholder="Add a note for the courier"
-                required
                 style={inputStyle}
               />
             </label>
