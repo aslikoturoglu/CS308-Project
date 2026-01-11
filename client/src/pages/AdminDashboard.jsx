@@ -40,6 +40,7 @@ const DELIVERY_FILTERS = [
 
 const DELIVERY_STATUSES = DELIVERY_FILTERS.filter((f) => f.id !== "All").map((f) => f.id);
 const PRODUCT_CATEGORIES = ["Living Room", "Bedroom", "Workspace", "Seating", "Tables", "Storage", "Lighting", "Bedding"];
+const MAIN_CATEGORIES = ["Kitchen", "Living Room", "Bedroom", "Bathroom"];
 
 function normalizeDeliveryStatus(value) {
   const normalized = String(value || "").trim().toLowerCase();
@@ -478,6 +479,10 @@ function AdminDashboard() {
       addToast("Name and price required", "error");
       return;
     }
+    if (!newProduct.stock || Number(newProduct.stock) < 1) {
+      addToast("Stock must be at least 1", "error");
+      return;
+    }
     try {
       const res = await fetch("/api/products", {
         method: "POST",
@@ -485,7 +490,7 @@ function AdminDashboard() {
         body: JSON.stringify({
           name: newProduct.name,
           price: Number(newProduct.price),
-          stock: Number(newProduct.stock || 0),
+          stock: Number(newProduct.stock),
           category: newProduct.category || "General",
           mainCategory: newProduct.mainCategory,
           material: newProduct.material,
@@ -1068,16 +1073,23 @@ function AdminDashboard() {
                   <input
                     placeholder="Stock"
                     type="number"
+                    min={1}
                     value={newProduct.stock}
                     onChange={(e) => setNewProduct((p) => ({ ...p, stock: e.target.value }))}
                     style={inputStyle}
                   />
-                  <input
-                    placeholder="Main category"
+                  <select
                     value={newProduct.mainCategory}
                     onChange={(e) => setNewProduct((p) => ({ ...p, mainCategory: e.target.value }))}
                     style={inputStyle}
-                  />
+                  >
+                    <option value="">Main category</option>
+                    {MAIN_CATEGORIES.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
                   <select
                     value={newProduct.category}
                     onChange={(e) => setNewProduct((p) => ({ ...p, category: e.target.value }))}

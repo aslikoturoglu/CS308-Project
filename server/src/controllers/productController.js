@@ -93,8 +93,8 @@ export function createProduct(req, res) {
   if (!Number.isFinite(price) || price < 0) {
     return res.status(400).json({ error: "Valid product price is required" });
   }
-  if (!Number.isFinite(stock) || stock < 0) {
-    return res.status(400).json({ error: "Valid product stock is required" });
+  if (!Number.isFinite(stock) || stock < 1) {
+    return res.status(400).json({ error: "Valid product stock (>=1) is required" });
   }
 
   const selectIdSql = "SELECT MAX(product_id) AS maxId FROM products";
