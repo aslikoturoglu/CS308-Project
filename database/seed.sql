@@ -1,6 +1,26 @@
 CREATE DATABASE storeDB;
 USE storeDB;
 
+CREATE TABLE categories (
+    category_id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL UNIQUE
+);
+
+INSERT INTO categories (name) VALUES
+('table'),
+('utensils'),
+('decoration'),
+('lighting'),
+('sofa'),
+('tv unit'),
+('pillow'),
+('rug'),
+('side table'),
+('curtain'),
+('bed'),
+('wardrobe'),
+('box');
+
 CREATE TABLE products (
     product_id INT PRIMARY KEY,
     product_name VARCHAR(255),

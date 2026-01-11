@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { fetchProductsWithMeta } from "../services/productService";
+import { createCategory, getCategories } from "../services/categoryService";
 import {
   fetchSupportInbox,
   fetchSupportMessages,
@@ -182,6 +183,9 @@ function AdminDashboard() {
     series: [],
   });
   const [isLoadingReport, setIsLoadingReport] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [categoryDraft, setCategoryDraft] = useState("");
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
   const [newProduct, setNewProduct] = useState({
     name: "",
     price: "",
@@ -219,6 +223,24 @@ function AdminDashboard() {
       });
     return () => controller.abort();
   }, [addToast]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getCategories(controller.signal)
+      .then((data) => {
+        const normalized = (data || [])
+          .map((item) => ({
+            id: item.id ?? item.category_id ?? item.name,
+            name: String(item.name ?? "").toLowerCase(),
+          }))
+          .filter((item) => item.name);
+        setCategories(normalized.sort((a, b) => a.name.localeCompare(b.name)));
+      })
+      .catch((error) => {
+        console.error("Categories load failed:", error);
+      });
+    return () => controller.abort();
+  }, []);
 
   const refreshPendingReviews = useCallback(async () => {
     try {
@@ -590,6 +612,34 @@ function AdminDashboard() {
     } catch (error) {
       console.error("Product create failed:", error);
       addToast(error.message || "Product create failed", "error");
+    }
+  };
+
+  const handleAddCategory = async () => {
+    const trimmed = categoryDraft.trim().toLowerCase();
+    if (!trimmed) {
+      addToast("Category name required", "error");
+      return;
+    }
+    if (categories.some((c) => c.name === trimmed)) {
+      addToast("Category already exists", "error");
+      return;
+    }
+    try {
+      setIsSavingCategory(true);
+      const created = await createCategory(trimmed);
+      setCategories((prev) =>
+        [...prev, { id: created?.id ?? trimmed, name: trimmed }].sort((a, b) =>
+          a.name.localeCompare(b.name)
+        )
+      );
+      setCategoryDraft("");
+      addToast("Category added", "info");
+    } catch (error) {
+      console.error("Category create failed:", error);
+      addToast(error.message || "Category create failed", "error");
+    } finally {
+      setIsSavingCategory(false);
     }
   };
 
@@ -1159,7 +1209,7 @@ function AdminDashboard() {
                     style={inputStyle}
                   >
                     <option value="">Category</option>
-                    {PRODUCT_CATEGORIES.map((category) => (
+                    {(categories.length ? categories.map((c) => c.name) : PRODUCT_CATEGORIES).map((category) => (
                       <option key={category} value={category}>
                         {category}
                       </option>
@@ -1243,6 +1293,55 @@ function AdminDashboard() {
                     onChange={(e) => setNewProduct((p) => ({ ...p, image: e.target.value }))}
                     style={inputStyle}
                   />
+                  <div
+                    style={{
+                      gridColumn: "1 / -1",
+                      display: "grid",
+                      gap: 8,
+                      padding: "6px 0 2px",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                      <strong style={{ color: "#0f172a" }}>Categories</strong>
+                      <span style={{ color: "#64748b", fontSize: "0.9rem" }}>
+                        {categories.length ? categories.length : PRODUCT_CATEGORIES.length} available
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {(categories.length ? categories.map((c) => c.name) : PRODUCT_CATEGORIES).map((category) => (
+                        <span
+                          key={category}
+                          style={{
+                            padding: "4px 10px",
+                            borderRadius: 999,
+                            border: "1px solid #e5e7eb",
+                            background: "#f8fafc",
+                            fontSize: "0.85rem",
+                            fontWeight: 600,
+                            color: "#0f172a",
+                          }}
+                        >
+                          {category}
+                        </span>
+                      ))}
+                    </div>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      <input
+                        placeholder="Add new category"
+                        value={categoryDraft}
+                        onChange={(e) => setCategoryDraft(e.target.value)}
+                        style={{ ...inputStyle, flex: "1 1 240px" }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCategory}
+                        disabled={isSavingCategory}
+                        style={{ ...secondaryBtn, minWidth: 140 }}
+                      >
+                        {isSavingCategory ? "Adding..." : "Add category"}
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <button type="button" onClick={handleAddProduct} style={{ ...primaryBtn, marginTop: 10 }}>
                   Add product
