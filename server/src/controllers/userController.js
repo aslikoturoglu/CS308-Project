@@ -32,9 +32,10 @@ export function updateUserProfile(req, res) {
     return res.status(400).json({ error: "name is required" });
   }
   const nextAddress = typeof req.body?.address === "string" ? req.body.address.trim() : "";
+  const nextTaxId = typeof req.body?.taxId === "string" ? req.body.taxId.trim() : "";
 
-  const sql = "UPDATE users SET full_name = ?, home_address = ? WHERE user_id = ?";
-  db.query(sql, [nextName, nextAddress, userId], (err, result) => {
+  const sql = "UPDATE users SET full_name = ?, home_address = ?, tax_id = ? WHERE user_id = ?";
+  db.query(sql, [nextName, nextAddress, nextTaxId, userId], (err, result) => {
     if (err) {
       console.error("Update profile failed:", err);
       return res.status(500).json({ error: "Profile update failed" });
@@ -42,6 +43,6 @@ export function updateUserProfile(req, res) {
     if (!result.affectedRows) {
       return res.status(404).json({ error: "User not found" });
     }
-    return res.json({ success: true, name: nextName, address: nextAddress });
+    return res.json({ success: true, name: nextName, address: nextAddress, taxId: nextTaxId });
   });
 }

@@ -26,6 +26,7 @@ function Profile() {
           name: user?.name ?? "Guest",
           email: user?.email ?? "guest@suhome.com",
           address: user?.address ?? "Not set",
+          taxId: user?.taxId ?? "",
           memberSince: "2025",
           emailNotifications: true,
         })
@@ -165,8 +166,9 @@ const handleRefundOrder = async (orderId) => {
     if (user?.id) {
       try {
         const nextAddress = typeof next.address === "string" ? next.address : "";
-        await updateUserProfile({ userId: user.id, name: next.name, address: nextAddress });
-        updateUser({ name: next.name, address: nextAddress });
+        const nextTaxId = typeof next.taxId === "string" ? next.taxId.trim() : "";
+        await updateUserProfile({ userId: user.id, name: next.name, address: nextAddress, taxId: nextTaxId });
+        updateUser({ name: next.name, address: nextAddress, taxId: nextTaxId });
       } catch (error) {
         console.error("Profile update failed", error);
         addToast("Cannot save profile.", "error");
@@ -185,7 +187,9 @@ const handleRefundOrder = async (orderId) => {
     const profileName = String(profile?.name || "").trim();
     const draftAddress = String(draft?.address || "");
     const profileAddress = String(profile?.address || "");
-    return draftName !== profileName || draftAddress !== profileAddress;
+    const draftTaxId = String(draft?.taxId || "");
+    const profileTaxId = String(profile?.taxId || "");
+    return draftName !== profileName || draftAddress !== profileAddress || draftTaxId !== profileTaxId;
   }, [draft, editing, profile]);
 
   const handleCloseEditing = () => {
@@ -218,7 +222,12 @@ const handleRefundOrder = async (orderId) => {
           <span style={{ color: isDark ? "#94a3b8" : "#6b7280" }}>
             {profile?.email} - SUHome member since {profile?.memberSince ?? "2025"}
           </span>
-          <p style={{ margin: "8px 0 0", color: isDark ? "#a3b3c6" : "#475569" }}>{profile?.address}</p>
+          <p style={{ margin: "8px 0 0", color: isDark ? "#a3b3c6" : "#475569" }}>
+            Address: {profile?.address || "Not set"}
+          </p>
+          <p style={{ margin: "4px 0 0", color: isDark ? "#a3b3c6" : "#475569" }}>
+            Tax ID: {profile?.taxId || "Not set"}
+          </p>
         </div>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -630,6 +639,23 @@ const handleRefundOrder = async (orderId) => {
               }}
             />
           </label>
+          <label style={{ fontSize: "0.9rem", fontWeight: 700, color: isDark ? "#e2e8f0" : "#1f2937" }}>
+            Tax ID
+            <input
+              type="text"
+              value={draft.taxId || ""}
+              onChange={(e) => setDraft((prev) => ({ ...prev, taxId: e.target.value }))}
+              style={{
+                width: "100%",
+                padding: 10,
+                marginTop: 6,
+                borderRadius: 10,
+                  background: isDark ? "#0b0f14" : "#ffffff",
+                  color: isDark ? "#e2e8f0" : "#0f172a",
+                border: isDark ? "1px solid #1f2937" : "1px solid #e2e8f0",
+              }}
+            />
+          </label>
         </div>
       </Modal>
     </main>
@@ -709,4 +735,3 @@ function Modal({ open, onClose, children, isDark, actions }) {
     </div>
   );
 }
-

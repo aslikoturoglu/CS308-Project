@@ -22,7 +22,7 @@ export async function updateUserAddress({ userId, address }) {
   return handle(res);
 }
 
-export async function updateUserProfile({ userId, name, address }) {
+export async function updateUserProfile({ userId, name, address, taxId }) {
   const numericId = Number(userId);
   if (!Number.isFinite(numericId) || numericId <= 0) {
     throw new Error("Invalid user id");
@@ -30,7 +30,7 @@ export async function updateUserProfile({ userId, name, address }) {
   const res = await fetch(`${API_BASE}/api/users/${encodeURIComponent(numericId)}/profile`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, address }),
+    body: JSON.stringify({ name, address, taxId }),
   });
   return handle(res);
 }

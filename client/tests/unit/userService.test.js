@@ -47,7 +47,7 @@ runTest("updateUserAddress rejects non-numeric ids", async () => {
 runTest("updateUserProfile rejects missing id", async () => {
   let caught;
   try {
-    await updateUserProfile({ userId: null, name: "Jane", address: "Oak" });
+    await updateUserProfile({ userId: null, name: "Jane", address: "Oak", taxId: "123" });
   } catch (error) {
     caught = error;
   }
@@ -72,7 +72,7 @@ runTest("updateUserAddress calls PATCH with encoded id and returns payload", asy
 });
 
 // unit test 20
-runTest("updateUserProfile sends name and address", async () => {
+runTest("updateUserProfile sends name, address, and taxId", async () => {
   setFetchMock(async (url, options) => ({
     ok: true,
     json: async () => ({ url, body: JSON.parse(options.body), method: options.method }),
@@ -82,11 +82,12 @@ runTest("updateUserProfile sends name and address", async () => {
     userId: "15",
     name: "John Doe",
     address: "Elm",
+    taxId: "T-123",
   });
 
   expectEqual(result.method, "PATCH");
   expectEqual(result.url.endsWith("/api/users/15/profile"), true);
-  expectDeepEqual(result.body, { name: "John Doe", address: "Elm" });
+  expectDeepEqual(result.body, { name: "John Doe", address: "Elm", taxId: "T-123" });
 });
 
 // unit test 21
