@@ -1,4 +1,3 @@
-import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import "../styles/payment-flow.css";
 
@@ -11,25 +10,12 @@ function PaymentBank() {
   const location = useLocation();
   const navigate = useNavigate();
   const state = location.state || {};
-  const [smsCode, setSmsCode] = useState("");
-  const [error, setError] = useState("");
-
-  const maskedDigits = useMemo(() => {
-    const digits = String(state.shippingDetails?.phone || "").replace(/\D/g, "");
-    return digits ? `******${digits.slice(-4)}` : "******6655";
-  }, [state.shippingDetails?.phone]);
 
   const handleApprove = () => {
-    if (!smsCode.trim()) {
-      setError("SMS code is required.");
-      return;
-    }
-    setError("");
     navigate("/payment-bank-result", {
       replace: true,
       state: {
         ...state,
-        smsCode: smsCode.trim(),
       },
     });
   };
@@ -53,7 +39,7 @@ function PaymentBank() {
       <header className="payment-flow__header">
         <div>
           <h1>Bank Approval</h1>
-          <p>Enter the SMS code to finalize your payment.</p>
+          <p>Confirm the payment with your bank.</p>
         </div>
         <Link to="/payment-details" className="payment-flow__back">
           ← Back to details
@@ -71,23 +57,13 @@ function PaymentBank() {
             Amount: <strong>₺{formatAmount(state.amount)}</strong>
           </p>
           <p className="payment-card__note">
-            Enter the SMS code sent to the phone number ending with {maskedDigits}.
+            Do you approve the payment of ₺{formatAmount(state.amount)}?
           </p>
-          <div className="payment-card__input">
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="SMS code"
-              value={smsCode}
-              onChange={(event) => setSmsCode(event.target.value)}
-            />
-          </div>
-          {error && <div className="payment-card__error">{error}</div>}
           <button type="button" className="payment-btn payment-btn--success" onClick={handleApprove}>
-            Approve Payment
+            Approve
           </button>
           <Link to="/payment-details" className="payment-btn payment-btn--ghost">
-            Cancel
+            Decline
           </Link>
         </article>
       </div>
