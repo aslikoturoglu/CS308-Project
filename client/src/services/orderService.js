@@ -207,6 +207,9 @@ function mapOrderRows(data = []) {
       qty: it.quantity ?? it.qty ?? it.amount ?? 1,
       quantity: it.quantity ?? it.qty ?? it.amount ?? 1,
       price: Number(it.price ?? it.unit_price ?? it.total_price ?? 0),
+      originalPrice: Number(
+        it.original_price ?? it.product_price ?? it.originalPrice ?? it.price ?? it.unit_price ?? 0
+      ),
       image: it.image ?? it.product_image ?? it.thumbnail ?? it.productImage,
       variant: it.variant ?? it.color ?? it.product_color,
     }));

@@ -70,7 +70,8 @@ export function generateInvoice(req, res) {
         oi.product_id,
         oi.quantity,
         oi.unit_price,
-        COALESCE(p.product_name, CONCAT('Product #', oi.product_id)) AS product_name
+        COALESCE(p.product_name, CONCAT('Product #', oi.product_id)) AS product_name,
+        p.product_price
       FROM order_items oi
       LEFT JOIN products p ON p.product_id = oi.product_id
       WHERE oi.order_id = ?
@@ -223,7 +224,9 @@ function renderInvoice(doc, order, items, detailPayload = {}) {
   doc.lineWidth(0.8).strokeColor(greyBorder);
 
   items.forEach((i) => {
-    const amount = Number(i.quantity) * Number(i.unit_price);
+    const baseUnit = Number(i.product_price ?? i.unit_price ?? 0);
+    const discountedUnit = Number(i.unit_price ?? 0);
+    const amount = Number(i.quantity) * discountedUnit;
 
     doc.rect(50, rowY - 2, 500, 28).fill(greyLight).stroke();
 
@@ -233,7 +236,7 @@ function renderInvoice(doc, order, items, detailPayload = {}) {
       .fontSize(12)
       .text(normalizeTR(i.product_name), 55, rowY + 5)
       .text(i.quantity, 300, rowY + 5)
-      .text(`${Number(i.unit_price).toLocaleString("tr-TR")} TL`, 360, rowY + 5)
+      .text(`${baseUnit.toLocaleString("tr-TR")} TL`, 360, rowY + 5)
       .text(`${amount.toLocaleString("tr-TR")} TL`, 450, rowY + 5);
 
     rowY += 30;
@@ -243,36 +246,50 @@ function renderInvoice(doc, order, items, detailPayload = {}) {
   // TOTAL
   // ============================
   const totalY = rowY + 24;
-  const itemSubtotal = items.reduce(
-    (sum, item) => sum + Number(item.quantity) * Number(item.unit_price),
+  const originalSubtotal = items.reduce((sum, item) => {
+    const baseUnit = Number(item.product_price ?? item.unit_price ?? 0);
+    return sum + baseUnit * Number(item.quantity);
+  }, 0);
+  const discountedSubtotal = items.reduce(
+    (sum, item) => sum + Number(item.unit_price) * Number(item.quantity),
     0
   );
-  const totalAmount = Number(order.total_amount ?? itemSubtotal);
-  const shippingFee = Math.max(totalAmount - itemSubtotal, 0);
+  const discountAmount = Math.max(originalSubtotal - discountedSubtotal, 0);
+  const totalAmount = Number(order.total_amount ?? discountedSubtotal);
+  const shippingFee = Math.max(totalAmount - discountedSubtotal, 0);
 
   doc
     .fillColor("black")
     .font("Helvetica-Bold")
     .fontSize(12)
     .text("SUBTOTAL:", 360, totalY)
-    .text(`${itemSubtotal.toLocaleString("tr-TR")} TL`, 450, totalY);
+    .text(`${originalSubtotal.toLocaleString("tr-TR")} TL`, 450, totalY);
+
+  const discountDisplay =
+    discountAmount > 0 ? `-${discountAmount.toLocaleString("tr-TR")} TL` : "0 TL";
 
   doc
     .font("Helvetica-Bold")
     .fontSize(12)
-    .text("SHIPPING:", 360, totalY + 18)
-    .text(`${shippingFee.toLocaleString("tr-TR")} TL`, 450, totalY + 18);
+    .text("DISCOUNT:", 360, totalY + 18)
+    .text(discountDisplay, 450, totalY + 18);
+
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(12)
+    .text("SHIPPING:", 360, totalY + 36)
+    .text(`${shippingFee.toLocaleString("tr-TR")} TL`, 450, totalY + 36);
 
   doc
     .font("Helvetica-Bold")
     .fontSize(16)
     .fillColor(blue)
-    .text("TOTAL:", 360, totalY + 42);
+    .text("TOTAL:", 360, totalY + 60);
 
   doc
     .fillColor("black")
     .font("Helvetica-Bold")
-    .text(`${totalAmount.toLocaleString("tr-TR")} TL`, 450, totalY + 42);
+    .text(`${totalAmount.toLocaleString("tr-TR")} TL`, 450, totalY + 60);
 
   // ============================
   // FOOTER
@@ -280,7 +297,7 @@ function renderInvoice(doc, order, items, detailPayload = {}) {
   doc
     .font("Helvetica")
     .fontSize(12)
-    .text("Thank you for choosing SUHOME.", 0, totalY + 80, { align: "center" });
+    .text("Thank you for choosing SUHOME.", 0, totalY + 100, { align: "center" });
 }
 
 function createPdf(order, items, res, detailPayload = {}) {
@@ -377,7 +394,8 @@ export async function sendInvoiceEmailForOrder(orderId) {
       oi.product_id,
       oi.quantity,
       oi.unit_price,
-      COALESCE(p.product_name, CONCAT('Product #', oi.product_id)) AS product_name
+      COALESCE(p.product_name, CONCAT('Product #', oi.product_id)) AS product_name,
+      p.product_price
     FROM order_items oi
     LEFT JOIN products p ON p.product_id = oi.product_id
     WHERE oi.order_id = ?

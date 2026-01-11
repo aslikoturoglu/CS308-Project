@@ -309,17 +309,18 @@ export function getOrderHistory(req, res) {
     if (!orderIds.length) return res.json([]);
 
       const itemSql = `
-      SELECT 
-        oi.order_id,
-        oi.product_id,
-        oi.quantity,
-        oi.unit_price,
-        COALESCE(p.product_name, CONCAT('Product #', oi.product_id)) AS product_name,
-        p.product_image
-      FROM order_items oi
-      LEFT JOIN products p ON p.product_id = oi.product_id
-      WHERE oi.order_id IN (?)
-    `;
+    SELECT 
+      oi.order_id,
+      oi.product_id,
+      oi.quantity,
+      oi.unit_price,
+      COALESCE(p.product_name, CONCAT('Product #', oi.product_id)) AS product_name,
+      p.product_image,
+      p.product_price
+    FROM order_items oi
+    LEFT JOIN products p ON p.product_id = oi.product_id
+    WHERE oi.order_id IN (?)
+  `;
 
     db.query(itemSql, [orderIds], (itemErr, itemRows = []) => {
       if (itemErr) {
@@ -335,6 +336,7 @@ export function getOrderHistory(req, res) {
           name: row.product_name,
           quantity: row.quantity,
           price: Number(row.unit_price) || 0,
+          original_price: Number(row.product_price) || 0,
           image: row.product_image,
         });
         itemMap.set(row.order_id, list);
@@ -390,7 +392,8 @@ export function getAllOrders(req, res) {
       oi.quantity,
       oi.unit_price,
       COALESCE(p.product_name, CONCAT('Product #', oi.product_id)) AS product_name,
-      p.product_image
+      p.product_image,
+      p.product_price
     FROM order_items oi
     LEFT JOIN products p ON p.product_id = oi.product_id
   `;
@@ -433,6 +436,7 @@ export function getAllOrders(req, res) {
           name: row.product_name,
           quantity: row.quantity,
           price: Number(row.unit_price) || 0,
+          original_price: Number(row.product_price) || 0,
           image: row.product_image,
         });
         itemMap.set(row.order_id, list);
