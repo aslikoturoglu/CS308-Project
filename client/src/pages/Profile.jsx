@@ -73,13 +73,13 @@ const isRefundWindowOpen = (order) => {
 
 const getRefundState = (order) => {
   if (order?.status === "Refund Waiting") {
-    return { allowed: false, label: "Refund waiting", reason: "Waiting for sales manager approval" };
+    return { allowed: false, label: "Refund Waiting", reason: "Waiting for sales manager approval" };
   }
   if (order?.status === "Refunded") {
     return { allowed: false, label: "Refunded", reason: "Order already refunded" };
   }
   if (order?.status === "Not Refunded") {
-    return { allowed: false, label: "Not refunded", reason: "Refund request was rejected" };
+    return { allowed: false, label: "Not Refunded", reason: "Refund request was rejected" };
   }
   if (order?.status === "Cancelled") {
     return { allowed: false, label: "Cannot be refunded", reason: "Cancelled orders cannot be refunded" };
@@ -106,7 +106,13 @@ const getCancelState = (order) => {
   if (order?.status === "Cancelled") {
     return { allowed: false, label: "Cancelled", reason: "Order already cancelled" };
   }
-  return { allowed: false, label: "Cannot be canceled", reason: "Only processing orders can be cancelled" };
+  return { allowed: false, label: "Cancel", reason: "Only processing orders can be cancelled" };
+};
+
+const getDisplayStatus = (status) => {
+  if (status === "Cancelled") return "Cancel";
+  if (["Refund Waiting", "Refunded", "Not Refunded"].includes(status)) return "Refund";
+  return status;
 };
 
 const handleCancelOrder = async (orderId) => {
@@ -376,7 +382,7 @@ const handleRefundOrder = async (orderId) => {
                 console.log("RAW STATUS >>>", order.status);
                 const formattedId = order.formattedId;
                 const statusStyle = {
-                  Cancelled: {
+                  Cancel: {
                     bg: "rgba(248,113,113,0.18)",
                     color: "#b91c1c",
                     border: "#f87171",
@@ -386,20 +392,10 @@ const handleRefundOrder = async (orderId) => {
                     color: "#15803d",
                     border: "#22c55e",
                   },
-                  Refunded: {
+                  Refund: {
                     bg: "rgba(15,118,110,0.15)",
                     color: "#0f766e",
                     border: "#5eead4",
-                  },
-                  "Refund Waiting": {
-                    bg: "rgba(245,158,11,0.18)",
-                    color: "#b45309",
-                    border: "#f59e0b",
-                  },
-                  "Not Refunded": {
-                    bg: "rgba(148,163,184,0.2)",
-                    color: "#475569",
-                    border: "#94a3b8",
                   },
                   "In-transit": {
                     bg: "rgba(59,130,246,0.15)",
@@ -412,7 +408,8 @@ const handleRefundOrder = async (orderId) => {
                     border: "#eab308",
                   },
                 };
-                const pill = statusStyle[order.status] || statusStyle.Processing;
+                const displayStatus = getDisplayStatus(order.status);
+                const pill = statusStyle[displayStatus] || statusStyle.Processing;
 
 
                 return (
@@ -456,7 +453,7 @@ const handleRefundOrder = async (orderId) => {
       fontWeight: 700,
   }}
 >
-  {order.status}
+  {displayStatus}
 </span>
 
     {(() => {
@@ -465,7 +462,6 @@ const handleRefundOrder = async (orderId) => {
         <button
           onClick={() => handleCancelOrder(order.id)}
           disabled={!cancelState.allowed}
-          title={cancelState.reason}
           style={{
             backgroundColor: cancelState.allowed ? "#fee2e2" : "#f1f5f9",
             color: cancelState.allowed ? "#b91c1c" : "#94a3b8",
@@ -497,7 +493,6 @@ const handleRefundOrder = async (orderId) => {
             opacity: refundState.allowed ? 1 : 0.65,
           }}
           disabled={!refundState.allowed}
-          title={refundState.reason}
         >
           {refundState.label}
         </button>

@@ -9,17 +9,15 @@ import { formatPrice } from "../utils/formatPrice";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 
-const timelineSteps = ["Processing", "In-transit", "Delivered", "Cancelled", "Refund Waiting", "Refunded", "Not Refunded"];
+const timelineSteps = ["Processing", "In-transit", "Delivered", "Cancel", "Refund"];
 const filterOptions = ["All", ...timelineSteps];
 
 const statusPills = {
   Processing: { bg: "rgba(234,179,8,0.2)", color: "#b45309", border: "#eab308" },
   "In-transit": { bg: "rgba(59,130,246,0.15)", color: "#1d4ed8", border: "#60a5fa" },
   Delivered: { bg: "rgba(34,197,94,0.15)", color: "#15803d", border: "#22c55e" },
-  Cancelled: { bg: "rgba(248,113,113,0.18)", color: "#b91c1c", border: "#f87171" },
-  "Refund Waiting": { bg: "rgba(245,158,11,0.18)", color: "#b45309", border: "#f59e0b" },
-  Refunded: { bg: "rgba(15,118,110,0.15)", color: "#0f766e", border: "#5eead4" },
-  "Not Refunded": { bg: "rgba(148,163,184,0.2)", color: "#475569", border: "#94a3b8" },
+  Cancel: { bg: "rgba(248,113,113,0.18)", color: "#b91c1c", border: "#f87171" },
+  Refund: { bg: "rgba(15,118,110,0.15)", color: "#0f766e", border: "#5eead4" },
 };
 
 const REFUND_WINDOW_DAYS = 30;
@@ -43,13 +41,13 @@ function isRefundWindowOpen(order) {
 
 function getRefundState(order) {
   if (order.status === "Refund Waiting") {
-    return { allowed: false, label: "Refund waiting", reason: "Waiting for sales manager approval" };
+    return { allowed: false, label: "Refund Waiting", reason: "Waiting for sales manager approval" };
   }
   if (order.status === "Refunded") {
     return { allowed: false, label: "Refunded", reason: "Order already refunded" };
   }
   if (order.status === "Not Refunded") {
-    return { allowed: false, label: "Not refunded", reason: "Refund request was rejected" };
+    return { allowed: false, label: "Not Refunded", reason: "Refund request was rejected" };
   }
   if (order.status === "Cancelled") {
     return { allowed: false, label: "Cannot be refunded", reason: "Cancelled orders cannot be refunded" };
@@ -76,7 +74,13 @@ function getCancelState(order) {
   if (order.status === "Cancelled") {
     return { allowed: false, label: "Cancelled", reason: "Order already cancelled" };
   }
-  return { allowed: false, label: "Cannot be canceled", reason: "Only processing orders can be cancelled" };
+  return { allowed: false, label: "Cancel", reason: "Only processing orders can be cancelled" };
+}
+
+function getDisplayStatus(status) {
+  if (status === "Cancelled") return "Cancel";
+  if (["Refund Waiting", "Refunded", "Not Refunded"].includes(status)) return "Refund";
+  return status;
 }
 
 function OrderHistory() {
@@ -130,6 +134,12 @@ function OrderHistory() {
 
   const filteredOrders = useMemo(() => {
     if (filter === "All") return orders;
+    if (filter === "Refund") {
+      return orders.filter((order) => ["Refund Waiting", "Refunded", "Not Refunded"].includes(order.status));
+    }
+    if (filter === "Cancel") {
+      return orders.filter((order) => order.status === "Cancelled");
+    }
     return orders.filter((order) => order.status === filter);
   }, [filter, orders]);
 
@@ -319,8 +329,8 @@ function OrderHistory() {
           )}
 
           {filteredOrders.map((order) => {
-            const pill = statusPills[order.status];
-            const progressIndex = order.progressIndex ?? timelineSteps.indexOf(order.status) ?? 0;
+            const displayStatus = getDisplayStatus(order.status);
+            const pill = statusPills[displayStatus] || statusPills.Processing;
             const formattedId = order.formattedId || formatOrderId(order.id);
             const rawOrderId = order.order_id ?? order.id ?? formattedId;
             const numericOrderMatch = String(rawOrderId).match(/\d+/);
@@ -365,12 +375,12 @@ function OrderHistory() {
                       style={{
                         padding: "8px 12px",
                         borderRadius: 999,
-                        backgroundColor: pill?.bg ?? "#e2e8f0",
-                        color: pill?.color ?? "#0f172a",
+                        backgroundColor: pill.bg,
+                        color: pill.color,
                         fontWeight: 700,
                       }}
                     >
-                      {order.status}
+                      {displayStatus}
                     </span>
                     {(() => {
                       const cancelState = getCancelState(order);
@@ -379,7 +389,6 @@ function OrderHistory() {
                           type="button"
                           onClick={() => handleCancelOrder(order.id)}
                           disabled={!cancelState.allowed}
-                          title={cancelState.reason}
                           style={{
                             backgroundColor: cancelState.allowed ? "#fee2e2" : "#f1f5f9",
                             color: cancelState.allowed ? "#b91c1c" : "#94a3b8",
@@ -402,7 +411,6 @@ function OrderHistory() {
                           type="button"
                           onClick={() => handleRefundOrder(order.id)}
                           disabled={!refundState.allowed}
-                          title={refundState.reason}
                           style={{
                             backgroundColor: refundState.allowed ? "#e0f2fe" : "#f1f5f9",
                             color: refundState.allowed ? "#0369a1" : "#94a3b8",
@@ -432,8 +440,8 @@ function OrderHistory() {
                     </div>
 
                     <div style={{ display: "grid", gridTemplateColumns: `repeat(${timelineSteps.length}, minmax(0, 1fr))`, gap: 12 }}>
-                      {timelineSteps.map((step, index) => {
-                        const isActive = step === order.status;
+                      {timelineSteps.map((step) => {
+                        const isActive = step === displayStatus;
                         const stepPill = statusPills[step];
                         return (
                           <div
@@ -441,9 +449,9 @@ function OrderHistory() {
                             style={{
                               padding: 12,
                               borderRadius: 14,
-                              border: `2px solid ${isActive ? stepPill?.border ?? "#22c55e" : palette.panelBorder}`,
-                              backgroundColor: isActive ? stepPill?.bg ?? "rgba(34,197,94,0.12)" : palette.softBg,
-                              color: isActive ? stepPill?.color ?? "#15803d" : palette.textFaint,
+                              border: `2px solid ${isActive ? stepPill.border : palette.panelBorder}`,
+                              backgroundColor: isActive ? stepPill.bg : palette.softBg,
+                              color: isActive ? stepPill.color : palette.textFaint,
                               fontWeight: 800,
                               textAlign: "center",
                               boxShadow: isActive ? "0 6px 16px rgba(34,197,94,0.18)" : "none",
