@@ -64,7 +64,7 @@ function sendOrderStatusEmail({ orderId, status }) {
  * Basit versiyon: cart_items tablosundaki TÃœM kayÄ±tlarÄ± tek bir sipariÅŸ sayÄ±yoruz.
  */
 export function checkout(req, res) {
-  let { user_id, shipping_address, billing_address, items } = req.body;
+  let { user_id, shipping_address, billing_address, items, shipping_fee } = req.body;
   const shippingAddressPayload = normalizeAddressPayload(shipping_address);
   const billingAddressPayload = normalizeAddressPayload(billing_address);
 
@@ -107,6 +107,10 @@ export function checkout(req, res) {
     cartItems.forEach((it) => {
       totalAmount += Number(it.unit_price) * Number(it.quantity);
     });
+    const shippingFee = Number(shipping_fee);
+    if (Number.isFinite(shippingFee) && shippingFee > 0) {
+      totalAmount += shippingFee;
+    }
 
     // 3) orders tablosuna kaydet (status = 'placed')
     const sqlOrder = `

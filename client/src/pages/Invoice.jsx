@@ -107,6 +107,20 @@ function Invoice() {
     (sum, item) => sum + Number(item.qty || 1),
     0
   );
+  const itemsSubtotal = normalizedItems.reduce(
+    (sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1),
+    0
+  );
+  const explicitShippingFee = Number(order.shippingFee ?? order.shipping_fee ?? 0);
+  const rawTotalPaid = Number(order.total ?? order.total_amount ?? 0);
+  const shippingFee =
+    Number.isFinite(explicitShippingFee) && explicitShippingFee > 0
+      ? explicitShippingFee
+      : Math.max(rawTotalPaid - itemsSubtotal, 0);
+  const totalPaid =
+    Number.isFinite(rawTotalPaid) && rawTotalPaid > 0
+      ? rawTotalPaid
+      : itemsSubtotal + shippingFee;
   const realOrderId = order.order_id ?? order.id;
 
   const displayId = formatOrderId(order.id);
@@ -193,7 +207,8 @@ function Invoice() {
           <Info label="Date" value={displayDate} isDark={isDark} />
           <Info label="Status" value={order.status} isDark={isDark} />
           <Info label="Items" value={`${totalItems} pcs`} isDark={isDark} />
-          <Info label="Total Paid" value={formatPrice(order.total)} isDark={isDark} />
+          <Info label="Total Paid" value={formatPrice(totalPaid)} isDark={isDark} />
+          <Info label="Shipping Fee" value={formatPrice(shippingFee)} isDark={isDark} />
           <Info label="Tax ID" value={user?.taxId || "Not provided"} isDark={isDark} />
         </div>
 
@@ -244,6 +259,29 @@ function Invoice() {
                 </span>
               </div>
             ))}
+          </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              padding: "0 12px 12px",
+            }}
+          >
+            <div
+              style={{
+                border: isDark ? "1px solid #1f2937" : "1px solid #e2e8f0",
+                borderRadius: 10,
+                padding: 12,
+                minWidth: 240,
+                background: isDark ? "#0f172a" : "#ffffff",
+                display: "grid",
+                gap: 6,
+              }}
+            >
+              <Line label="Items total" value={formatPrice(itemsSubtotal)} isDark={isDark} />
+              <Line label="Shipping fee" value={formatPrice(shippingFee)} isDark={isDark} />
+              <Line label="Total paid" value={formatPrice(totalPaid)} isDark={isDark} bold />
+            </div>
           </div>
         </div>
 
@@ -347,6 +385,19 @@ function Info({ label, value, isDark }) {
       >
         {value}
       </p>
+    </div>
+  );
+}
+
+function Line({ label, value, isDark, bold }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+      <span style={{ color: isDark ? "#a3b3c6" : "#64748b", fontWeight: 600 }}>
+        {label}
+      </span>
+      <span style={{ color: isDark ? "#e2e8f0" : "#0f172a", fontWeight: bold ? 800 : 700 }}>
+        {value}
+      </span>
     </div>
   );
 }

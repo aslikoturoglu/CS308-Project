@@ -98,6 +98,7 @@ function Checkout() {
           items: normalizedItems,
           order_note: shippingDetails.notes,
           email_notifications: emailNotificationsEnabled,
+          shipping_fee: Number(payload.shippingFee ?? shippingFee ?? 0),
         }),
       });
 
@@ -117,7 +118,9 @@ function Checkout() {
       const newOrder = addOrder({
         id: backendOrderId, // frontend ID = backend order_id
         items: normalizedItems,
-        total: merchandiseTotal,
+        total: grandTotal,
+        shippingFee: Number(shippingFee || 0),
+        shippingLabel: shippingLabel || "",
         contact: shippingDetails,
       });
 
@@ -244,5 +247,3 @@ function Row({ label, value, accent = false, bold = false, isDark = false }) {
 }
 
 export default Checkout;
-
-
