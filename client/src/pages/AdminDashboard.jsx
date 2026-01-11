@@ -210,7 +210,10 @@ function AdminDashboard() {
   const [costUpdate, setCostUpdate] = useState({ productId: "", cost: "" });
   const [deliveryUpdate, setDeliveryUpdate] = useState({ id: "", status: "" });
   const [isCompactLayout, setIsCompactLayout] = useState(false);
+  const [editingProductId, setEditingProductId] = useState(null);
+  const [highlightedProductId, setHighlightedProductId] = useState(null);
   const productListRef = useRef(null);
+  const productFormRef = useRef(null);
   const replyFileInputRef = useRef(null);
 
   useEffect(() => {
@@ -241,6 +244,17 @@ function AdminDashboard() {
       });
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    if (!highlightedProductId) return;
+    const root = productListRef.current;
+    if (!root) return;
+    const row = root.querySelector(`[data-product-id="${highlightedProductId}"]`);
+    if (!row) return;
+    requestAnimationFrame(() => {
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [highlightedProductId]);
 
   const refreshPendingReviews = useCallback(async () => {
     try {
@@ -568,23 +582,28 @@ function AdminDashboard() {
       return;
     }
     try {
-      const res = await fetch("/api/products", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newProduct.name,
-          price: Number(newProduct.price),
-          stock: Number(newProduct.stock),
-          category: newProduct.category || "General",
-          mainCategory: newProduct.mainCategory,
-          material: newProduct.material,
-          color: newProduct.color,
-          warranty: newProduct.warranty,
-          distributor: newProduct.distributor,
-          features: newProduct.features,
-          image: newProduct.image,
-        }),
-      });
+      const payload = {
+        name: newProduct.name,
+        price: Number(newProduct.price),
+        stock: Number(newProduct.stock),
+        category: newProduct.category || "General",
+        mainCategory: newProduct.mainCategory,
+        material: newProduct.material,
+        color: newProduct.color,
+        warranty: newProduct.warranty,
+        distributor: newProduct.distributor,
+        features: newProduct.features,
+        image: newProduct.image,
+      };
+
+      const res = await fetch(
+        editingProductId ? `/api/products/${editingProductId}` : "/api/products",
+        {
+          method: editingProductId ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -608,10 +627,73 @@ function AdminDashboard() {
         features: "",
         image: "",
       });
-      addToast("Product added", "info");
+      if (editingProductId) {
+        setHighlightedProductId(editingProductId);
+        setTimeout(() => setHighlightedProductId(null), 2000);
+      }
+      setEditingProductId(null);
+      addToast(editingProductId ? "Product updated" : "Product added", "info");
     } catch (error) {
-      console.error("Product create failed:", error);
-      addToast(error.message || "Product create failed", "error");
+      console.error("Product save failed:", error);
+      addToast(error.message || "Product save failed", "error");
+    }
+  };
+
+  const handleEditProduct = (product) => {
+    setEditingProductId(product.id);
+    setNewProduct({
+      name: product.name || "",
+      price: product.price || "",
+      stock: Number(product.stock ?? product.availableStock ?? 0),
+      category: product.category || "",
+      mainCategory: product.mainCategory || "",
+      material: product.material || "",
+      color: product.color || "",
+      colorHex: product.colorHex || "",
+      warranty: product.warranty || "",
+      distributor: product.distributor || "",
+      features: product.description || "",
+      image: product.image || "",
+    });
+    requestAnimationFrame(() => {
+      const offset = 80;
+      const top = productFormRef.current?.offsetTop ?? 0;
+      window.scrollTo({ top: Math.max(0, top - offset), behavior: "smooth" });
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingProductId(null);
+    setNewProduct({
+      name: "",
+      price: "",
+      stock: "",
+      category: "",
+      mainCategory: "",
+      material: "",
+      color: "",
+      colorHex: "",
+      warranty: "",
+      distributor: "",
+      features: "",
+      image: "",
+    });
+  };
+
+  const handleDeleteProduct = async (productId) => {
+    try {
+      const res = await fetch(`/api/products/${productId}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Product delete failed");
+      }
+      const controller = new AbortController();
+      const refreshed = await fetchProductsWithMeta(controller.signal);
+      setProducts(refreshed);
+      addToast("Product deleted", "info");
+    } catch (error) {
+      console.error("Product delete failed:", error);
+      addToast(error.message || "Product delete failed", "error");
     }
   };
 
@@ -1159,6 +1241,7 @@ function AdminDashboard() {
           {activeSection === "product" && (
             <section style={{ display: "grid", gap: 18 }}>
               <div
+                ref={productFormRef}
                 style={{
                   background: "white",
                   borderRadius: 14,
@@ -1293,59 +1376,70 @@ function AdminDashboard() {
                     onChange={(e) => setNewProduct((p) => ({ ...p, image: e.target.value }))}
                     style={inputStyle}
                   />
-                  <div
-                    style={{
-                      gridColumn: "1 / -1",
-                      display: "grid",
-                      gap: 8,
-                      padding: "6px 0 2px",
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                      <strong style={{ color: "#0f172a" }}>Categories</strong>
-                      <span style={{ color: "#64748b", fontSize: "0.9rem" }}>
-                        {categories.length ? categories.length : PRODUCT_CATEGORIES.length} available
-                      </span>
-                    </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                      {(categories.length ? categories.map((c) => c.name) : PRODUCT_CATEGORIES).map((category) => (
-                        <span
-                          key={category}
-                          style={{
-                            padding: "4px 10px",
-                            borderRadius: 999,
-                            border: "1px solid #e5e7eb",
-                            background: "#f8fafc",
-                            fontSize: "0.85rem",
-                            fontWeight: 600,
-                            color: "#0f172a",
-                          }}
-                        >
-                          {category}
-                        </span>
-                      ))}
-                    </div>
-                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                      <input
-                        placeholder="Add new category"
-                        value={categoryDraft}
-                        onChange={(e) => setCategoryDraft(e.target.value)}
-                        style={{ ...inputStyle, flex: "1 1 240px" }}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddCategory}
-                        disabled={isSavingCategory}
-                        style={{ ...secondaryBtn, minWidth: 140 }}
+                </div>
+                {editingProductId && (
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <button type="button" onClick={handleAddProduct} style={{ ...primaryBtn, marginTop: 10 }}>
+                      Save changes
+                    </button>
+                    <button type="button" onClick={handleCancelEdit} style={{ ...secondaryBtn, marginTop: 10 }}>
+                      Cancel
+                    </button>
+                  </div>
+                )}
+                <div
+                  style={{
+                    display: "grid",
+                    gap: 8,
+                    padding: "6px 0 2px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                    <strong style={{ color: "#0f172a" }}>Categories</strong>
+                    <span style={{ color: "#64748b", fontSize: "0.9rem" }}>
+                      {categories.length ? categories.length : PRODUCT_CATEGORIES.length} available
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {(categories.length ? categories.map((c) => c.name) : PRODUCT_CATEGORIES).map((category) => (
+                      <span
+                        key={category}
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: 999,
+                          border: "1px solid #e5e7eb",
+                          background: "#f8fafc",
+                          fontSize: "0.85rem",
+                          fontWeight: 600,
+                          color: "#0f172a",
+                        }}
                       >
-                        {isSavingCategory ? "Adding..." : "Add category"}
-                      </button>
-                    </div>
+                        {category}
+                      </span>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <input
+                      placeholder="Add new category"
+                      value={categoryDraft}
+                      onChange={(e) => setCategoryDraft(e.target.value)}
+                      style={{ ...inputStyle, flex: "1 1 240px" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddCategory}
+                      disabled={isSavingCategory}
+                      style={{ ...secondaryBtn, minWidth: 140 }}
+                    >
+                      {isSavingCategory ? "Adding..." : "Add category"}
+                    </button>
                   </div>
                 </div>
-                <button type="button" onClick={handleAddProduct} style={{ ...primaryBtn, marginTop: 10 }}>
-                  Add product
-                </button>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <button type="button" onClick={handleAddProduct} style={{ ...primaryBtn, marginTop: 10 }}>
+                    Add product
+                  </button>
+                </div>
               </div>
 
               <div
@@ -1384,7 +1478,15 @@ function AdminDashboard() {
                 </thead>
                 <tbody>
                   {visibleProducts.map((p) => (
-                    <tr key={p.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                    <tr
+                      key={p.id}
+                      data-product-id={p.id}
+                      style={{
+                        borderBottom: "1px solid #e5e7eb",
+                        background: p.id === highlightedProductId ? "#e0f2fe" : "transparent",
+                        transition: "background 0.3s ease",
+                      }}
+                    >
                       <td style={td}>{p.name}</td>
                       <td style={td}>
                         <div style={{ display: "grid", gap: 2 }}>
@@ -1399,14 +1501,10 @@ function AdminDashboard() {
                           <td style={td}>{p.availableStock}</td>
                           <td style={td}>{p.category || "General"}</td>
                           <td style={td}>
-                            <button type="button" style={linkBtn} onClick={() => addToast("Edit (local only)", "info")}>
+                            <button type="button" style={linkBtn} onClick={() => handleEditProduct(p)}>
                               Edit
                             </button>
-                            <button
-                              type="button"
-                              style={linkBtn}
-                              onClick={() => setProducts((prev) => prev.filter((x) => x.id !== p.id))}
-                            >
+                            <button type="button" style={linkBtn} onClick={() => handleDeleteProduct(p.id)}>
                               Delete
                             </button>
                           </td>

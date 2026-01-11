@@ -77,7 +77,11 @@ export function createProduct(req, res) {
   const name = typeof payload.name === "string" ? payload.name.trim() : "";
   const rawCategory = typeof payload.category === "string" ? payload.category.trim() : "";
   const rawMainCategory = typeof payload.mainCategory === "string" ? payload.mainCategory.trim() : "";
-  const rawDescription = typeof payload.description === "string" ? payload.description.trim() : "";
+  const rawDescription = typeof payload.features === "string"
+    ? payload.features.trim()
+    : typeof payload.description === "string"
+    ? payload.description.trim()
+    : "";
   const rawMaterial = typeof payload.material === "string" ? payload.material.trim() : "";
   const rawColor = typeof payload.color === "string" ? payload.color.trim() : "";
   const rawWarranty = typeof payload.warranty === "string" ? payload.warranty.trim() : "";
@@ -206,6 +210,91 @@ export function updateProductStock(req, res) {
       return res.json({ success: true });
     });
   }
+}
+
+export function updateProduct(req, res) {
+  const { id } = req.params;
+  const payload = req.body || {};
+  const name = typeof payload.name === "string" ? payload.name.trim() : "";
+  const rawCategory = typeof payload.category === "string" ? payload.category.trim() : "";
+  const rawMainCategory = typeof payload.mainCategory === "string" ? payload.mainCategory.trim() : "";
+  const rawDescription = typeof payload.features === "string" ? payload.features.trim() : "";
+  const rawMaterial = typeof payload.material === "string" ? payload.material.trim() : "";
+  const rawColor = typeof payload.color === "string" ? payload.color.trim() : "";
+  const rawWarranty = typeof payload.warranty === "string" ? payload.warranty.trim() : "";
+  const rawDistributor = typeof payload.distributor === "string" ? payload.distributor.trim() : "";
+  const rawImage = typeof payload.image === "string" ? payload.image.trim() : "";
+
+  const price = Number(payload.price);
+  const stock = payload.stock === "" || payload.stock == null ? 0 : Number(payload.stock);
+
+  if (!name) {
+    return res.status(400).json({ error: "Product name is required" });
+  }
+  if (!Number.isFinite(price) || price < 0) {
+    return res.status(400).json({ error: "Valid product price is required" });
+  }
+  if (!Number.isFinite(stock) || stock < 1) {
+    return res.status(400).json({ error: "Valid product stock (>=1) is required" });
+  }
+
+  const sql = `
+    UPDATE products
+    SET
+      product_name = ?,
+      product_main_category = ?,
+      product_category = ?,
+      product_material = ?,
+      product_color = ?,
+      product_warranty = ?,
+      product_distributor = ?,
+      product_features = ?,
+      product_stock = ?,
+      product_price = ?,
+      product_image = ?
+    WHERE product_id = ?
+  `;
+
+  const values = [
+    name,
+    rawMainCategory || null,
+    rawCategory || null,
+    rawMaterial || null,
+    rawColor || null,
+    rawWarranty || null,
+    rawDistributor || null,
+    rawDescription || null,
+    stock,
+    price,
+    rawImage || null,
+    id,
+  ];
+
+  db.query(sql, values, (err, result) => {
+    if (err) {
+      console.error("Product update failed:", err);
+      return res.status(500).json({ error: "Product could not be updated" });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+    return res.json({ success: true });
+  });
+}
+
+export function deleteProduct(req, res) {
+  const { id } = req.params;
+  const sql = "DELETE FROM products WHERE product_id = ?";
+  db.query(sql, [id], (err, result) => {
+    if (err) {
+      console.error("Product delete failed:", err);
+      return res.status(500).json({ error: "Product could not be deleted" });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+    return res.json({ success: true });
+  });
 }
 
 export function getProductById(req, res) {
