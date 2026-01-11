@@ -39,8 +39,69 @@ const DELIVERY_FILTERS = [
 ];
 
 const DELIVERY_STATUSES = DELIVERY_FILTERS.filter((f) => f.id !== "All").map((f) => f.id);
-const PRODUCT_CATEGORIES = ["Living Room", "Bedroom", "Workspace", "Seating", "Tables", "Storage", "Lighting", "Bedding"];
+const PRODUCT_CATEGORIES = [
+  "table",
+  "utensils",
+  "decoration",
+  "lighting",
+  "sofa",
+  "tv unit",
+  "pillow",
+  "rug",
+  "side table",
+  "curtain",
+  "bed",
+  "wardrobe",
+  "box",
+];
 const MAIN_CATEGORIES = ["Kitchen", "Living Room", "Bedroom", "Bathroom"];
+const WARRANTY_OPTIONS = Array.from({ length: 20 }, (_, index) => String(index + 1));
+const COLOR_PALETTE = [
+  { name: "black", hex: "#000000" },
+  { name: "white", hex: "#ffffff" },
+  { name: "gray", hex: "#9ca3af" },
+  { name: "brown", hex: "#8b5e3c" },
+  { name: "red", hex: "#ef4444" },
+  { name: "orange", hex: "#f97316" },
+  { name: "yellow", hex: "#facc15" },
+  { name: "green", hex: "#22c55e" },
+  { name: "blue", hex: "#2563eb" },
+  { name: "purple", hex: "#8b5cf6" },
+  { name: "pink", hex: "#ec4899" },
+];
+
+function hexToRgb(hex) {
+  const clean = String(hex || "").replace("#", "");
+  if (clean.length !== 6) return null;
+  const value = Number.parseInt(clean, 16);
+  if (!Number.isFinite(value)) return null;
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255,
+  };
+}
+
+function getClosestColorName(hex) {
+  const target = hexToRgb(hex);
+  if (!target) return "";
+  const avg = (target.r + target.g + target.b) / 3;
+  const max = Math.max(target.r, target.g, target.b);
+  const min = Math.min(target.r, target.g, target.b);
+  const spread = max - min;
+  if (avg <= 40) return "black";
+  if (avg >= 225 && spread <= 20) return "white";
+  if (spread <= 15) return "gray";
+
+  if (target.r === max && target.g >= target.b + 25) return "orange";
+  if (target.r === max && target.b >= target.g + 25) return "purple";
+  if (target.g === max && target.r >= target.b + 25) return "yellow";
+  if (target.r === max) return "red";
+  if (target.g === max) return "green";
+  if (target.b === max) return "blue";
+
+  return "gray";
+}
 
 function normalizeDeliveryStatus(value) {
   const normalized = String(value || "").trim().toLowerCase();
@@ -129,6 +190,7 @@ function AdminDashboard() {
     mainCategory: "",
     material: "",
     color: "",
+    colorHex: "",
     warranty: "",
     distributor: "",
     features: "",
@@ -518,6 +580,7 @@ function AdminDashboard() {
         mainCategory: "",
         material: "",
         color: "",
+        colorHex: "",
         warranty: "",
         distributor: "",
         features: "",
@@ -1108,24 +1171,66 @@ function AdminDashboard() {
                     onChange={(e) => setNewProduct((p) => ({ ...p, material: e.target.value }))}
                     style={inputStyle}
                   />
-                  <input
-                    placeholder="Color"
-                    value={newProduct.color}
-                    onChange={(e) => setNewProduct((p) => ({ ...p, color: e.target.value }))}
-                    style={inputStyle}
-                  />
-                  <input
-                    placeholder="Warranty"
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {COLOR_PALETTE.map((swatch) => (
+                        <button
+                          key={swatch.name}
+                          type="button"
+                          onClick={() =>
+                            setNewProduct((p) => ({
+                              ...p,
+                              color: swatch.name,
+                              colorHex: swatch.hex,
+                            }))
+                          }
+                          style={{
+                            width: 26,
+                            height: 26,
+                            borderRadius: "50%",
+                            border: swatch.name === newProduct.color ? "2px solid #0f172a" : "1px solid #e5e7eb",
+                            background: swatch.hex,
+                            cursor: "pointer",
+                          }}
+                          aria-label={`Select ${swatch.name}`}
+                          title={swatch.name}
+                        />
+                      ))}
+                    </div>
+                    <input
+                      placeholder="Color"
+                      value={newProduct.color}
+                      readOnly
+                      style={{ ...inputStyle, background: "#f8fafc" }}
+                    />
+                  </div>
+                  <select
                     value={newProduct.warranty}
                     onChange={(e) => setNewProduct((p) => ({ ...p, warranty: e.target.value }))}
                     style={inputStyle}
-                  />
-                  <input
-                    placeholder="Distributor"
-                    value={newProduct.distributor}
-                    onChange={(e) => setNewProduct((p) => ({ ...p, distributor: e.target.value }))}
-                    style={inputStyle}
-                  />
+                  >
+                    <option value="">Warranty (years)</option>
+                    {WARRANTY_OPTIONS.map((years) => (
+                      <option key={years} value={years}>
+                        {years}
+                      </option>
+                    ))}
+                  </select>
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <input
+                      placeholder="Distributor"
+                      value={newProduct.distributor}
+                      onChange={(e) => setNewProduct((p) => ({ ...p, distributor: e.target.value }))}
+                      style={inputStyle}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setNewProduct((p) => ({ ...p, distributor: "SUHome Logistics" }))}
+                      style={{ ...secondaryBtn, padding: "6px 10px", fontSize: "0.85rem" }}
+                    >
+                      Use SUHome Logistics
+                    </button>
+                  </div>
                   <input
                     placeholder="Features"
                     value={newProduct.features}
