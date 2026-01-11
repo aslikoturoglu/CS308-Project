@@ -393,6 +393,9 @@ export function getAllOrders(req, res) {
 
   const normalizeStatus = (value) => {
     const normalized = String(value || "").toLowerCase();
+    if (normalized.includes("refund_waiting") || normalized.includes("refund waiting") || normalized.includes("refund pending")) {
+      return "Refund Waiting";
+    }
     if (normalized === "refunded") return "Refunded";
     if (normalized === "cancelled") return "Cancelled";
     if (normalized.includes("transit") || normalized === "shipped" || normalized === "in_transit") {
@@ -460,7 +463,7 @@ export function updateDeliveryStatus(req, res) {
   const { status } = req.body;
 
   const normalized = String(status || "").toLowerCase();
-  const allowed = ["preparing", "shipped", "in_transit", "delivered"];
+  const allowed = ["preparing", "shipped", "in_transit", "delivered", "cancelled", "refunded", "refund_waiting"];
   const nextDeliveryStatus = allowed.includes(normalized) ? normalized : "preparing";
 
   const orderStatusMap = {
@@ -468,6 +471,9 @@ export function updateDeliveryStatus(req, res) {
     shipped: "shipped",
     in_transit: "shipped",
     delivered: "delivered",
+    cancelled: "cancelled",
+    refunded: "refunded",
+    refund_waiting: "refund_waiting",
   };
   const nextOrderStatus = orderStatusMap[nextDeliveryStatus] || "preparing";
 

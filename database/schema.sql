@@ -125,7 +125,7 @@ CREATE TABLE orders (
   order_id INT PRIMARY KEY AUTO_INCREMENT,
   user_id INT NOT NULL,
   order_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  status ENUM('placed','confirmed','packed','shipped','delivered','cancelled','refunded','returned') NOT NULL,
+  status ENUM('placed','confirmed','packed','shipped','delivered','cancelled','refund_waiting','refunded','returned') NOT NULL,
   total_amount DECIMAL(10,2) NOT NULL,
   shipping_address TEXT,
   billing_address TEXT,
@@ -167,7 +167,7 @@ CREATE TABLE deliveries (
   quantity INT NOT NULL,
   total_price DECIMAL(10,2) NOT NULL,
   delivery_address TEXT,
-  delivery_status ENUM('preparing','shipped','in_transit','delivered','refunded','returned') NOT NULL,
+  delivery_status ENUM('preparing','shipped','in_transit','delivered','cancelled','refund_waiting','refunded','returned') NOT NULL,
   FOREIGN KEY (order_id) REFERENCES orders(order_id)
     ON UPDATE CASCADE ON DELETE RESTRICT,
   FOREIGN KEY (order_item_id) REFERENCES order_items(order_item_id)

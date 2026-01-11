@@ -33,6 +33,7 @@ const DELIVERY_FILTERS = [
   { id: "In-transit", label: "In-transit" },
   { id: "Delivered", label: "Delivered" },
   { id: "Cancelled", label: "Canceled" },
+  { id: "Refund Waiting", label: "Refund Waiting" },
   { id: "Refunded", label: "Refunded" },
 ];
 
@@ -41,6 +42,9 @@ const DELIVERY_STATUSES = DELIVERY_FILTERS.filter((f) => f.id !== "All").map((f)
 function normalizeDeliveryStatus(value) {
   const normalized = String(value || "").trim().toLowerCase();
   if (normalized.startsWith("cancel")) return "Cancelled";
+  if (normalized.includes("refund waiting") || normalized.includes("refund_waiting") || normalized.includes("refund pending")) {
+    return "Refund Waiting";
+  }
   if (normalized === "refunded") return "Refunded";
   if (normalized.includes("transit") || normalized === "shipped" || normalized === "in_transit") return "In-transit";
   if (normalized === "delivered") return "Delivered";
@@ -421,16 +425,15 @@ function AdminDashboard() {
       Processing: [],
       "In-transit": [],
       Delivered: [],
+      Cancelled: [],
+      "Refund Waiting": [],
+      Refunded: [],
     };
     const parseDate = (value) => Date.parse(value) || 0;
     orders.forEach((o) => {
-      const key =
-        o.status === "Delivered"
-          ? "Delivered"
-          : o.status === "In-transit"
-          ? "In-transit"
-          : "Processing";
-      groups[key].push(o);
+      const normalized = normalizeDeliveryStatus(o.status);
+      const key = groups[normalized] ? normalized : "Processing";
+      groups[key].push({ ...o, status: normalized });
     });
     Object.keys(groups).forEach((key) => {
       groups[key].sort((a, b) => (parseDate(b.date) || 0) - (parseDate(a.date) || 0));
@@ -439,7 +442,18 @@ function AdminDashboard() {
   }, [orders]);
 
   const [orderTab, setOrderTab] = useState("Processing");
+  const [orderVisibleCount, setOrderVisibleCount] = useState(10);
   const ordersForActiveTab = groupedOrders[orderTab] || [];
+  const visibleOrders = useMemo(
+    () => ordersForActiveTab.slice(0, orderVisibleCount),
+    [ordersForActiveTab, orderVisibleCount]
+  );
+  const canLoadMoreOrders = ordersForActiveTab.length > orderVisibleCount;
+  const canLoadLessOrders = orderVisibleCount > 10;
+
+  useEffect(() => {
+    setOrderVisibleCount(10);
+  }, [orderTab, orders.length]);
 
   const handleAddProduct = () => {
     if (!newProduct.name || !newProduct.price) {
@@ -718,8 +732,8 @@ function AdminDashboard() {
     }
 
     const { nextStatus, nextIndex } = getNextStatus(current);
-    if (current.status === "Delivered" || nextStatus === current.status) {
-      addToast("Order already delivered", "info");
+    if (["Delivered", "Cancelled", "Refunded"].includes(current.status) || nextStatus === current.status) {
+      addToast("Order already in final status", "info");
       return;
     }
 
@@ -1374,7 +1388,7 @@ function AdminDashboard() {
               <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
                 <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Orders (sales manager)</h3>
                 <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-                  {["Processing", "In-transit", "Delivered"].map((status) => {
+                  {["Processing", "In-transit", "Delivered", "Cancelled", "Refund Waiting", "Refunded"].map((status) => {
                     const count = groupedOrders[status]?.length || 0;
                     const active = orderTab === status;
                     return (
@@ -1430,7 +1444,19 @@ function AdminDashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {ordersForActiveTab.map((order) => (
+                        {visibleOrders.map((order) => {
+                          const isTerminalStatus = ["Delivered", "Cancelled", "Refunded"].includes(order.status);
+                          const statusTone =
+                            order.status === "Delivered"
+                              ? "#22c55e"
+                              : order.status === "Cancelled"
+                              ? "#ef4444"
+                              : order.status === "Refund Waiting"
+                              ? "#f59e0b"
+                              : order.status === "Refunded"
+                              ? "#f97316"
+                              : "inherit";
+                          return (
                           <tr key={order.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                             <td style={{ ...td, width: orderColumnWidths[0], fontWeight: 700 }}>{formatOrderId(order.id)}</td>
                             <td style={{ ...td, width: orderColumnWidths[1] }}>
@@ -1439,11 +1465,11 @@ function AdminDashboard() {
                             </td>
                             <td style={{ ...td, width: orderColumnWidths[2] }}>{order.shippingCompany}</td>
                             <td style={{ ...td, width: orderColumnWidths[3], fontWeight: 700 }}>₺{order.total?.toLocaleString("tr-TR")}</td>
-                            <td style={{ ...td, width: orderColumnWidths[4], color: order.status === "Delivered" ? "#22c55e" : "inherit", fontWeight: 700 }}>{order.status}</td>
+                            <td style={{ ...td, width: orderColumnWidths[4], color: statusTone, fontWeight: 700 }}>{order.status}</td>
                             <td style={{ ...td, width: orderColumnWidths[5] }}>
-                              {order.status === "Delivered" ? (
+                              {isTerminalStatus ? (
                                 <button type="button" style={{ ...primaryBtn, background: "#e5e7eb", color: "#9ca3af", border: "none", cursor: "not-allowed" }} disabled>
-                                  Delivered
+                                  {order.status}
                                 </button>
                               ) : user?.role === "sales_manager" ? (
                                 <button type="button" onClick={() => handleAdvanceOrder(order.id)} style={primaryBtn}>
@@ -1454,7 +1480,8 @@ function AdminDashboard() {
                               )}
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                         {ordersForActiveTab.length === 0 && (
                           <tr>
                             <td colSpan={6} style={{ padding: 16, textAlign: "center", color: "#94a3b8" }}>
@@ -1467,52 +1494,87 @@ function AdminDashboard() {
                   </div>
                 ) : (
                   <div style={{ display: "grid", gap: 12 }}>
-                    {ordersForActiveTab.map((order) => (
-                      <div
-                        key={order.id}
-                        style={{
-                          border: "1px solid #e5e7eb",
-                          borderRadius: 12,
-                          padding: 12,
-                          background: "#f8fafc",
-                          display: "grid",
-                          gap: 8,
-                        }}
-                      >
+                    {visibleOrders.map((order) => {
+                      const isTerminalStatus = ["Delivered", "Cancelled", "Refunded"].includes(order.status);
+                      const statusTone =
+                        order.status === "Delivered"
+                          ? "#22c55e"
+                          : order.status === "Cancelled"
+                          ? "#ef4444"
+                          : order.status === "Refund Waiting"
+                          ? "#f59e0b"
+                          : order.status === "Refunded"
+                          ? "#f97316"
+                          : "inherit";
+                      return (
                         <div
+                          key={order.id}
                           style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            flexWrap: "wrap",
+                            border: "1px solid #e5e7eb",
+                            borderRadius: 12,
+                            padding: 12,
+                            background: "#f8fafc",
+                            display: "grid",
                             gap: 8,
                           }}
                         >
-                          <strong>{formatOrderId(order.id)}</strong>
-                          <span style={{ fontWeight: 700, color: order.status === "Delivered" ? "#22c55e" : "inherit" }}>{order.status}</span>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              flexWrap: "wrap",
+                              gap: 8,
+                            }}
+                          >
+                            <strong>{formatOrderId(order.id)}</strong>
+                            <span style={{ fontWeight: 700, color: statusTone }}>{order.status}</span>
+                          </div>
+                          <div style={{ display: "grid", gap: 4, fontSize: "0.95rem" }}>
+                            <span style={{ fontWeight: 700 }}>{order.customerName || "Customer"}</span>
+                            <span>{order.address}</span>
+                            <span>Shipping: {order.shippingCompany}</span>
+                            <span>Total: ₺{order.total?.toLocaleString("tr-TR")}</span>
+                          </div>
+                          <div>
+                            {isTerminalStatus ? (
+                              <button type="button" style={{ ...primaryBtn, background: "#e5e7eb", color: "#9ca3af", border: "none", cursor: "not-allowed" }} disabled>
+                                {order.status}
+                              </button>
+                            ) : user?.role === "sales_manager" ? (
+                              <button type="button" onClick={() => handleAdvanceOrder(order.id)} style={primaryBtn}>
+                                Advance status
+                              </button>
+                            ) : (
+                              <span style={{ color: "#94a3b8", fontWeight: 700 }}>Only sales manager can advance</span>
+                            )}
+                          </div>
                         </div>
-                        <div style={{ display: "grid", gap: 4, fontSize: "0.95rem" }}>
-                          <span style={{ fontWeight: 700 }}>{order.customerName || "Customer"}</span>
-                          <span>{order.address}</span>
-                          <span>Shipping: {order.shippingCompany}</span>
-                          <span>Total: ₺{order.total?.toLocaleString("tr-TR")}</span>
-                        </div>
-                        <div>
-                          {order.status === "Delivered" ? (
-                            <button type="button" style={{ ...primaryBtn, background: "#e5e7eb", color: "#9ca3af", border: "none", cursor: "not-allowed" }} disabled>
-                              Delivered
-                            </button>
-                          ) : user?.role === "sales_manager" ? (
-                            <button type="button" onClick={() => handleAdvanceOrder(order.id)} style={primaryBtn}>
-                              Advance status
-                            </button>
-                          ) : (
-                            <span style={{ color: "#94a3b8", fontWeight: 700 }}>Only sales manager can advance</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     {ordersForActiveTab.length === 0 && <p style={{ margin: 0, color: "#94a3b8" }}>No orders in this status.</p>}
+                  </div>
+                )}
+                {(canLoadMoreOrders || canLoadLessOrders) && (
+                  <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+                    {canLoadMoreOrders && (
+                      <button
+                        type="button"
+                        onClick={() => setOrderVisibleCount((prev) => prev + 10)}
+                        style={{ ...secondaryBtn, alignItems: "center", display: "inline-flex", gap: 6 }}
+                      >
+                        ↓ Load more
+                      </button>
+                    )}
+                    {canLoadLessOrders && (
+                      <button
+                        type="button"
+                        onClick={() => setOrderVisibleCount((prev) => Math.max(10, prev - 10))}
+                        style={{ ...secondaryBtn, alignItems: "center", display: "inline-flex", gap: 6 }}
+                      >
+                        ↑ Load less
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

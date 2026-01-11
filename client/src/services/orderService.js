@@ -308,11 +308,16 @@ export function advanceOrderStatus(id, actor) {
   const idx = orders.findIndex((o) => formatOrderId(o.id) === targetId);
   if (idx === -1) return { orders, error: "Order not found." };
   const order = orders[idx];
-  const nextIndex = Math.min(
-    (order.progressIndex ?? timelineSteps.indexOf(order.status) ?? 0) + 1,
-    timelineSteps.length - 1
-  );
-  const nextStatus = timelineSteps[nextIndex];
+  const currentStatus = String(order.status || "");
+  let nextStatus = currentStatus;
+  let nextIndex = order.progressIndex ?? timelineSteps.indexOf(currentStatus) ?? 0;
+  if (currentStatus === "Refund Waiting") {
+    nextStatus = "Refunded";
+    nextIndex = timelineSteps.length - 1;
+  } else if (!["Cancelled", "Refunded", "Delivered"].includes(currentStatus)) {
+    nextIndex = Math.min((order.progressIndex ?? timelineSteps.indexOf(currentStatus) ?? 0) + 1, timelineSteps.length - 1);
+    nextStatus = timelineSteps[nextIndex];
+  }
 
   // Best-effort backend sync when this is a numeric backend order id.
   const numericId = Number(id);
@@ -337,6 +342,9 @@ export function advanceOrderStatus(id, actor) {
 
 function backendToFrontendStatus(value) {
   const normalized = String(value || "").toLowerCase();
+  if (normalized.includes("refund_waiting") || normalized.includes("refund waiting") || normalized.includes("refund pending")) {
+    return "Refund Waiting";
+  }
   if (normalized === "refunded") return "Refunded";
   if (normalized === "cancelled") return "Cancelled";
   if (normalized.includes("transit") || normalized === "shipped" || normalized === "in_transit")
@@ -351,6 +359,7 @@ const frontendToBackendStatus = {
   Delivered: "delivered",
   Cancelled: "cancelled",
   Canceled: "cancelled",
+  "Refund Waiting": "refund_waiting",
   Refunded: "refunded",
 };
 
@@ -421,7 +430,14 @@ export async function updateBackendOrderStatus(orderId, nextStatus, signal) {
 }
 
 export function getNextStatus(order) {
-  const currentIndex = timelineSteps.indexOf(order.status) >= 0 ? timelineSteps.indexOf(order.status) : 0;
+  const currentStatus = String(order.status || "");
+  if (currentStatus === "Refund Waiting") {
+    return { nextStatus: "Refunded", nextIndex: timelineSteps.length - 1 };
+  }
+  if (["Cancelled", "Refunded", "Delivered"].includes(currentStatus)) {
+    return { nextStatus: currentStatus, nextIndex: timelineSteps.length - 1 };
+  }
+  const currentIndex = timelineSteps.indexOf(currentStatus) >= 0 ? timelineSteps.indexOf(currentStatus) : 0;
   const nextIndex = Math.min(currentIndex + 1, timelineSteps.length - 1);
   return { nextStatus: timelineSteps[nextIndex], nextIndex };
 }
