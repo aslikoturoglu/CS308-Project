@@ -9,7 +9,7 @@ import { formatPrice } from "../utils/formatPrice";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 
-const timelineSteps = ["Processing", "In-transit", "Delivered", "Cancelled", "Refunded"];
+const timelineSteps = ["Processing", "In-transit", "Delivered", "Cancelled", "Refund Waiting", "Refunded", "Not Refunded"];
 const filterOptions = ["All", ...timelineSteps];
 
 const statusPills = {
@@ -17,7 +17,9 @@ const statusPills = {
   "In-transit": { bg: "rgba(59,130,246,0.15)", color: "#1d4ed8", border: "#60a5fa" },
   Delivered: { bg: "rgba(34,197,94,0.15)", color: "#15803d", border: "#22c55e" },
   Cancelled: { bg: "rgba(248,113,113,0.18)", color: "#b91c1c", border: "#f87171" },
+  "Refund Waiting": { bg: "rgba(245,158,11,0.18)", color: "#b45309", border: "#f59e0b" },
   Refunded: { bg: "rgba(15,118,110,0.15)", color: "#0f766e", border: "#5eead4" },
+  "Not Refunded": { bg: "rgba(148,163,184,0.2)", color: "#475569", border: "#94a3b8" },
 };
 
 const REFUND_WINDOW_DAYS = 30;
@@ -40,23 +42,41 @@ function isRefundWindowOpen(order) {
 }
 
 function getRefundState(order) {
+  if (order.status === "Refund Waiting") {
+    return { allowed: false, label: "Refund waiting", reason: "Waiting for sales manager approval" };
+  }
   if (order.status === "Refunded") {
     return { allowed: false, label: "Refunded", reason: "Order already refunded" };
   }
+  if (order.status === "Not Refunded") {
+    return { allowed: false, label: "Not refunded", reason: "Refund request was rejected" };
+  }
+  if (order.status === "Cancelled") {
+    return { allowed: false, label: "Cannot be refunded", reason: "Cancelled orders cannot be refunded" };
+  }
+  if (order.status === "Processing") {
+    return { allowed: false, label: "Cannot be refunded", reason: "Processing orders cannot be refunded" };
+  }
+  if (order.status === "In-transit") {
+    return { allowed: true, label: "Refund", reason: "Request refund" };
+  }
   if (order.status !== "Delivered") {
-    return { allowed: false, label: "Refund", reason: "Only delivered orders can be refunded" };
+    return { allowed: false, label: "Cannot be refunded", reason: "Only delivered orders can be refunded" };
   }
   if (!isRefundWindowOpen(order)) {
-    return { allowed: false, label: "Refund", reason: "Returns are only available within 30 days of purchase." };
+    return { allowed: false, label: "Cannot be refunded", reason: "Returns are only available within 30 days of purchase." };
   }
   return { allowed: true, label: "Refund", reason: "Request refund" };
 }
 
 function getCancelState(order) {
-  if (order.status !== "Processing") {
-    return { allowed: false, label: "Cancel", reason: "Only processing orders can be cancelled" };
+  if (order.status === "Processing") {
+    return { allowed: true, label: "Cancel", reason: "Cancel this order" };
   }
-  return { allowed: true, label: "Cancel", reason: "Cancel this order" };
+  if (order.status === "Cancelled") {
+    return { allowed: false, label: "Cancelled", reason: "Order already cancelled" };
+  }
+  return { allowed: false, label: "Cannot be canceled", reason: "Only processing orders can be cancelled" };
 }
 
 function OrderHistory() {
@@ -117,7 +137,7 @@ function OrderHistory() {
     () => ({
       totalSpent: orders.reduce((sum, order) => sum + order.total, 0),
       delivered: orders.filter((order) => order.status === "Delivered").length,
-      active: orders.filter((order) => !["Delivered", "Cancelled", "Refunded"].includes(order.status)).length,
+      active: orders.filter((order) => !["Delivered", "Cancelled", "Refunded", "Refund Waiting", "Not Refunded"].includes(order.status)).length,
     }),
     [orders]
   );
@@ -183,10 +203,10 @@ function OrderHistory() {
     if (!window.confirm("Request a refund for this delivered order?")) return;
 
     try {
-      await refundOrder(orderId);
-      setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, status: "Refunded" } : o))
-      );
+    await refundOrder(orderId);
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, status: "Refund Waiting" } : o))
+    );
     } catch (err) {
       alert(err?.message || "Refund failed.");
     }
@@ -352,7 +372,7 @@ function OrderHistory() {
                     >
                       {order.status}
                     </span>
-                    {order.status === "Processing" && (() => {
+                    {(() => {
                       const cancelState = getCancelState(order);
                       return (
                         <button
@@ -375,7 +395,7 @@ function OrderHistory() {
                         </button>
                       );
                     })()}
-                    {order.status === "Delivered" && (() => {
+                    {(() => {
                       const refundState = getRefundState(order);
                       return (
                         <button

@@ -35,6 +35,7 @@ const DELIVERY_FILTERS = [
   { id: "Cancelled", label: "Canceled" },
   { id: "Refund Waiting", label: "Refund Waiting" },
   { id: "Refunded", label: "Refunded" },
+  { id: "Not Refunded", label: "Not Refunded" },
 ];
 
 const DELIVERY_STATUSES = DELIVERY_FILTERS.filter((f) => f.id !== "All").map((f) => f.id);
@@ -45,6 +46,9 @@ function normalizeDeliveryStatus(value) {
   if (normalized.startsWith("cancel")) return "Cancelled";
   if (normalized.includes("refund waiting") || normalized.includes("refund_waiting") || normalized.includes("refund pending")) {
     return "Refund Waiting";
+  }
+  if (normalized.includes("refund_rejected") || normalized.includes("refund rejected") || normalized.includes("not refunded")) {
+    return "Not Refunded";
   }
   if (normalized === "refunded") return "Refunded";
   if (normalized.includes("transit") || normalized === "shipped" || normalized === "in_transit") return "In-transit";
@@ -429,6 +433,7 @@ function AdminDashboard() {
       Cancelled: [],
       "Refund Waiting": [],
       Refunded: [],
+      "Not Refunded": [],
     };
     const parseDate = (value) => Date.parse(value) || 0;
     orders.forEach((o) => {
@@ -733,7 +738,7 @@ function AdminDashboard() {
     }
 
     const { nextStatus, nextIndex } = getNextStatus(current);
-    if (["Delivered", "Cancelled", "Refunded"].includes(current.status) || nextStatus === current.status) {
+    if (["Delivered", "Cancelled", "Refunded", "Not Refunded"].includes(current.status) || nextStatus === current.status) {
       addToast("Order already in final status", "info");
       return;
     }
@@ -759,6 +764,25 @@ function AdminDashboard() {
     }
     setOrders(result.orders);
     addToast("Order advanced to next status", "info");
+  };
+
+  const handleRefundDecision = async (orderId, decisionStatus) => {
+    const numericId = Number(orderId);
+    const isBackendOrder = Number.isFinite(numericId);
+    try {
+      if (isBackendOrder) {
+        await updateBackendOrderStatus(numericId, decisionStatus);
+        await loadOrders();
+      } else {
+        setOrders((prev) =>
+          prev.map((o) => (String(o.id) === String(orderId) ? { ...o, status: decisionStatus } : o))
+        );
+      }
+      addToast(decisionStatus === "Refunded" ? "Refund approved" : "Refund rejected", "info");
+    } catch (error) {
+      console.error("Refund decision failed", error);
+      addToast(error.message || "Refund decision failed", "error");
+    }
   };
 
   const handleApproveReview = async (commentId) => {
@@ -1397,7 +1421,7 @@ function AdminDashboard() {
               <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
                 <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Orders (sales manager)</h3>
                 <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-                  {["Processing", "In-transit", "Delivered", "Cancelled", "Refund Waiting", "Refunded"].map((status) => {
+                  {["Processing", "In-transit", "Delivered", "Cancelled", "Refund Waiting", "Refunded", "Not Refunded"].map((status) => {
                     const count = groupedOrders[status]?.length || 0;
                     const active = orderTab === status;
                     return (
@@ -1454,7 +1478,7 @@ function AdminDashboard() {
                       </thead>
                       <tbody>
                         {visibleOrders.map((order) => {
-                          const isTerminalStatus = ["Delivered", "Cancelled", "Refunded"].includes(order.status);
+                          const isTerminalStatus = ["Delivered", "Cancelled", "Refunded", "Not Refunded"].includes(order.status);
                           const statusTone =
                             order.status === "Delivered"
                               ? "#22c55e"
@@ -1464,6 +1488,8 @@ function AdminDashboard() {
                               ? "#f59e0b"
                               : order.status === "Refunded"
                               ? "#f97316"
+                              : order.status === "Not Refunded"
+                              ? "#64748b"
                               : "inherit";
                           return (
                           <tr key={order.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
@@ -1476,7 +1502,24 @@ function AdminDashboard() {
                             <td style={{ ...td, width: orderColumnWidths[3], fontWeight: 700 }}>₺{order.total?.toLocaleString("tr-TR")}</td>
                             <td style={{ ...td, width: orderColumnWidths[4], color: statusTone, fontWeight: 700 }}>{order.status}</td>
                             <td style={{ ...td, width: orderColumnWidths[5] }}>
-                              {isTerminalStatus ? (
+                              {order.status === "Refund Waiting" ? (
+                                user?.role === "sales_manager" ? (
+                                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                    <button type="button" onClick={() => handleRefundDecision(order.id, "Refunded")} style={primaryBtn}>
+                                      Approve refund
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRefundDecision(order.id, "Not Refunded")}
+                                      style={{ ...primaryBtn, background: "#fee2e2", color: "#b91c1c" }}
+                                    >
+                                      Reject refund
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span style={{ color: "#94a3b8", fontWeight: 700 }}>Only sales manager can act</span>
+                                )
+                              ) : isTerminalStatus ? (
                                 <button type="button" style={{ ...primaryBtn, background: "#e5e7eb", color: "#9ca3af", border: "none", cursor: "not-allowed" }} disabled>
                                   {order.status}
                                 </button>
@@ -1504,7 +1547,7 @@ function AdminDashboard() {
                 ) : (
                   <div style={{ display: "grid", gap: 12 }}>
                     {visibleOrders.map((order) => {
-                      const isTerminalStatus = ["Delivered", "Cancelled", "Refunded"].includes(order.status);
+                      const isTerminalStatus = ["Delivered", "Cancelled", "Refunded", "Not Refunded"].includes(order.status);
                       const statusTone =
                         order.status === "Delivered"
                           ? "#22c55e"
@@ -1514,6 +1557,8 @@ function AdminDashboard() {
                           ? "#f59e0b"
                           : order.status === "Refunded"
                           ? "#f97316"
+                          : order.status === "Not Refunded"
+                          ? "#64748b"
                           : "inherit";
                       return (
                         <div
@@ -1546,7 +1591,24 @@ function AdminDashboard() {
                             <span>Total: ₺{order.total?.toLocaleString("tr-TR")}</span>
                           </div>
                           <div>
-                            {isTerminalStatus ? (
+                            {order.status === "Refund Waiting" ? (
+                              user?.role === "sales_manager" ? (
+                                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                  <button type="button" onClick={() => handleRefundDecision(order.id, "Refunded")} style={primaryBtn}>
+                                    Approve refund
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRefundDecision(order.id, "Not Refunded")}
+                                    style={{ ...primaryBtn, background: "#fee2e2", color: "#b91c1c" }}
+                                  >
+                                    Reject refund
+                                  </button>
+                                </div>
+                              ) : (
+                                <span style={{ color: "#94a3b8", fontWeight: 700 }}>Only sales manager can act</span>
+                              )
+                            ) : isTerminalStatus ? (
                               <button type="button" style={{ ...primaryBtn, background: "#e5e7eb", color: "#9ca3af", border: "none", cursor: "not-allowed" }} disabled>
                                 {order.status}
                               </button>

@@ -351,6 +351,9 @@ function backendToFrontendStatus(value) {
   if (normalized.includes("refund_waiting") || normalized.includes("refund waiting") || normalized.includes("refund pending")) {
     return "Refund Waiting";
   }
+  if (normalized.includes("refund_rejected") || normalized.includes("refund rejected")) {
+    return "Not Refunded";
+  }
   if (normalized === "refunded") return "Refunded";
   if (normalized === "cancelled") return "Cancelled";
   if (normalized.includes("transit") || normalized === "shipped" || normalized === "in_transit")
@@ -367,6 +370,7 @@ const frontendToBackendStatus = {
   Canceled: "cancelled",
   "Refund Waiting": "refund_waiting",
   Refunded: "refunded",
+  "Not Refunded": "refund_rejected",
 };
 
 export async function fetchAllOrders(signal) {
@@ -440,7 +444,7 @@ export function getNextStatus(order) {
   if (currentStatus === "Refund Waiting") {
     return { nextStatus: "Refunded", nextIndex: timelineSteps.length - 1 };
   }
-  if (["Cancelled", "Refunded", "Delivered"].includes(currentStatus)) {
+  if (["Cancelled", "Refunded", "Not Refunded", "Delivered"].includes(currentStatus)) {
     return { nextStatus: currentStatus, nextIndex: timelineSteps.length - 1 };
   }
   const currentIndex = timelineSteps.indexOf(currentStatus) >= 0 ? timelineSteps.indexOf(currentStatus) : 0;

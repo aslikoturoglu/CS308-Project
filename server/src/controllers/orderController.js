@@ -294,7 +294,6 @@ export function getOrderHistory(req, res) {
     FROM orders o
     LEFT JOIN deliveries d ON d.order_id = o.order_id
     WHERE o.user_id = ?
-    AND o.status != 'cancelled'
     ORDER BY o.order_date DESC
 
   `;
@@ -340,16 +339,33 @@ export function getOrderHistory(req, res) {
         itemMap.set(row.order_id, list);
       });
 
-      const normalized = rows.map((row) => ({
-        order_id: row.order_id,
-        order_date: row.order_date,
-        total_amount: Number(row.total_amount) || 0,
-        status: row.delivery_status || row.order_status || "processing",
-        delivery_status: row.delivery_status,
-        shipping_address: row.shipping_address,
-        billing_address: row.billing_address,
-        items: itemMap.get(row.order_id) || [],
-      }));
+    const normalizeStatus = (value) => {
+      const normalized = String(value || "").toLowerCase();
+      if (normalized.includes("refund_waiting") || normalized.includes("refund waiting") || normalized.includes("refund pending")) {
+        return "Refund Waiting";
+      }
+      if (normalized.includes("refund_rejected") || normalized.includes("refund rejected")) {
+        return "Not Refunded";
+      }
+      if (normalized === "refunded") return "Refunded";
+      if (normalized === "cancelled") return "Cancelled";
+      if (normalized.includes("transit") || normalized === "shipped" || normalized === "in_transit") {
+        return "In-transit";
+      }
+      if (normalized === "delivered") return "Delivered";
+      return "Processing";
+    };
+
+    const normalized = rows.map((row) => ({
+      order_id: row.order_id,
+      order_date: row.order_date,
+      total_amount: Number(row.total_amount) || 0,
+      status: normalizeStatus(row.delivery_status || row.order_status),
+      delivery_status: row.delivery_status,
+      shipping_address: row.shipping_address,
+      billing_address: row.billing_address,
+      items: itemMap.get(row.order_id) || [],
+    }));
 
       res.json(normalized);
     });
@@ -399,6 +415,9 @@ export function getAllOrders(req, res) {
     const normalized = String(value || "").toLowerCase();
     if (normalized.includes("refund_waiting") || normalized.includes("refund waiting") || normalized.includes("refund pending")) {
       return "Refund Waiting";
+    }
+    if (normalized.includes("refund_rejected") || normalized.includes("refund rejected")) {
+      return "Not Refunded";
     }
     if (normalized === "refunded") return "Refunded";
     if (normalized === "cancelled") return "Cancelled";
@@ -467,7 +486,7 @@ export function updateDeliveryStatus(req, res) {
   const { status } = req.body;
 
   const normalized = String(status || "").toLowerCase();
-  const allowed = ["preparing", "shipped", "in_transit", "delivered", "cancelled", "refunded", "refund_waiting"];
+  const allowed = ["preparing", "shipped", "in_transit", "delivered", "cancelled", "refunded", "refund_waiting", "refund_rejected"];
   const nextDeliveryStatus = allowed.includes(normalized) ? normalized : "preparing";
 
   const orderStatusMap = {
@@ -478,6 +497,7 @@ export function updateDeliveryStatus(req, res) {
     cancelled: "cancelled",
     refunded: "refunded",
     refund_waiting: "refund_waiting",
+    refund_rejected: "refund_rejected",
   };
   const nextOrderStatus = orderStatusMap[nextDeliveryStatus] || "preparing";
 
@@ -498,6 +518,8 @@ export function updateDeliveryStatus(req, res) {
         console.error("Order status sync failed:", orderErr);
       }
 
+      const shouldRestock = nextDeliveryStatus === "refunded";
+
       db.query(
         `
         SELECT 
@@ -515,7 +537,23 @@ export function updateDeliveryStatus(req, res) {
             return res.json({ success: true, delivery_status: nextDeliveryStatus });
           }
           const row = Array.isArray(rows) && rows.length ? rows[0] : {};
-          return res.json({ success: true, ...row, delivery_status: nextDeliveryStatus });
+          if (shouldRestock) {
+            db.query(
+              `
+              UPDATE products p
+              JOIN order_items oi ON oi.product_id = p.product_id
+              SET p.product_stock = p.product_stock + oi.quantity
+              WHERE oi.order_id = ?
+              `,
+              [order_id],
+              () => {
+                sendOrderStatusEmail({ orderId: order_id, status: "refunded" });
+                return res.json({ success: true, ...row, delivery_status: nextDeliveryStatus });
+              }
+            );
+          } else {
+            return res.json({ success: true, ...row, delivery_status: nextDeliveryStatus });
+          }
         }
       );
     });
@@ -529,7 +567,7 @@ export function cancelOrder(req, res) {
   }
 
   const checkSql = `
-    SELECT o.status AS order_status, d.delivery_status
+    SELECT o.status AS order_status, o.order_date, d.delivery_status
     FROM orders o
     LEFT JOIN deliveries d ON d.order_id = o.order_id
     WHERE o.order_id = ?
@@ -608,29 +646,34 @@ export function refundOrder(req, res) {
     const orderStatus = String(rows[0].order_status || "").toLowerCase();
     const deliveryStatus = String(rows[0].delivery_status || "").toLowerCase();
 
-    if (orderStatus === "refunded" || deliveryStatus === "refunded") {
-      return res.status(400).json({ error: "Order already refunded" });
+    if (["refunded", "refund_waiting", "refund_rejected"].includes(orderStatus) || ["refunded", "refund_waiting", "refund_rejected"].includes(deliveryStatus)) {
+      return res.status(400).json({ error: "Refund already requested" });
     }
 
-    if (orderStatus !== "delivered" && deliveryStatus !== "delivered") {
-      return res.status(400).json({ error: "Only delivered orders can be refunded" });
+    if (orderStatus === "cancelled" || deliveryStatus === "cancelled") {
+      return res.status(400).json({ error: "Cancelled orders cannot be refunded" });
     }
 
-    db.query("UPDATE orders SET status = 'refunded' WHERE order_id = ?", [orderId], () => {
-      db.query("UPDATE deliveries SET delivery_status = 'refunded' WHERE order_id = ?", [orderId], () => {
-        db.query(
-          `
-          UPDATE products p
-          JOIN order_items oi ON oi.product_id = p.product_id
-          SET p.product_stock = p.product_stock + oi.quantity
-          WHERE oi.order_id = ?
-          `,
-          [orderId],
-          () => {
-            res.json({ success: true, order_id: orderId });
-            sendOrderStatusEmail({ orderId, status: "refunded" });
-          }
-        );
+    const isDelivered = orderStatus === "delivered" || deliveryStatus === "delivered";
+    const isInTransit = ["in_transit", "shipped"].includes(orderStatus) || ["in_transit", "shipped"].includes(deliveryStatus);
+
+    if (!isDelivered && !isInTransit) {
+      return res.status(400).json({ error: "Only in-transit or delivered orders can be refunded" });
+    }
+
+    if (isDelivered) {
+      const orderDate = rows[0].order_date ? new Date(rows[0].order_date) : null;
+      if (orderDate && !Number.isNaN(orderDate.getTime())) {
+        const diffDays = (Date.now() - orderDate.getTime()) / (24 * 60 * 60 * 1000);
+        if (diffDays > 30) {
+          return res.status(400).json({ error: "Refund window expired" });
+        }
+      }
+    }
+
+    db.query("UPDATE orders SET status = 'refund_waiting' WHERE order_id = ?", [orderId], () => {
+      db.query("UPDATE deliveries SET delivery_status = 'refund_waiting' WHERE order_id = ?", [orderId], () => {
+        res.json({ success: true, order_id: orderId, status: "refund_waiting" });
       });
     });
   });

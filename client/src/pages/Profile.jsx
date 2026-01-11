@@ -72,16 +72,41 @@ const isRefundWindowOpen = (order) => {
 };
 
 const getRefundState = (order) => {
+  if (order?.status === "Refund Waiting") {
+    return { allowed: false, label: "Refund waiting", reason: "Waiting for sales manager approval" };
+  }
   if (order?.status === "Refunded") {
     return { allowed: false, label: "Refunded", reason: "Order already refunded" };
   }
+  if (order?.status === "Not Refunded") {
+    return { allowed: false, label: "Not refunded", reason: "Refund request was rejected" };
+  }
+  if (order?.status === "Cancelled") {
+    return { allowed: false, label: "Cannot be refunded", reason: "Cancelled orders cannot be refunded" };
+  }
+  if (order?.status === "Processing") {
+    return { allowed: false, label: "Cannot be refunded", reason: "Processing orders cannot be refunded" };
+  }
+  if (order?.status === "In-transit") {
+    return { allowed: true, label: "Refund", reason: "Request refund" };
+  }
   if (order?.status !== "Delivered") {
-    return { allowed: false, label: "Refund", reason: "Only delivered orders can be refunded" };
+    return { allowed: false, label: "Cannot be refunded", reason: "Only delivered orders can be refunded" };
   }
   if (!isRefundWindowOpen(order)) {
-    return { allowed: false, label: "Refund", reason: "Returns are only available within 30 days of purchase." };
+    return { allowed: false, label: "Cannot be refunded", reason: "Returns are only available within 30 days of purchase." };
   }
   return { allowed: true, label: "Refund", reason: "Request refund" };
+};
+
+const getCancelState = (order) => {
+  if (order?.status === "Processing") {
+    return { allowed: true, label: "Cancel", reason: "Cancel this order" };
+  }
+  if (order?.status === "Cancelled") {
+    return { allowed: false, label: "Cancelled", reason: "Order already cancelled" };
+  }
+  return { allowed: false, label: "Cannot be canceled", reason: "Only processing orders can be cancelled" };
 };
 
 const handleCancelOrder = async (orderId) => {
@@ -110,7 +135,7 @@ const handleRefundOrder = async (orderId) => {
     setOrders(prev =>
       prev.map(o =>
         o.id === orderId
-          ? { ...o, status: "Refunded" }
+          ? { ...o, status: "Refund Waiting" }
           : o
       )
     );
@@ -366,6 +391,16 @@ const handleRefundOrder = async (orderId) => {
                     color: "#0f766e",
                     border: "#5eead4",
                   },
+                  "Refund Waiting": {
+                    bg: "rgba(245,158,11,0.18)",
+                    color: "#b45309",
+                    border: "#f59e0b",
+                  },
+                  "Not Refunded": {
+                    bg: "rgba(148,163,184,0.2)",
+                    color: "#475569",
+                    border: "#94a3b8",
+                  },
                   "In-transit": {
                     bg: "rgba(59,130,246,0.15)",
                     color: "#1d4ed8",
@@ -424,45 +459,48 @@ const handleRefundOrder = async (orderId) => {
   {order.status}
 </span>
 
-    {order.status?.toLowerCase().trim() === "processing" && (
-      <button
-        onClick={() => handleCancelOrder(order.id)}
-
-
-
-        style={{
-          backgroundColor: "#fee2e2",
-          color: "#b91c1c",
-          border: "1px solid #fecaca",
-          padding: "6px 12px",
-          borderRadius: 8,
-          cursor: "pointer",
-          fontWeight: 700,
-        }}
-      >
-        Cancel
-      </button>
-    )}
-    {order.status?.toLowerCase().trim() === "delivered" && (() => {
+    {(() => {
+      const cancelState = getCancelState(order);
+      return (
+        <button
+          onClick={() => handleCancelOrder(order.id)}
+          disabled={!cancelState.allowed}
+          title={cancelState.reason}
+          style={{
+            backgroundColor: cancelState.allowed ? "#fee2e2" : "#f1f5f9",
+            color: cancelState.allowed ? "#b91c1c" : "#94a3b8",
+            border: `1px solid ${cancelState.allowed ? "#fecaca" : "#e2e8f0"}`,
+            padding: "6px 12px",
+            borderRadius: 8,
+            cursor: cancelState.allowed ? "pointer" : "not-allowed",
+            fontWeight: 700,
+            opacity: cancelState.allowed ? 1 : 0.65,
+          }}
+        >
+          {cancelState.label}
+        </button>
+      );
+    })()}
+    {(() => {
       const refundState = getRefundState(order);
       return (
-      <button
-        onClick={() => handleRefundOrder(order.id)}
-        style={{
-          backgroundColor: refundState.allowed ? "#e0f2fe" : "#f1f5f9",
-          color: refundState.allowed ? "#0369a1" : "#94a3b8",
-          border: `1px solid ${refundState.allowed ? "#bae6fd" : "#e2e8f0"}`,
-          padding: "6px 12px",
-          borderRadius: 8,
-          cursor: refundState.allowed ? "pointer" : "not-allowed",
-          fontWeight: 700,
-          opacity: refundState.allowed ? 1 : 0.65,
-        }}
-        disabled={!refundState.allowed}
-        title={refundState.reason}
-      >
-        {refundState.label}
-      </button>
+        <button
+          onClick={() => handleRefundOrder(order.id)}
+          style={{
+            backgroundColor: refundState.allowed ? "#e0f2fe" : "#f1f5f9",
+            color: refundState.allowed ? "#0369a1" : "#94a3b8",
+            border: `1px solid ${refundState.allowed ? "#bae6fd" : "#e2e8f0"}`,
+            padding: "6px 12px",
+            borderRadius: 8,
+            cursor: refundState.allowed ? "pointer" : "not-allowed",
+            fontWeight: 700,
+            opacity: refundState.allowed ? 1 : 0.65,
+          }}
+          disabled={!refundState.allowed}
+          title={refundState.reason}
+        >
+          {refundState.label}
+        </button>
       );
     })()}
   </div>
