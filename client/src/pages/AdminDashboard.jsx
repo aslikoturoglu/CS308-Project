@@ -11,7 +11,6 @@ import {
   unclaimSupportConversation,
   fetchCustomerWishlist,
   fetchCustomerProfile,
-  fetchCustomerCart,
   sendSupportMessage,
   deleteConversation as deleteConversationApi,
 } from "../services/supportService";
@@ -179,7 +178,6 @@ function AdminDashboard() {
   const [customerOrders, setCustomerOrders] = useState([]);
   const [customerWishlist, setCustomerWishlist] = useState([]);
   const [customerProfile, setCustomerProfile] = useState(null);
-  const [customerCart, setCustomerCart] = useState({ items: [], total: 0 });
   const [isLoadingCustomerInfo, setIsLoadingCustomerInfo] = useState(false);
   const [replyDraft, setReplyDraft] = useState("");
   const [replyFiles, setReplyFiles] = useState([]);
@@ -435,7 +433,6 @@ function AdminDashboard() {
       setCustomerOrders([]);
       setCustomerWishlist([]);
       setCustomerProfile(null);
-      setCustomerCart({ items: [], total: 0 });
       return undefined;
     }
 
@@ -447,9 +444,8 @@ function AdminDashboard() {
       fetchUserOrders(activeChat.user_id, controller.signal),
       fetchCustomerWishlist(activeChat.user_id),
       fetchCustomerProfile(activeChat.user_id),
-      fetchCustomerCart(activeChat.user_id),
     ])
-      .then(([ordersResult, wishlistResult, profileResult, cartResult]) => {
+      .then(([ordersResult, wishlistResult, profileResult]) => {
         if (!isMounted) return;
         if (ordersResult.status === "fulfilled") {
           setCustomerOrders(ordersResult.value);
@@ -472,13 +468,6 @@ function AdminDashboard() {
         } else {
           console.error("Customer profile fetch failed", profileResult.reason);
           setCustomerProfile(null);
-        }
-
-        if (cartResult.status === "fulfilled") {
-          setCustomerCart(cartResult.value || { items: [], total: 0 });
-        } else {
-          console.error("Customer cart fetch failed", cartResult.reason);
-          setCustomerCart({ items: [], total: 0 });
         }
       })
       .finally(() => {
@@ -2978,20 +2967,6 @@ function AdminDashboard() {
                           </p>
                           <strong>{customerWishlist.length}</strong>
                         </div>
-                        <div style={{ textAlign: "right" }}>
-                          <p
-                            style={{
-                              margin: 0,
-                              color: "#94a3b8",
-                              fontSize: "0.75rem",
-                              textTransform: "uppercase",
-                              letterSpacing: 1,
-                            }}
-                          >
-                            Cart
-                          </p>
-                          <strong>{customerCart.items?.length || 0}</strong>
-                        </div>
                       </div>
                     </div>
                     {isLoadingCustomerInfo ? (
@@ -3043,31 +3018,6 @@ function AdminDashboard() {
                                 </div>
                               ))}
                             </div>
-                          )}
-                        </div>
-                        <div>
-                          <p style={{ margin: "0 0 6px", color: "#475569", fontWeight: 700 }}>Cart items</p>
-                          {customerCart.items?.length ? (
-                            <div style={{ display: "grid", gap: 6 }}>
-                              {customerCart.items.slice(0, 4).map((item) => (
-                                <div key={item.id} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                                  <span style={{ color: "#0f172a" }}>
-                                    {item.name} × {item.quantity}
-                                  </span>
-                                  <span style={{ color: "#0f172a", fontWeight: 700 }}>
-                                    ₺{Number(item.line_total || 0).toLocaleString("tr-TR")}
-                                  </span>
-                                </div>
-                              ))}
-                              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                                <span style={{ color: "#64748b" }}>Cart total</span>
-                                <span style={{ color: "#0f172a", fontWeight: 800 }}>
-                                  ₺{Number(customerCart.total || 0).toLocaleString("tr-TR")}
-                                </span>
-                              </div>
-                            </div>
-                          ) : (
-                            <p style={{ margin: 0, color: "#94a3b8" }}>Cart is empty.</p>
                           )}
                         </div>
                       </div>
