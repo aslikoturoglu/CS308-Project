@@ -1451,9 +1451,23 @@ function AdminDashboard() {
       if (!res.ok) {
         throw new Error(data.error || "Return status update failed");
       }
+      const nextOrderStatus =
+        status === "rejected"
+          ? "refund_rejected"
+          : status === "accepted"
+          ? "refund_waiting"
+          : status === "refunded"
+          ? "refunded"
+          : null;
       setReturnRequests((prev) =>
         prev.map((item) =>
-          item.return_id === returnId ? { ...item, return_status: status } : item
+          item.return_id === returnId
+            ? {
+                ...item,
+                return_status: status,
+                order_status: nextOrderStatus ?? item.order_status,
+              }
+            : item
         )
       );
       addToast("Return request updated", "info");
@@ -2620,88 +2634,126 @@ function AdminDashboard() {
                   <p style={{ margin: 0, color: "#94a3b8" }}>No return requests yet.</p>
                 )}
                 <div style={{ display: "grid", gap: 12 }}>
-                  {returnRequests.map((item) => {
-                    const status = String(item.return_status || "").toLowerCase();
-                    const canApprove = ["requested", "accepted", "received"].includes(status);
-                    const statusLabel =
-                      ["requested", "accepted", "received"].includes(status)
-                        ? "Refund Waiting"
-                        : status === "rejected"
-                        ? "Rejected"
-                        : status === "refunded"
-                        ? "Refunded"
-                        : status || "Unknown";
+                  {(() => {
+  const normalizeStatus = (value) =>
+    String(value || "")
+      .toLowerCase()
+      .replace(/-/g, "_")
+      .replace(/\s+/g, "_");
+  const getOrderStatus = (item) =>
+    normalizeStatus(item.order_status ?? item.orderStatus);
+  const isRefundWaiting = (status) => status === "refund_waiting" || status === "refundwaiting";
+  const isRefunded = (status) => status === "refunded" || status === "refund_accepted" || status === "refundaccepted";
+  const isRefundRejected = (status) =>
+    status === "refund_rejected" || status === "refundrejected" || status === "not_refunded" || status === "notrefunded";
 
-                    return (
-                      <div
-                        key={item.return_id}
-                        style={{
-                          border: "1px solid #e5e7eb",
-                          borderRadius: 12,
-                          padding: 12,
-                          background: "#f8fafc",
-                          display: "grid",
-                          gap: 8,
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                          <div>
-                            <strong>{item.product_name}</strong>
-                            <p style={{ margin: "2px 0 0", color: "#64748b" }}>
-                              {item.customer_name || `User #${item.user_id}`} · {formatOrderId(item.order_id)}
-                            </p>
-                            <p style={{ margin: "2px 0 0", color: "#64748b" }}>
-                              Qty: {item.quantity} · Unit: ₺{Number(item.unit_price || 0).toLocaleString("tr-TR")}
-                            </p>
-                          </div>
-                          <span
-                            style={{
-                              alignSelf: "flex-start",
-                              padding: "4px 10px",
-                              borderRadius: 999,
-                              background: item.return_eligible ? "#dcfce7" : "#fee2e2",
-                              color: item.return_eligible ? "#166534" : "#b91c1c",
-                              fontWeight: 700,
-                              fontSize: "0.85rem",
-                            }}
-                          >
-                            {item.return_eligible ? "Eligible" : "Not eligible"}
-                          </span>
-                        </div>
-                        {item.reason && <p style={{ margin: 0, color: "#0f172a" }}>{item.reason}</p>}
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-                          <small style={{ color: "#6b7280" }}>
-                            {item.requested_at
-                              ? new Date(item.requested_at).toLocaleString("tr-TR")
-                              : "Date unavailable"}
-                          </small>
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            {canApprove && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => handleReturnStatusUpdate(item.return_id, "refunded")}
-                                  style={primaryBtn}
-                                >
-                                  Accept
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleReturnStatusUpdate(item.return_id, "rejected")}
-                                  style={{ ...primaryBtn, background: "#fee2e2", color: "#b91c1c" }}
-                                >
-                                  Reject
-                                </button>
-                              </>
-                            )}
-                            {!canApprove && (
-                              <span style={{ color: "#94a3b8", fontWeight: 700 }}>{statusLabel}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+  const pendingRequests = returnRequests.filter((item) => isRefundWaiting(getOrderStatus(item)));
+  const completedRequests = returnRequests.filter((item) => {
+    const status = getOrderStatus(item);
+    return isRefunded(status) || isRefundRejected(status);
+  });
+  const renderRequestCard = (item) => {
+    const status = getOrderStatus(item);
+    const canApprove = isRefundWaiting(status);
+    const statusLabel = isRefundWaiting(status)
+      ? "Refund Waiting"
+      : isRefundRejected(status)
+      ? "Refund Rejected"
+      : isRefunded(status)
+      ? "Refunded"
+      : status || "Unknown";
+
+    return (
+      <div
+        key={item.return_id}
+        style={{
+          border: "1px solid #e5e7eb",
+          borderRadius: 12,
+          padding: 12,
+          background: "#f8fafc",
+          display: "grid",
+          gap: 8,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+          <div>
+            <strong>{item.product_name}</strong>
+            <p style={{ margin: "2px 0 0", color: "#64748b" }}>
+              {item.customer_name || `User #${item.user_id}`} - {formatOrderId(item.order_id)}
+            </p>
+            <p style={{ margin: "2px 0 0", color: "#64748b" }}>
+              Qty: {item.quantity} - Unit: ₺{Number(item.unit_price || 0).toLocaleString("tr-TR")}
+            </p>
+          </div>
+          <span
+            style={{
+              alignSelf: "flex-start",
+              padding: "4px 10px",
+              borderRadius: 999,
+              background: item.return_eligible ? "#dcfce7" : "#fee2e2",
+              color: item.return_eligible ? "#166534" : "#b91c1c",
+              fontWeight: 700,
+              fontSize: "0.85rem",
+            }}
+          >
+            {item.return_eligible ? "Eligible" : "Not eligible"}
+          </span>
+        </div>
+        {item.reason && <p style={{ margin: 0, color: "#0f172a" }}>{item.reason}</p>}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <small style={{ color: "#6b7280" }}>
+            {item.requested_at ? new Date(item.requested_at).toLocaleString("tr-TR") : "Date unavailable"}
+          </small>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {canApprove ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleReturnStatusUpdate(item.return_id, "refunded")}
+                  style={primaryBtn}
+                >
+                  Accept
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleReturnStatusUpdate(item.return_id, "rejected")}
+                  style={{ ...primaryBtn, background: "#fee2e2", color: "#b91c1c" }}
+                >
+                  Reject
+                </button>
+              </>
+            ) : (
+              <span style={{ color: "#94a3b8", fontWeight: 700 }}>{statusLabel}</span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <>
+      <div style={{ display: "grid", gap: 12 }}>
+        <h4 style={{ margin: "6px 0 0", color: "#0f172a" }}>
+          Pending requests ({pendingRequests.length})
+        </h4>
+        {pendingRequests.length === 0 && (
+          <p style={{ margin: 0, color: "#94a3b8" }}>No pending requests.</p>
+        )}
+        {pendingRequests.map(renderRequestCard)}
+      </div>
+      <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
+        <h4 style={{ margin: "6px 0 0", color: "#0f172a" }}>
+          Completed requests ({completedRequests.length})
+        </h4>
+        {completedRequests.length === 0 && (
+          <p style={{ margin: 0, color: "#94a3b8" }}>No completed requests.</p>
+        )}
+        {completedRequests.map(renderRequestCard)}
+      </div>
+    </>
+  );
+})()}
                 </div>
               </div>
 
@@ -3661,5 +3713,6 @@ const th = {
 const td = { padding: "10px 12px", whiteSpace: "normal", wordBreak: "break-word" };
 
 export default AdminDashboard;
+
 
 
