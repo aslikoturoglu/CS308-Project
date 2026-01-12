@@ -1,4 +1,4 @@
-const SUPPORT_BASE = "/api/support";
+export const SUPPORT_BASE = "/api/support";
 
 async function handleResponse(res) {
   const data = await res.json().catch(() => ({}));

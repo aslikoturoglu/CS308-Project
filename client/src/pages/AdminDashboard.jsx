@@ -9,10 +9,12 @@ import {
   fetchSupportMessages,
   claimSupportConversation,
   unclaimSupportConversation,
+  fetchCustomerCart,
   fetchCustomerWishlist,
   fetchCustomerProfile,
   sendSupportMessage,
   deleteConversation as deleteConversationApi,
+  SUPPORT_BASE,
 } from "../services/supportService";
 import {
   advanceOrderStatus,
@@ -129,6 +131,30 @@ function normalizeDeliveryStatus(value) {
   return "Processing";
 }
 
+const RETURN_WINDOW_DAYS = 30;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function resolveDeliveryLabel(order) {
+  return order?.deliveryStatus || order?.delivery_status || order?.status || "";
+}
+
+function isReturnEligible(order) {
+  const rawStatus = resolveDeliveryLabel(order);
+  const normalized = String(rawStatus || "").toLowerCase();
+  if (!normalized) return false;
+  if (normalized.includes("refund") || normalized.includes("cancel") || normalized.includes("return")) {
+    return false;
+  }
+  if (normalized !== "delivered") return false;
+
+  const orderDate = order?.date || order?.order_date;
+  if (!orderDate) return true;
+  const parsed = new Date(orderDate);
+  if (Number.isNaN(parsed.getTime())) return true;
+  const diffDays = (Date.now() - parsed.getTime()) / MS_PER_DAY;
+  return diffDays <= RETURN_WINDOW_DAYS;
+}
+
 const rolesToSections = {
   admin: ["dashboard", "product", "sales", "support"],
   product_manager: ["product"],
@@ -178,11 +204,14 @@ function AdminDashboard() {
   const [customerOrders, setCustomerOrders] = useState([]);
   const [customerWishlist, setCustomerWishlist] = useState([]);
   const [customerProfile, setCustomerProfile] = useState(null);
+  const [customerCart, setCustomerCart] = useState({ items: [], total: 0 });
   const [isLoadingCustomerInfo, setIsLoadingCustomerInfo] = useState(false);
   const [replyDraft, setReplyDraft] = useState("");
   const [replyFiles, setReplyFiles] = useState([]);
   const [isLoadingChats, setIsLoadingChats] = useState(false);
   const [isLoadingThread, setIsLoadingThread] = useState(false);
+  const [isInboxStreaming, setIsInboxStreaming] = useState(false);
+  const [isThreadStreaming, setIsThreadStreaming] = useState(false);
   const [isSendingReply, setIsSendingReply] = useState(false);
   const [returnRequests, setReturnRequests] = useState([]);
   const [isLoadingReturns, setIsLoadingReturns] = useState(false);
@@ -363,10 +392,30 @@ function AdminDashboard() {
   }, [showUnclaimedOnly, filteredChats, activeConversationId]);
 
   useEffect(() => {
+    if (activeSection !== "support") return;
     loadInbox();
-    const interval = setInterval(loadInbox, 4000);
+  }, [activeSection, loadInbox]);
+
+  useEffect(() => {
+    if (activeSection !== "support") return undefined;
+    const streamUrl = `${SUPPORT_BASE}/inbox/stream`;
+    const source = new EventSource(streamUrl);
+    const handleUpdate = () => loadInbox();
+    source.addEventListener("inbox-update", handleUpdate);
+    source.addEventListener("ready", handleUpdate);
+    source.onopen = () => setIsInboxStreaming(true);
+    source.onerror = () => setIsInboxStreaming(false);
+    return () => {
+      source.close();
+      setIsInboxStreaming(false);
+    };
+  }, [activeSection, loadInbox]);
+
+  useEffect(() => {
+    if (activeSection !== "support" || isInboxStreaming) return undefined;
+    const interval = setInterval(loadInbox, 8000);
     return () => clearInterval(interval);
-  }, [loadInbox]);
+  }, [activeSection, isInboxStreaming, loadInbox]);
 
   useEffect(() => {
     refreshPendingReviews();
@@ -409,9 +458,9 @@ function AdminDashboard() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  useEffect(() => {
-    if (!activeConversationId) return undefined;
-    const fetchThread = (options = { showSpinner: false }) => {
+  const fetchThread = useCallback(
+    (options = { showSpinner: false }) => {
+      if (!activeConversationId) return;
       if (options.showSpinner) setIsLoadingThread(true);
       fetchSupportMessages(activeConversationId)
         .then((data) => setChatMessages(data.messages || []))
@@ -422,17 +471,42 @@ function AdminDashboard() {
         .finally(() => {
           if (options.showSpinner) setIsLoadingThread(false);
         });
-    };
+    },
+    [activeConversationId, addToast]
+  );
+
+  useEffect(() => {
+    if (!activeConversationId) return undefined;
     fetchThread({ showSpinner: true });
-    const interval = setInterval(() => fetchThread({ showSpinner: false }), 3000);
+  }, [activeConversationId, fetchThread]);
+
+  useEffect(() => {
+    if (!activeConversationId || isThreadStreaming) return undefined;
+    const interval = setInterval(() => fetchThread({ showSpinner: false }), 6000);
     return () => clearInterval(interval);
-  }, [activeConversationId, addToast]);
+  }, [activeConversationId, fetchThread, isThreadStreaming]);
+
+  useEffect(() => {
+    if (!activeConversationId) return undefined;
+    const streamUrl = `${SUPPORT_BASE}/conversations/${activeConversationId}/stream`;
+    const source = new EventSource(streamUrl);
+    const handleUpdate = () => fetchThread({ showSpinner: false });
+    source.addEventListener("support-message", handleUpdate);
+    source.addEventListener("ready", handleUpdate);
+    source.onopen = () => setIsThreadStreaming(true);
+    source.onerror = () => setIsThreadStreaming(false);
+    return () => {
+      source.close();
+      setIsThreadStreaming(false);
+    };
+  }, [activeConversationId, fetchThread]);
 
   useEffect(() => {
     if (!activeChat?.user_id) {
       setCustomerOrders([]);
       setCustomerWishlist([]);
       setCustomerProfile(null);
+      setCustomerCart({ items: [], total: 0 });
       return undefined;
     }
 
@@ -444,8 +518,9 @@ function AdminDashboard() {
       fetchUserOrders(activeChat.user_id, controller.signal),
       fetchCustomerWishlist(activeChat.user_id),
       fetchCustomerProfile(activeChat.user_id),
+      fetchCustomerCart(activeChat.user_id),
     ])
-      .then(([ordersResult, wishlistResult, profileResult]) => {
+      .then(([ordersResult, wishlistResult, profileResult, cartResult]) => {
         if (!isMounted) return;
         if (ordersResult.status === "fulfilled") {
           setCustomerOrders(ordersResult.value);
@@ -468,6 +543,14 @@ function AdminDashboard() {
         } else {
           console.error("Customer profile fetch failed", profileResult.reason);
           setCustomerProfile(null);
+        }
+
+        if (cartResult.status === "fulfilled") {
+          setCustomerCart(cartResult.value || { items: [], total: 0 });
+        } else {
+          console.error("Customer cart fetch failed", cartResult.reason);
+          setCustomerCart({ items: [], total: 0 });
+          addToast("Customer cart could not be loaded", "error");
         }
       })
       .finally(() => {
@@ -2969,6 +3052,20 @@ function AdminDashboard() {
                               letterSpacing: 1,
                             }}
                           >
+                            Cart
+                          </p>
+                          <strong>{customerCart.items?.length ?? 0}</strong>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <p
+                            style={{
+                              margin: 0,
+                              color: "#94a3b8",
+                              fontSize: "0.75rem",
+                              textTransform: "uppercase",
+                              letterSpacing: 1,
+                            }}
+                          >
                             Wishlist
                           </p>
                           <strong>{customerWishlist.length}</strong>
@@ -2985,25 +3082,67 @@ function AdminDashboard() {
                             <p style={{ margin: 0, color: "#94a3b8" }}>No orders yet.</p>
                           ) : (
                             <div style={{ display: "grid", gap: 6 }}>
-                              {customerOrders.slice(0, 3).map((order) => (
-                                <div key={order.id} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                                  <span style={{ color: "#0f172a" }}>
-                                    {order.formattedId || formatOrderId(order.id)}
-                                  </span>
-                                  <span
+                              {customerOrders.slice(0, 3).map((order) => {
+                                const deliveryLabel = normalizeDeliveryStatus(resolveDeliveryLabel(order));
+                                const isEligible = isReturnEligible(order);
+                                return (
+                                  <div
+                                    key={order.id}
                                     style={{
-                                      padding: "2px 8px",
-                                      borderRadius: 999,
-                                      fontSize: "0.8rem",
-                                      background: "#e0f2fe",
-                                      color: "#0369a1",
-                                      fontWeight: 700,
+                                      border: "1px solid #e2e8f0",
+                                      borderRadius: 10,
+                                      padding: 8,
+                                      display: "grid",
+                                      gap: 6,
                                     }}
                                   >
-                                    {order.status}
-                                  </span>
-                                </div>
-                              ))}
+                                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                                      <span style={{ color: "#0f172a", fontWeight: 700 }}>
+                                        {order.formattedId || formatOrderId(order.id)}
+                                      </span>
+                                      <span
+                                        style={{
+                                          padding: "2px 8px",
+                                          borderRadius: 999,
+                                          fontSize: "0.8rem",
+                                          background: "#e0f2fe",
+                                          color: "#0369a1",
+                                          fontWeight: 700,
+                                        }}
+                                      >
+                                        {order.status}
+                                      </span>
+                                    </div>
+                                    <small style={{ color: "#64748b" }}>Delivery: {deliveryLabel}</small>
+                                    {Array.isArray(order.items) && order.items.length > 0 && (
+                                      <div style={{ display: "grid", gap: 4 }}>
+                                        {order.items.slice(0, 3).map((item) => (
+                                          <div
+                                            key={item.id}
+                                            style={{ display: "flex", justifyContent: "space-between", gap: 8 }}
+                                          >
+                                            <span style={{ color: "#0f172a" }}>{item.name}</span>
+                                            <span
+                                              style={{
+                                                color: isEligible ? "#166534" : "#b91c1c",
+                                                fontWeight: 700,
+                                                fontSize: "0.8rem",
+                                              }}
+                                            >
+                                              {isEligible ? "Return eligible" : "Not returnable"}
+                                            </span>
+                                          </div>
+                                        ))}
+                                        {order.items.length > 3 && (
+                                          <small style={{ color: "#94a3b8" }}>
+                                            +{order.items.length - 3} more items
+                                          </small>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
@@ -3024,6 +3163,36 @@ function AdminDashboard() {
                                 </div>
                               ))}
                             </div>
+                          )}
+                        </div>
+                        <div>
+                          <p style={{ margin: "0 0 6px", color: "#475569", fontWeight: 700 }}>Cart items</p>
+                          {customerCart.items?.length ? (
+                            <div style={{ display: "grid", gap: 6 }}>
+                              {customerCart.items.slice(0, 4).map((item) => (
+                                <div key={item.id} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                                  <span style={{ color: "#0f172a" }}>
+                                    {item.name} × {item.quantity}
+                                  </span>
+                                  <span style={{ color: "#0f172a", fontWeight: 700 }}>
+                                    ₺{Number(item.line_total || 0).toLocaleString("tr-TR")}
+                                  </span>
+                                </div>
+                              ))}
+                              {customerCart.items.length > 4 && (
+                                <small style={{ color: "#94a3b8" }}>
+                                  +{customerCart.items.length - 4} more items
+                                </small>
+                              )}
+                              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                                <span style={{ color: "#475569", fontWeight: 700 }}>Cart total</span>
+                                <span style={{ color: "#0f172a", fontWeight: 700 }}>
+                                  ₺{Number(customerCart.total || 0).toLocaleString("tr-TR")}
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <p style={{ margin: 0, color: "#94a3b8" }}>Cart is empty.</p>
                           )}
                         </div>
                       </div>

@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useAuth } from "./AuthContext";
@@ -11,6 +12,7 @@ import {
   fetchUserConversation,
   linkConversationToUser,
   sendUserMessage,
+  SUPPORT_BASE,
 } from "../services/supportService";
 
 const ChatContext = createContext(undefined);
@@ -76,6 +78,8 @@ export function ChatProvider({ children }) {
   const [lastError, setLastError] = useState(null);
   const [hasHydrated, setHasHydrated] = useState(false);
   const [chatUnavailable, setChatUnavailable] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const hydrateRef = useRef(null);
 
   const activeUserId = useMemo(
     () => serverUserId ?? user?.id ?? clientToken,
@@ -163,12 +167,38 @@ export function ChatProvider({ children }) {
   }, [hydrateFromServer]);
 
   useEffect(() => {
-    if (!conversationId || !isOpen || chatUnavailable) return undefined;
+    hydrateRef.current = hydrateFromServer;
+  }, [hydrateFromServer]);
+
+  useEffect(() => {
+    if (!conversationId || !isOpen || chatUnavailable || isStreaming) return undefined;
     const interval = setInterval(() => {
       hydrateFromServer();
     }, 4500);
     return () => clearInterval(interval);
-  }, [conversationId, hydrateFromServer, isOpen, chatUnavailable]);
+  }, [conversationId, hydrateFromServer, isOpen, chatUnavailable, isStreaming]);
+
+  useEffect(() => {
+    if (!conversationId || chatUnavailable) return undefined;
+    const streamUrl = `${SUPPORT_BASE}/conversations/${conversationId}/stream`;
+    const source = new EventSource(streamUrl);
+
+    const handleUpdate = () => {
+      hydrateRef.current?.();
+    };
+
+    source.addEventListener("support-message", handleUpdate);
+    source.addEventListener("ready", handleUpdate);
+    source.onopen = () => setIsStreaming(true);
+    source.onerror = () => {
+      setIsStreaming(false);
+    };
+
+    return () => {
+      source.close();
+      setIsStreaming(false);
+    };
+  }, [conversationId, chatUnavailable]);
 
   useEffect(() => {
     if (isOpen) setUnreadCount(0);

@@ -1,5 +1,11 @@
 import db from "../db.js";
 import { sendMail } from "../utils/mailer.js";
+import {
+  broadcastConversationMessage,
+  broadcastInboxUpdate,
+  registerConversationStream,
+  registerInboxStream,
+} from "../utils/supportStream.js";
 
 const DEFAULT_USER_ID = Number(process.env.DEFAULT_USER_ID || 1);
 const DEFAULT_AGENT_ID = Number(
@@ -167,7 +173,7 @@ function ensureConversation(userId, orderId, callback) {
 
     if (rows.length > 0) {
       const { conversation_id } = rows[0];
-      return callback(null, conversation_id);
+      return callback(null, conversation_id, false);
     }
 
     const insertSql = `
@@ -179,7 +185,7 @@ function ensureConversation(userId, orderId, callback) {
         console.error("Support conversation could not be created:", insertErr);
         return callback(insertErr);
       }
-      callback(null, result.insertId);
+      callback(null, result.insertId, true);
     });
   });
 }
@@ -196,6 +202,18 @@ function mapMessages(rows, userId, attachmentMap = new Map()) {
   }));
 }
 
+export function streamConversation(req, res) {
+  const conversationId = Number(req.params.conversation_id);
+  if (!conversationId) {
+    return res.status(400).json({ error: "conversation_id zorunlu" });
+  }
+  registerConversationStream(conversationId, req, res);
+}
+
+export function streamInbox(req, res) {
+  registerInboxStream(req, res);
+}
+
 export function getConversation(req, res) {
   const orderId = req.query.order_id ? Number(req.query.order_id) : null;
   const incomingUserId = req.query.user_id;
@@ -206,9 +224,12 @@ export function getConversation(req, res) {
       return res.status(500).json({ error: "Kullanıcı oluşturulamadı" });
     }
 
-    ensureConversation(userId, orderId, (convErr, conversationId) => {
+    ensureConversation(userId, orderId, (convErr, conversationId, created) => {
       if (convErr) {
         return res.status(500).json({ error: "Destek kaydı açılamadı" });
+      }
+      if (created) {
+        broadcastInboxUpdate({ type: "created", conversation_id: conversationId, user_id: userId });
       }
 
       const messagesSql = `
@@ -276,18 +297,23 @@ export function postCustomerMessage(req, res) {
         }
 
         const finalize = (attachments = []) => {
+          const messagePayload = {
+            id: result.insertId,
+            text: messageText,
+            sender_id: userId,
+            from: "customer",
+            timestamp: new Date().toISOString(),
+            attachments,
+          };
+
           res.json({
             conversation_id: conversationId,
-            message: {
-              id: result.insertId,
-              text: messageText,
-              sender_id: userId,
-              from: "customer",
-              timestamp: new Date().toISOString(),
-              attachments,
-            },
+            message: messagePayload,
             user_id: userId,
           });
+
+          broadcastConversationMessage(conversationId, messagePayload);
+          broadcastInboxUpdate({ type: "message", conversation_id: conversationId });
 
           // Arka planda destek ekibine e-posta bildirimi gönder.
           if (SUPPORT_INBOX_EMAIL) {
@@ -399,6 +425,7 @@ export function deleteConversation(req, res) {
       if (result.affectedRows === 0) {
         return res.status(404).json({ error: "Konuşma bulunamadı" });
       }
+      broadcastInboxUpdate({ type: "deleted", conversation_id: conversationId });
       return res.json({ success: true });
     });
   });
@@ -609,6 +636,7 @@ export function claimConversation(req, res) {
     if (!result.affectedRows) {
       return res.status(404).json({ error: "KonuŸma bulunamad" });
     }
+    broadcastInboxUpdate({ type: "status", conversation_id: conversationId, status: "pending" });
     return res.json({ success: true, conversation_id: conversationId, status: "pending" });
   });
 }
@@ -633,6 +661,7 @@ export function unclaimConversation(req, res) {
     if (!result.affectedRows) {
       return res.status(404).json({ error: "KonuYma bulunamad?" });
     }
+    broadcastInboxUpdate({ type: "status", conversation_id: conversationId, status: "open" });
     return res.json({ success: true, conversation_id: conversationId, status: "open" });
   });
 }
@@ -668,6 +697,7 @@ export function identifyConversation(req, res) {
 
       const currentUserId = rows[0].user_id;
       if (Number(currentUserId) === Number(targetUserId)) {
+        broadcastInboxUpdate({ type: "identify", conversation_id: conversationId, user_id: targetUserId });
         return res.json({ conversation_id: conversationId, user_id: targetUserId });
       }
 
@@ -694,6 +724,7 @@ export function identifyConversation(req, res) {
           if (msgErr) {
             console.error("Support messages update failed:", msgErr);
           }
+          broadcastInboxUpdate({ type: "identify", conversation_id: conversationId, user_id: targetUserId });
           return res.json({ conversation_id: conversationId, user_id: targetUserId });
         });
       });
@@ -755,17 +786,22 @@ export function postSupportReply(req, res) {
         }
 
         const finalize = (attachments = []) => {
+          const messagePayload = {
+            id: result.insertId,
+            sender_id: senderId,
+            from: "support",
+            text: messageText,
+            timestamp: new Date().toISOString(),
+            attachments,
+          };
+
           res.json({
             conversation_id: conversationId,
-            message: {
-              id: result.insertId,
-              sender_id: senderId,
-              from: "support",
-              text: messageText,
-              timestamp: new Date().toISOString(),
-              attachments,
-            },
+            message: messagePayload,
           });
+
+          broadcastConversationMessage(conversationId, messagePayload);
+          broadcastInboxUpdate({ type: "message", conversation_id: conversationId });
 
           // Arka planda müşteriye e-posta bildirimi gönder.
           if (customerEmail) {

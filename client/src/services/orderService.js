@@ -238,6 +238,8 @@ function mapOrderRows(data = []) {
   return (data || []).map((row) => {
     const rawStatus = row.status ?? row.order_status ?? row.delivery_status;
     const status = row.status ? rawStatus : backendToFrontendStatus(rawStatus);
+    const deliveryRaw = row.delivery_status ?? row.deliveryStatus ?? null;
+    const deliveryStatus = deliveryRaw ? backendToFrontendStatus(deliveryRaw) : status;
     const items = normalizeItems(row).map((it, idx) => ({
       id: it.order_item_id ?? it.product_id ?? it.id ?? idx,
       orderItemId: it.order_item_id ?? it.orderItemId ?? null,
@@ -258,6 +260,7 @@ function mapOrderRows(data = []) {
       formattedId: formatOrderId(row.order_id ?? row.id),
       date: row.order_date || row.date,
       status,
+      deliveryStatus,
       total: Number(row.total_amount ?? row.total ?? 0),
       shippingFee: Number(
         row.shipping_fee ?? row.shippingFee ?? row.shipping_cost ?? row.shippingCost ?? 0

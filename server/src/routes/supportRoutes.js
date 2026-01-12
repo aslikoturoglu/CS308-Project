@@ -16,6 +16,8 @@ import {
   postCustomerMessage,
   postSupportReply,
   deleteConversation,
+  streamConversation,
+  streamInbox,
 } from "../controllers/supportController.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -48,7 +50,9 @@ router.post("/message", withAttachments, postCustomerMessage);
 
 // Support agent side
 router.get("/inbox", listConversations);
+router.get("/inbox/stream", streamInbox);
 router.get("/conversations/:conversation_id/messages", getConversationMessages);
+router.get("/conversations/:conversation_id/stream", streamConversation);
 router.get("/customers/:user_id/wishlist", getCustomerWishlist);
 router.get("/customers/:user_id/profile", getCustomerProfile);
 router.get("/customers/:user_id/cart", getCustomerCart);
