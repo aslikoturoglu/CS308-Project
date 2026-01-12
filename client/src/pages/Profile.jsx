@@ -141,16 +141,15 @@ const getCancelState = (order) => {
 
 const getDisplayStatus = (status) => {
   if (["Cancelled", "Canceled"].includes(status)) return "Cancelled";
-  if (["Refund Waiting", "Not Refunded"].includes(status)) return "Refund";
+  if (status === "Refund Waiting") return "Refund Waiting";
   if (status === "Refunded") return "Refunded";
+  if (status === "Not Refunded") return "Not Refunded";
   return status;
 };
 
 const formatReturnStatus = (value) => {
   const normalized = String(value || "").toLowerCase();
-  if (normalized === "requested") return "Return requested";
-  if (normalized === "accepted") return "Return accepted";
-  if (normalized === "received") return "Return received";
+  if (["requested", "accepted", "received"].includes(normalized)) return "Refund Waiting";
   if (normalized === "refunded") return "Refunded";
   if (normalized === "rejected") return "Return rejected";
   return value || "";
@@ -209,6 +208,9 @@ const handleRefundOrder = async (order) => {
       }));
       return [...additions, ...prev];
     });
+    setOrders((prev) =>
+      prev.map((o) => (o.id === order.id ? { ...o, status: "Refund Waiting" } : o))
+    );
   } catch (err) {
     alert(err?.message || "Return request failed.");
   }
@@ -529,6 +531,11 @@ const handleRefundOrder = async (order) => {
                     color: "#15803d",
                     border: "#22c55e",
                   },
+                  "Refund Waiting": {
+                    bg: "rgba(249,115,22,0.18)",
+                    color: "#c2410c",
+                    border: "#fdba74",
+                  },
                   Refund: {
                     bg: "rgba(15,118,110,0.15)",
                     color: "#0f766e",
@@ -538,6 +545,11 @@ const handleRefundOrder = async (order) => {
                     bg: "#e0f2fe",
                     color: "#1d4ed8",
                     border: "#93c5fd",
+                  },
+                  "Not Refunded": {
+                    bg: "rgba(148,163,184,0.18)",
+                    color: "#64748b",
+                    border: "#cbd5e1",
                   },
                   "In-transit": {
                     bg: "rgba(59,130,246,0.15)",

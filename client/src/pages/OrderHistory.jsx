@@ -16,7 +16,14 @@ import { formatPrice } from "../utils/formatPrice";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 
-const timelineSteps = ["Processing", "In-transit", "Delivered", "Cancelled", "Refunded"];
+const timelineSteps = [
+  "Processing",
+  "In-transit",
+  "Delivered",
+  "Refund Waiting",
+  "Refunded",
+  "Cancelled",
+];
 const filterOptions = ["All", ...timelineSteps];
 
 const statusPills = {
@@ -24,7 +31,9 @@ const statusPills = {
   "In-transit": { bg: "rgba(59,130,246,0.15)", color: "#1d4ed8", border: "#60a5fa" },
   Delivered: { bg: "rgba(34,197,94,0.15)", color: "#15803d", border: "#22c55e" },
   Cancelled: { bg: "rgba(248,113,113,0.18)", color: "#b91c1c", border: "#f87171" },
+  "Refund Waiting": { bg: "rgba(249,115,22,0.18)", color: "#c2410c", border: "#fdba74" },
   Refunded: { bg: "rgba(15,118,110,0.15)", color: "#0f766e", border: "#5eead4" },
+  "Not Refunded": { bg: "rgba(148,163,184,0.18)", color: "#64748b", border: "#cbd5e1" },
 };
 
 const REFUND_WINDOW_DAYS = 30;
@@ -107,15 +116,15 @@ function getCancelState(order) {
 
 function getDisplayStatus(status) {
   if (status === "Cancelled") return "Cancelled";
-  if (["Refund Waiting", "Refunded", "Not Refunded"].includes(status)) return "Refunded";
+  if (status === "Refund Waiting") return "Refund Waiting";
+  if (status === "Refunded") return "Refunded";
+  if (status === "Not Refunded") return "Not Refunded";
   return status;
 }
 
 function formatReturnStatus(value) {
   const normalized = String(value || "").toLowerCase();
-  if (normalized === "requested") return "Requested";
-  if (normalized === "accepted") return "Accepted";
-  if (normalized === "received") return "Received";
+  if (["requested", "accepted", "received"].includes(normalized)) return "Refund Waiting";
   if (normalized === "refunded") return "Refunded";
   if (normalized === "rejected") return "Rejected";
   return value || "";
@@ -276,7 +285,7 @@ function OrderHistory() {
     }
   };
 
-  const handleReturnRequest = async (orderItemId) => {
+  const handleReturnRequest = async (orderId, orderItemId) => {
     if (!orderItemId || !user?.id) return;
     const reason = window.prompt("Return reason (optional):", "");
     if (reason === null) return;
@@ -294,6 +303,9 @@ function OrderHistory() {
         },
         ...prev,
       ]);
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status: "Refund Waiting" } : o))
+      );
     } catch (err) {
       alert(err?.message || "Return request failed.");
     }
@@ -625,7 +637,7 @@ function OrderHistory() {
                                 {canRequestReturn && !returnStatus && (
                                   <button
                                     type="button"
-                                    onClick={() => handleReturnRequest(item.orderItemId)}
+                                    onClick={() => handleReturnRequest(order.id, item.orderItemId)}
                                     style={{
                                       marginTop: 8,
                                       background: "#e0f2fe",

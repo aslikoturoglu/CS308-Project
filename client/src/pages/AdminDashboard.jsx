@@ -2406,12 +2406,8 @@ function AdminDashboard() {
                     const status = String(item.return_status || "").toLowerCase();
                     const canApprove = ["requested", "accepted", "received"].includes(status);
                     const statusLabel =
-                      status === "requested"
-                        ? "Requested"
-                        : status === "accepted"
-                        ? "Accepted"
-                        : status === "received"
-                        ? "Received"
+                      ["requested", "accepted", "received"].includes(status)
+                        ? "Refund Waiting"
                         : status === "rejected"
                         ? "Rejected"
                         : status === "refunded"

@@ -482,7 +482,9 @@ export function updateReturnRequestStatus(req, res) {
       return res.status(400).json({ error: "Invalid status transition" });
     }
 
-    const updateReturn = () => {
+    const respond = () => res.json({ success: true, return_id: returnId, status: nextStatus });
+
+    const updateReturn = (done) => {
       db.query(
         "UPDATE return_requests SET status = ?, processed_at = NOW() WHERE return_id = ?",
         [nextStatus, returnId],
@@ -491,7 +493,10 @@ export function updateReturnRequestStatus(req, res) {
             console.error("Return request update failed:", updateErr);
             return res.status(500).json({ error: "Return request update failed" });
           }
-          return res.json({ success: true, return_id: returnId, status: nextStatus });
+          if (typeof done === "function") {
+            return done();
+          }
+          return respond();
         }
       );
     };
@@ -505,16 +510,59 @@ export function updateReturnRequestStatus(req, res) {
       );
     };
 
+    const syncOrderStatus = (orderStatus, deliveryStatus, done) => {
+      const finish = typeof done === "function" ? done : () => {};
+      if (!orderStatus && !deliveryStatus) return finish();
+
+      const updateOrder = (next, callback) => {
+        if (!next) return callback();
+        const guard =
+          next === "refund_waiting" || next === "refund_rejected"
+            ? " AND status <> 'refunded'"
+            : "";
+        db.query(
+          `UPDATE orders SET status = ? WHERE order_id = ?${guard}`,
+          [next, row.order_id],
+          (orderErr) => {
+            if (orderErr) {
+              console.error("Order status sync failed:", orderErr);
+            }
+            return callback();
+          }
+        );
+      };
+
+      const updateDeliveries = (next, callback) => {
+        if (!next) return callback();
+        db.query(
+          "UPDATE deliveries SET delivery_status = ? WHERE order_id = ?",
+          [next, row.order_id],
+          (deliveryErr) => {
+            if (deliveryErr) {
+              console.error("Delivery status sync failed:", deliveryErr);
+            }
+            return callback();
+          }
+        );
+      };
+
+      return updateOrder(orderStatus, () => updateDeliveries(deliveryStatus, finish));
+    };
+
     if (nextStatus === "accepted") {
-      return updateDeliveryStatus("refund_waiting", updateReturn);
+      return updateDeliveryStatus("refund_waiting", () =>
+        updateReturn(() => syncOrderStatus("refund_waiting", "refund_waiting", respond))
+      );
     }
 
     if (nextStatus === "rejected") {
-      return updateDeliveryStatus("refund_rejected", updateReturn);
+      return updateDeliveryStatus("refund_rejected", () =>
+        updateReturn(() => syncOrderStatus("refund_rejected", "refund_rejected", respond))
+      );
     }
 
     if (nextStatus === "received") {
-      return updateDeliveryStatus("returned", updateReturn);
+      return updateDeliveryStatus("returned", () => updateReturn(respond));
     }
 
     if (nextStatus === "refunded") {
@@ -559,7 +607,9 @@ export function updateReturnRequestStatus(req, res) {
               return res.status(500).json({ error: "Refund insert failed" });
             }
 
-            updateDeliveryStatus("refunded", updateReturn);
+            updateDeliveryStatus("refunded", () =>
+              updateReturn(() => syncOrderStatus("refunded", "refunded", respond))
+            );
           });
         });
       });
