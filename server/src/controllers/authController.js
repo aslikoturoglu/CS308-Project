@@ -7,7 +7,11 @@ const demoUsers = {
   "test@suhome.com": { name: "Demo User", password: "1234", role: "customer" },
   "demo1@suhome.com": { name: "Product Manager", password: "demo1pass", role: "product_manager" },
   "demo2@suhome.com": { name: "Sales Manager", password: "demo2pass", role: "sales_manager" },
-  "support@suhome.com": { name: "Support Agent", password: "support", role: "support" },
+  "support@suhome.com": { name: "Support Agent 1", password: "support", role: "support" },
+  "support2@suhome.com": { name: "Support Agent 2", password: "support", role: "support" },
+  "support3@suhome.com": { name: "Support Agent 3", password: "support", role: "support" },
+  "support4@suhome.com": { name: "Support Agent 4", password: "support", role: "support" },
+  "support5@suhome.com": { name: "Support Agent 5", password: "support", role: "support" },
 };
 
 const RESET_TABLE_SQL = `

@@ -89,7 +89,11 @@ function LoginForm({ onSuccess }) {
         Customer: demo@suhome.com / demo<br />
         Product Manager: demo1@suhome.com / demo1pass<br />
         Sales Manager: demo2@suhome.com / demo2pass<br />
-        Support: support@suhome.com / support
+        Support Agents: support@suhome.com / support<br />
+        support2@suhome.com / support<br />
+        support3@suhome.com / support<br />
+        support4@suhome.com / support<br />
+        support5@suhome.com / support
       </p>
 
       {error && (
@@ -207,4 +211,3 @@ function LoginForm({ onSuccess }) {
 }
 
 export default LoginForm;
-

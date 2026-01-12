@@ -352,10 +352,13 @@ export function listConversations(req, res) {
       sc.conversation_id,
       sc.user_id,
       sc.order_id,
+      sc.assigned_user_id,
       sc.status,
       sc.created_at,
       u.full_name AS customer_name,
       u.email AS customer_email,
+      au.full_name AS assigned_agent_name,
+      au.email AS assigned_agent_email,
       (
         SELECT message_text FROM support_messages sm 
         WHERE sm.conversation_id = sc.conversation_id
@@ -376,6 +379,7 @@ export function listConversations(req, res) {
       ) AS unread_count
     FROM support_conversations sc
     LEFT JOIN users u ON u.user_id = sc.user_id
+    LEFT JOIN users au ON au.user_id = sc.assigned_user_id
     ORDER BY last_message_at DESC, sc.created_at DESC
   `;
 
@@ -390,6 +394,9 @@ export function listConversations(req, res) {
         id: row.conversation_id,
         user_id: row.user_id,
         order_id: row.order_id,
+        assigned_agent_id: row.assigned_user_id ?? null,
+        assigned_agent_name: row.assigned_agent_name || null,
+        assigned_agent_email: row.assigned_agent_email || null,
         status: row.status,
         created_at: row.created_at,
         customer_name: row.customer_name || `User #${row.user_id}`,
@@ -618,51 +625,120 @@ export function getCustomerCart(req, res) {
 
 export function claimConversation(req, res) {
   const conversationId = Number(req.params.conversation_id);
+  const agentId = pickAgentId(req.body?.agent_id);
   if (!conversationId) {
     return res.status(400).json({ error: "conversation_id zorunlu" });
   }
 
-  const sql = `
-    UPDATE support_conversations
-    SET status = 'pending'
+  const selectSql = `
+    SELECT assigned_user_id, status
+    FROM support_conversations
     WHERE conversation_id = ?
+    LIMIT 1
   `;
 
-  db.query(sql, [conversationId], (err, result) => {
-    if (err) {
-      console.error("Support claim failed:", err);
-      return res.status(500).json({ error: "KonuŸma gncellenemedi" });
+  db.query(selectSql, [conversationId], (findErr, rows) => {
+    if (findErr) {
+      console.error("Support claim lookup failed:", findErr);
+      return res.status(500).json({ error: "Konuşma okunamadı" });
     }
-    if (!result.affectedRows) {
-      return res.status(404).json({ error: "KonuŸma bulunamad" });
+    if (!rows.length) {
+      return res.status(404).json({ error: "Konuşma bulunamadı" });
     }
-    broadcastInboxUpdate({ type: "status", conversation_id: conversationId, status: "pending" });
-    return res.json({ success: true, conversation_id: conversationId, status: "pending" });
+
+    const current = rows[0];
+    if (current.status === "closed") {
+      return res.status(400).json({ error: "Konuşma kapalı" });
+    }
+    if (current.assigned_user_id && Number(current.assigned_user_id) !== Number(agentId)) {
+      return res.status(409).json({ error: "Konuşma başka bir agente atanmış" });
+    }
+
+    const updateSql = `
+      UPDATE support_conversations
+      SET status = 'pending', assigned_user_id = ?
+      WHERE conversation_id = ?
+    `;
+
+    db.query(updateSql, [agentId, conversationId], (err, result) => {
+      if (err) {
+        console.error("Support claim failed:", err);
+        return res.status(500).json({ error: "KonuŸma gncellenemedi" });
+      }
+      if (!result.affectedRows) {
+        return res.status(404).json({ error: "KonuŸma bulunamad" });
+      }
+      broadcastInboxUpdate({
+        type: "status",
+        conversation_id: conversationId,
+        status: "pending",
+        assigned_user_id: agentId,
+      });
+      return res.json({
+        success: true,
+        conversation_id: conversationId,
+        status: "pending",
+        assigned_user_id: agentId,
+      });
+    });
   });
 }
 
 export function unclaimConversation(req, res) {
   const conversationId = Number(req.params.conversation_id);
+  const agentId = pickAgentId(req.body?.agent_id);
   if (!conversationId) {
     return res.status(400).json({ error: "conversation_id zorunlu" });
   }
 
-  const sql = `
-    UPDATE support_conversations
-    SET status = 'open'
+  const selectSql = `
+    SELECT assigned_user_id, status
+    FROM support_conversations
     WHERE conversation_id = ?
+    LIMIT 1
   `;
 
-  db.query(sql, [conversationId], (err, result) => {
-    if (err) {
-      console.error("Support unclaim failed:", err);
-      return res.status(500).json({ error: "KonuYma g?ncellenemedi" });
+  db.query(selectSql, [conversationId], (findErr, rows) => {
+    if (findErr) {
+      console.error("Support unclaim lookup failed:", findErr);
+      return res.status(500).json({ error: "Konuşma okunamadı" });
     }
-    if (!result.affectedRows) {
-      return res.status(404).json({ error: "KonuYma bulunamad?" });
+    if (!rows.length) {
+      return res.status(404).json({ error: "Konuşma bulunamadı" });
     }
-    broadcastInboxUpdate({ type: "status", conversation_id: conversationId, status: "open" });
-    return res.json({ success: true, conversation_id: conversationId, status: "open" });
+
+    const current = rows[0];
+    if (current.assigned_user_id && Number(current.assigned_user_id) !== Number(agentId)) {
+      return res.status(403).json({ error: "Konuşma başka bir agente atanmış" });
+    }
+
+    const updateSql = `
+      UPDATE support_conversations
+      SET status = 'open', assigned_user_id = NULL
+      WHERE conversation_id = ?
+    `;
+
+    db.query(updateSql, [conversationId], (err, result) => {
+      if (err) {
+        console.error("Support unclaim failed:", err);
+        return res.status(500).json({ error: "KonuYma g?ncellenemedi" });
+      }
+      if (!result.affectedRows) {
+        return res.status(404).json({ error: "KonuYma bulunamad?" });
+      }
+      broadcastInboxUpdate({
+        type: "status",
+        conversation_id: conversationId,
+        status: "open",
+        assigned_user_id: null,
+      });
+      return res.json({
+        success: true,
+        conversation_id: conversationId,
+        status: "open",
+        assigned_user_id: null,
+      });
+    });
   });
 }
 

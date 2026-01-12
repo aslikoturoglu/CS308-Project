@@ -238,10 +238,14 @@ CREATE TABLE support_conversations (
   conversation_id INT PRIMARY KEY AUTO_INCREMENT,
   user_id INT NOT NULL,
   order_id INT NULL,
+  assigned_user_id INT NULL,
   status ENUM('open','pending','closed') NOT NULL DEFAULT 'open',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_support_conversations_assigned (assigned_user_id),
   FOREIGN KEY (user_id) REFERENCES users(user_id)
     ON UPDATE CASCADE ON DELETE CASCADE,
+  FOREIGN KEY (assigned_user_id) REFERENCES users(user_id)
+    ON UPDATE CASCADE ON DELETE SET NULL,
   FOREIGN KEY (order_id) REFERENCES orders(order_id)
     ON UPDATE CASCADE ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

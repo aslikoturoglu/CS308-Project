@@ -51,17 +51,23 @@ export async function fetchSupportMessages(conversationId) {
   return handleResponse(res);
 }
 
-export async function claimSupportConversation(conversationId) {
-  const res = await fetch(`${SUPPORT_BASE}/conversations/${conversationId}/claim`, {
-    method: "POST",
-  });
+export async function claimSupportConversation(conversationId, agentId) {
+  const options = { method: "POST" };
+  if (agentId) {
+    options.headers = { "Content-Type": "application/json" };
+    options.body = JSON.stringify({ agent_id: agentId });
+  }
+  const res = await fetch(`${SUPPORT_BASE}/conversations/${conversationId}/claim`, options);
   return handleResponse(res);
 }
 
-export async function unclaimSupportConversation(conversationId) {
-  const res = await fetch(`${SUPPORT_BASE}/conversations/${conversationId}/unclaim`, {
-    method: "POST",
-  });
+export async function unclaimSupportConversation(conversationId, agentId) {
+  const options = { method: "POST" };
+  if (agentId) {
+    options.headers = { "Content-Type": "application/json" };
+    options.body = JSON.stringify({ agent_id: agentId });
+  }
+  const res = await fetch(`${SUPPORT_BASE}/conversations/${conversationId}/unclaim`, options);
   return handleResponse(res);
 }
 
