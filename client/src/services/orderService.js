@@ -404,8 +404,8 @@ function backendToFrontendStatus(value) {
   if (normalized.includes("refund_waiting") || normalized.includes("refund waiting") || normalized.includes("refund pending")) {
     return "Refund Waiting";
   }
-  if (normalized.includes("refund_rejected") || normalized.includes("refund rejected")) {
-    return "Not Refunded";
+  if (normalized.includes("refund_rejected") || normalized.includes("refund rejected") || normalized.includes("not refunded")) {
+    return "Refund Rejected";
   }
   if (normalized === "refunded") return "Refunded";
   if (normalized === "cancelled") return "Cancelled";
@@ -423,7 +423,7 @@ const frontendToBackendStatus = {
   Canceled: "cancelled",
   "Refund Waiting": "refund_waiting",
   Refunded: "refunded",
-  "Not Refunded": "refund_rejected",
+  "Refund Rejected": "refund_rejected",
 };
 
 export async function fetchAllOrders(signal) {
@@ -435,7 +435,7 @@ export async function fetchAllOrders(signal) {
   }
 
   return (data || []).map((row) => {
-    const status = backendToFrontendStatus(row.delivery_status || row.status || row.order_status);
+    const status = backendToFrontendStatus(row.status || row.order_status || row.delivery_status);
     const progressIndex = timelineSteps.indexOf(status);
     const items = Array.isArray(row.items)
       ? row.items.map((it, idx) => ({
@@ -498,10 +498,11 @@ export function getNextStatus(order) {
   if (currentStatus === "Refund Waiting") {
     return { nextStatus: "Refunded", nextIndex: timelineSteps.length - 1 };
   }
-  if (["Cancelled", "Refunded", "Not Refunded", "Delivered"].includes(currentStatus)) {
+  if (["Cancelled", "Refunded", "Refund Rejected", "Delivered"].includes(currentStatus)) {
     return { nextStatus: currentStatus, nextIndex: timelineSteps.length - 1 };
   }
   const currentIndex = timelineSteps.indexOf(currentStatus) >= 0 ? timelineSteps.indexOf(currentStatus) : 0;
   const nextIndex = Math.min(currentIndex + 1, timelineSteps.length - 1);
   return { nextStatus: timelineSteps[nextIndex], nextIndex };
 }
+

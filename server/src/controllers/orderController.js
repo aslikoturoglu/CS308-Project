@@ -349,7 +349,7 @@ export function getOrderHistory(req, res) {
         return "Refund Waiting";
       }
       if (normalized.includes("refund_rejected") || normalized.includes("refund rejected")) {
-        return "Not Refunded";
+        return "Refund Rejected";
       }
       if (normalized === "refunded") return "Refunded";
       if (normalized === "cancelled") return "Cancelled";
@@ -423,7 +423,7 @@ export function getAllOrders(req, res) {
       return "Refund Waiting";
     }
     if (normalized.includes("refund_rejected") || normalized.includes("refund rejected")) {
-      return "Not Refunded";
+      return "Refund Rejected";
     }
     if (normalized === "refunded") return "Refunded";
     if (normalized === "cancelled") return "Cancelled";

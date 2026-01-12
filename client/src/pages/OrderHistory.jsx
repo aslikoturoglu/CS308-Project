@@ -23,7 +23,7 @@ const timelineSteps = [
   "Cancelled",
   "Refund in progress",
   "Refund accepted",
-  "Refund rejected",
+  "Refund Rejected",
 ];
 const filterOptions = [
   { value: "All", label: "All" },
@@ -32,7 +32,7 @@ const filterOptions = [
   { value: "Delivered", label: "Delivered" },
   { value: "Refund Waiting", label: "Refund in progress" },
   { value: "Refunded", label: "Refund accepted" },
-  { value: "Not Refunded", label: "Refund rejected" },
+  { value: "Refund Rejected", label: "Refund Rejected" },
   { value: "Cancelled", label: "Cancelled" },
 ];
 
@@ -43,7 +43,7 @@ const statusPills = {
   Cancelled: { bg: "rgba(248,113,113,0.18)", color: "#b91c1c", border: "#f87171" },
   "Refund in progress": { bg: "rgba(249,115,22,0.18)", color: "#c2410c", border: "#fdba74" },
   "Refund accepted": { bg: "rgba(15,118,110,0.15)", color: "#0f766e", border: "#5eead4" },
-  "Refund rejected": { bg: "rgba(148,163,184,0.18)", color: "#64748b", border: "#cbd5e1" },
+  "Refund Rejected": { bg: "rgba(148,163,184,0.18)", color: "#64748b", border: "#cbd5e1" },
 };
 
 const REFUND_WINDOW_DAYS = 30;
@@ -96,8 +96,8 @@ function getRefundState(order) {
   if (order.status === "Refunded") {
     return { allowed: false, label: "Refund accepted", reason: "Order already refunded" };
   }
-  if (order.status === "Not Refunded") {
-    return { allowed: false, label: "Refund rejected", reason: "Refund request was rejected" };
+  if (order.status === "Refund Rejected") {
+    return { allowed: false, label: "Refund Rejected", reason: "Refund request was rejected" };
   }
   if (order.status === "Cancelled") {
     return { allowed: false, label: "Cannot be refunded", reason: "Cancelled orders cannot be refunded" };
@@ -132,7 +132,7 @@ function getDisplayStatus(status) {
   if (status === "Cancelled") return "Cancelled";
   if (status === "Refund Waiting") return "Refund in progress";
   if (status === "Refunded") return "Refund accepted";
-  if (status === "Not Refunded") return "Refund rejected";
+  if (status === "Refund Rejected") return "Refund Rejected";
   return status;
 }
 
@@ -140,7 +140,7 @@ function formatReturnStatus(value) {
   const normalized = String(value || "").toLowerCase();
   if (["requested", "accepted", "received"].includes(normalized)) return "Refund in progress";
   if (normalized === "refunded") return "Refund accepted";
-  if (normalized === "rejected") return "Refund rejected";
+  if (normalized === "rejected") return "Refund Rejected";
   return value || "";
 }
 
@@ -212,7 +212,7 @@ function OrderHistory() {
   const filteredOrders = useMemo(() => {
     if (filter === "All") return orders;
     if (filter === "Refund") {
-      return orders.filter((order) => ["Refund Waiting", "Refunded", "Not Refunded"].includes(order.status));
+      return orders.filter((order) => ["Refund Waiting", "Refunded", "Refund Rejected"].includes(order.status));
     }
     if (filter === "Cancel") {
       return orders.filter((order) => order.status === "Cancelled");
@@ -224,7 +224,7 @@ function OrderHistory() {
     () => ({
       totalSpent: orders.reduce((sum, order) => sum + order.total, 0),
       delivered: orders.filter((order) => order.status === "Delivered").length,
-      active: orders.filter((order) => !["Delivered", "Cancelled", "Refunded", "Refund Waiting", "Not Refunded"].includes(order.status)).length,
+      active: orders.filter((order) => !["Delivered", "Cancelled", "Refunded", "Refund Waiting", "Refund Rejected"].includes(order.status)).length,
     }),
     [orders]
   );
@@ -583,9 +583,9 @@ function OrderHistory() {
                       const refundSteps = new Set([
                         "Refund in progress",
                         "Refund accepted",
-                        "Refund rejected",
+                        "Refund Rejected",
                       ]);
-                      const showRefundSteps = ["Refund Waiting", "Refunded", "Not Refunded"].includes(order.status);
+                      const showRefundSteps = ["Refund Waiting", "Refunded", "Refund Rejected"].includes(order.status);
                       const steps = showRefundSteps
                         ? timelineSteps
                         : timelineSteps.filter((step) => !refundSteps.has(step));
@@ -947,3 +947,4 @@ function Info({ label, value }) {
 }
 
 export default OrderHistory;
+
