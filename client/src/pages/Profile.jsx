@@ -107,8 +107,8 @@ const getRefundState = (order) => {
   if (order?.status === "Refunded") {
     return { allowed: false, label: "Refund accepted", reason: "Order already refunded" };
   }
-  if (order?.status === "Not Refunded") {
-    return { allowed: false, label: "Refund rejected", reason: "Refund request was rejected" };
+  if (order?.status === "Refund Rejected") {
+    return { allowed: false, label: "Refund Rejected", reason: "Refund request was rejected" };
   }
   if (order?.status === "Cancelled") {
     return { allowed: false, label: "Cannot be refunded", reason: "Cancelled orders cannot be refunded" };
@@ -143,7 +143,7 @@ const getDisplayStatus = (status) => {
   if (["Cancelled", "Canceled"].includes(status)) return "Cancelled";
   if (status === "Refund Waiting") return "Refund in progress";
   if (status === "Refunded") return "Refund accepted";
-  if (status === "Not Refunded") return "Refund rejected";
+  if (status === "Refund Rejected") return "Refund Rejected";
   return status;
 };
 
@@ -151,7 +151,7 @@ const formatReturnStatus = (value) => {
   const normalized = String(value || "").toLowerCase();
   if (["requested", "accepted", "received"].includes(normalized)) return "Refund in progress";
   if (normalized === "refunded") return "Refund accepted";
-  if (normalized === "rejected") return "Refund rejected";
+  if (normalized === "rejected") return "Refund Rejected";
   return value || "";
 };
 
@@ -546,7 +546,7 @@ const handleRefundOrder = async (order) => {
                     color: "#1d4ed8",
                     border: "#93c5fd",
                   },
-                  "Refund rejected": {
+                  "Refund Rejected": {
                     bg: "rgba(148,163,184,0.18)",
                     color: "#64748b",
                     border: "#cbd5e1",
@@ -649,7 +649,7 @@ const handleRefundOrder = async (order) => {
                           </button>
                         );
                       })()}
-                      {["Delivered", "Refund Waiting", "Refunded", "Not Refunded"].includes(order?.status) &&
+                      {["Delivered", "Refund Waiting", "Refunded", "Refund Rejected"].includes(order?.status) &&
                         order?.status !== "Refunded" && (() => {
                         const refundState = getRefundState(order);
                         const label = hasActiveReturn ? formatReturnStatus(orderReturnStatus) : refundState.label;
@@ -1005,3 +1005,4 @@ function Modal({ open, onClose, children, isDark, actions }) {
     </div>
   );
 }
+

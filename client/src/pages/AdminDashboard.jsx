@@ -39,10 +39,10 @@ const DELIVERY_FILTERS = [
   { id: "Cancelled", label: "Cancelled" },
   { id: "Refund Waiting", label: "Refund Waiting" },
   { id: "Refunded", label: "Refunded" },
-  { id: "Not Refunded", label: "Not Refunded" },
+  { id: "Refund Rejected", label: "Refund Rejected" },
 ];
 
-const REFUND_DELIVERY_STATUSES = ["Refund Waiting", "Refunded", "Not Refunded"];
+const REFUND_DELIVERY_STATUSES = ["Refund Waiting", "Refunded", "Refund Rejected"];
 const DELIVERY_STATUS_STYLES = {
   Processing: { bg: "#fef3c7", color: "#92400e", border: "#fcd34d" },
   "In-transit": { bg: "#dbeafe", color: "#1d4ed8", border: "#93c5fd" },
@@ -50,7 +50,7 @@ const DELIVERY_STATUS_STYLES = {
   Cancelled: { bg: "#fee2e2", color: "#b91c1c", border: "#fca5a5" },
   "Refund Waiting": { bg: "#ffedd5", color: "#9a3412", border: "#fdba74" },
   Refunded: { bg: "#e0f2fe", color: "#0369a1", border: "#7dd3fc" },
-  "Not Refunded": { bg: "#f1f5f9", color: "#64748b", border: "#cbd5e1" },
+  "Refund Rejected": { bg: "#f1f5f9", color: "#64748b", border: "#cbd5e1" },
 };
 const PRODUCT_CATEGORIES = [
   "table",
@@ -122,8 +122,8 @@ function normalizeDeliveryStatus(value) {
   if (normalized.includes("refund waiting") || normalized.includes("refund_waiting") || normalized.includes("refund pending")) {
     return "Refund Waiting";
   }
-  if (normalized.includes("refund_rejected") || normalized.includes("refund rejected") || normalized.includes("not refunded")) {
-    return "Not Refunded";
+  if (normalized.includes("refund_rejected") || normalized.includes("refund rejected")) {
+    return "Refund Rejected";
   }
   if (normalized === "refunded") return "Refunded";
   if (normalized.includes("transit") || normalized === "shipped" || normalized === "in_transit") return "In-transit";
@@ -714,7 +714,7 @@ function AdminDashboard() {
       Cancelled: [],
       "Refund Waiting": [],
       Refunded: [],
-      "Not Refunded": [],
+      "Refund Rejected": [],
     };
     const parseDate = (value) => Date.parse(value) || 0;
     orders.forEach((o) => {
@@ -1197,7 +1197,7 @@ function AdminDashboard() {
     }
 
     const { nextStatus, nextIndex } = getNextStatus(current);
-    if (["Delivered", "Cancelled", "Refunded", "Not Refunded"].includes(current.status) || nextStatus === current.status) {
+    if (["Delivered", "Cancelled", "Refunded", "Refund Rejected"].includes(current.status) || nextStatus === current.status) {
       addToast("Order already in final status", "info");
       return;
     }
@@ -1237,7 +1237,7 @@ function AdminDashboard() {
           prev.map((o) => (String(o.id) === String(orderId) ? { ...o, status: decisionStatus } : o))
         );
       }
-      addToast(decisionStatus === "Refunded" ? "Refund approved" : "Refund rejected", "info");
+      addToast(decisionStatus === "Refunded" ? "Refund approved" : "Refund Rejected", "info");
     } catch (error) {
       console.error("Refund decision failed", error);
       addToast(error.message || "Refund decision failed", "error");
@@ -3253,4 +3253,5 @@ const th = {
 const td = { padding: "10px 12px", whiteSpace: "normal", wordBreak: "break-word" };
 
 export default AdminDashboard;
+
 
