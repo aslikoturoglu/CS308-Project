@@ -577,6 +577,29 @@ const handleRefundOrder = async (order) => {
                       >
                         {displayStatus}
                       </span>
+                      {displayStatus === "Processing" && (() => {
+                        const cancelState = getCancelState(order);
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => handleCancelOrder(order.id)}
+                            disabled={!cancelState.allowed}
+                            title={cancelState.reason}
+                            style={{
+                              backgroundColor: cancelState.allowed ? "#fee2e2" : "#f1f5f9",
+                              color: cancelState.allowed ? "#b91c1c" : "#94a3b8",
+                              border: `1px solid ${cancelState.allowed ? "#fecaca" : "#e2e8f0"}`,
+                              padding: "6px 12px",
+                              borderRadius: 999,
+                              cursor: cancelState.allowed ? "pointer" : "not-allowed",
+                              fontWeight: 700,
+                              opacity: cancelState.allowed ? 1 : 0.65,
+                            }}
+                          >
+                            {cancelState.label}
+                          </button>
+                        );
+                      })()}
                       {["Delivered", "Refund Waiting", "Refunded", "Not Refunded", "Cancelled", "Canceled"].includes(order?.status) && (() => {
                         const refundState = getRefundState(order);
                         const label = hasActiveReturn ? formatReturnStatus(orderReturnStatus) : refundState.label;
