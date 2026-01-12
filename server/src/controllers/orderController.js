@@ -636,7 +636,7 @@ export function refundOrder(req, res) {
   }
 
   const checkSql = `
-    SELECT o.status AS order_status, d.delivery_status
+    SELECT o.status AS order_status, o.order_date, d.delivery_status
     FROM orders o
     LEFT JOIN deliveries d ON d.order_id = o.order_id
     WHERE o.order_id = ?

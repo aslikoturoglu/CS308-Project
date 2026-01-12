@@ -66,11 +66,22 @@ const REFUND_WINDOW_DAYS = 30;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 const getOrderDate = (order) => {
-  const candidate = order?.deliveredAt || order?.date || order?.statusUpdatedAt;
-  if (!candidate) return null;
-  const parsed = new Date(candidate);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed;
+  const candidates = [
+    order?.date,
+    order?.orderDate,
+    order?.order_date,
+    order?.createdAt,
+    order?.created_at,
+    order?.deliveredAt,
+    order?.statusUpdatedAt,
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    const parsed = new Date(candidate);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+
+  return null;
 };
 
 const isRefundWindowOpen = (order) => {
@@ -109,7 +120,11 @@ const getRefundState = (order) => {
     return { allowed: false, label: "Cannot be refunded", reason: "Only delivered orders can be refunded" };
   }
   if (!isRefundWindowOpen(order)) {
-    return { allowed: false, label: "Cannot be refunded", reason: "Returns are only available within 30 days of purchase." };
+    return {
+      allowed: false,
+      label: "Cannot be refunded",
+      reason: "Refunds are only available within 30 days of the order date.",
+    };
   }
   return { allowed: true, label: "Refund", reason: "Request refund" };
 };
@@ -627,18 +642,23 @@ const handleRefundOrder = async (order) => {
                         const refundState = getRefundState(order);
                         const label = hasActiveReturn ? formatReturnStatus(orderReturnStatus) : refundState.label;
                         const disabled = hasActiveReturn ? true : !refundState.allowed;
+                        const refundExpired = order?.status === "Delivered" && !isRefundWindowOpen(order);
                         return (
                           <button
                             onClick={() => handleRefundOrder(order)}
                             style={{
-                              backgroundColor: !disabled ? "#e0f2fe" : "#f1f5f9",
-                              color: !disabled ? "#0369a1" : "#94a3b8",
+                              backgroundColor: !disabled
+                                ? "#e0f2fe"
+                                : refundExpired
+                                  ? "#f8fafc"
+                                  : "#f1f5f9",
+                              color: !disabled ? "#0369a1" : refundExpired ? "#cbd5e1" : "#94a3b8",
                               border: `1px solid ${!disabled ? "#bae6fd" : "#e2e8f0"}`,
                               padding: "6px 12px",
                               borderRadius: 999,
                               cursor: !disabled ? "pointer" : "not-allowed",
                               fontWeight: 700,
-                              opacity: !disabled ? 1 : 0.65,
+                              opacity: !disabled ? 1 : refundExpired ? 0.45 : 0.65,
                             }}
                             disabled={disabled}
                           >
