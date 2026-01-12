@@ -120,6 +120,7 @@ function Navbar({showMiniCart, setShowMiniCart }) {
           {[...baseLinks, ...(canAccessAdmin ? [{ to: "/admin", label: "Admin" }] : [])]
             .filter((link) => {
               if (userLoggedIn && link.to === "/login") return false;
+              if (!userLoggedIn && link.to === "/wishlist") return false;
               if (isStaff && (link.to === "/cart" || link.to === "/wishlist"))
                 return false;
               if (isStaff && link.to === "/profile") return false;

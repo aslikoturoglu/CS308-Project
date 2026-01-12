@@ -230,6 +230,8 @@ function AdminDashboard() {
   const [pmUseSuhomeLogistics, setPmUseSuhomeLogistics] = useState(false);
   const [removeCategoryId, setRemoveCategoryId] = useState("");
   const [useDefaultProductCost, setUseDefaultProductCost] = useState(false);
+  const [showMainCategoryPicker, setShowMainCategoryPicker] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
   const [pmCostProductId, setPmCostProductId] = useState("");
   const [pmCostCurrent, setPmCostCurrent] = useState(null);
   const [pmCostCurrentLabel, setPmCostCurrentLabel] = useState("");
@@ -955,6 +957,8 @@ function AdminDashboard() {
         });
         setUseSuhomeLogistics(false);
         setUseDefaultProductCost(false);
+        setShowMainCategoryPicker(false);
+        setShowColorPicker(false);
         addToast("Product request sent to sales manager", "info");
         return;
       }
@@ -2003,7 +2007,14 @@ function AdminDashboard() {
                 <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>
                   {user?.role === "product_manager" ? "Add product request" : "Add product"}
                 </h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))",
+                    gap: 12,
+                    alignItems: "start",
+                  }}
+                >
                   <input
                     placeholder="Name"
                     value={newProduct.name}
@@ -2061,44 +2072,50 @@ function AdminDashboard() {
                     style={inputStyle}
                   />
                   <div style={{ display: "grid", gap: 8 }}>
-                    <p style={{ margin: 0, color: "#64748b", fontSize: "0.85rem", fontWeight: 700 }}>
-                      Main categories
-                    </p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                      {availableMainCategories.map((category) => {
-                        const isActive = newProduct.mainCategory.includes(category);
-                        return (
-                          <button
-                            key={category}
-                            type="button"
-                            onClick={() =>
-                              setNewProduct((p) => ({
-                                ...p,
-                                mainCategory: toggleCategorySelection(p.mainCategory, category),
-                              }))
-                            }
-                            style={{
-                              borderRadius: 999,
-                              padding: "6px 12px",
-                              border: `1px solid ${isActive ? "#0f172a" : "#e5e7eb"}`,
-                              background: isActive ? "#0f172a" : "#f8fafc",
-                              color: isActive ? "#ffffff" : "#0f172a",
-                              fontWeight: 700,
-                              cursor: "pointer",
-                            }}
-                          >
-                            {category}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowMainCategoryPicker((prev) => !prev)}
+                      style={{ ...secondaryBtn, justifySelf: "start" }}
+                    >
+                      Select main categories
+                    </button>
+                    {showMainCategoryPicker && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        {availableMainCategories.map((category) => {
+                          const isActive = newProduct.mainCategory.includes(category);
+                          return (
+                            <button
+                              key={category}
+                              type="button"
+                              onClick={() =>
+                                setNewProduct((p) => ({
+                                  ...p,
+                                  mainCategory: toggleCategorySelection(p.mainCategory, category),
+                                }))
+                              }
+                              style={{
+                                borderRadius: 999,
+                                padding: "6px 12px",
+                                border: `1px solid ${isActive ? "#0f172a" : "#e5e7eb"}`,
+                                background: isActive ? "#0f172a" : "#f8fafc",
+                                color: isActive ? "#ffffff" : "#0f172a",
+                                fontWeight: 700,
+                                cursor: "pointer",
+                              }}
+                            >
+                              {category}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                   <select
                     value={newProduct.category}
                     onChange={(e) => setNewProduct((p) => ({ ...p, category: e.target.value }))}
                     style={inputStyle}
                   >
-                    <option value="__none__">No category</option>
+                    <option value="__none__">Select subcategory</option>
                     {(categories.length ? categories.map((c) => c.name) : PRODUCT_CATEGORIES).map((category) => (
                       <option key={category} value={category}>
                         {category}
@@ -2112,31 +2129,40 @@ function AdminDashboard() {
                     style={inputStyle}
                   />
                   <div style={{ display: "grid", gap: 8 }}>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                      {COLOR_PALETTE.map((swatch) => (
-                        <button
-                          key={swatch.name}
-                          type="button"
-                          onClick={() =>
-                            setNewProduct((p) => ({
-                              ...p,
-                              color: swatch.name,
-                              colorHex: swatch.hex,
-                            }))
-                          }
-                          style={{
-                            width: 26,
-                            height: 26,
-                            borderRadius: "50%",
-                            border: swatch.name === newProduct.color ? "2px solid #0f172a" : "1px solid #e5e7eb",
-                            background: swatch.hex,
-                            cursor: "pointer",
-                          }}
-                          aria-label={`Select ${swatch.name}`}
-                          title={swatch.name}
-                        />
-                      ))}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowColorPicker((prev) => !prev)}
+                      style={{ ...secondaryBtn, justifySelf: "start" }}
+                    >
+                      {showColorPicker ? "Hide colors" : "Select color"}
+                    </button>
+                    {showColorPicker && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        {COLOR_PALETTE.map((swatch) => (
+                          <button
+                            key={swatch.name}
+                            type="button"
+                            onClick={() =>
+                              setNewProduct((p) => ({
+                                ...p,
+                                color: swatch.name,
+                                colorHex: swatch.hex,
+                              }))
+                            }
+                            style={{
+                              width: 26,
+                              height: 26,
+                              borderRadius: "50%",
+                              border: swatch.name === newProduct.color ? "2px solid #0f172a" : "1px solid #e5e7eb",
+                              background: swatch.hex,
+                              cursor: "pointer",
+                            }}
+                            aria-label={`Select ${swatch.name}`}
+                            title={swatch.name}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <select
                     value={newProduct.warranty}

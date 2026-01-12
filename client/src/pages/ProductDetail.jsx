@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { fetchProductById } from "../services/productService";
 import { useWishlist } from "../context/WishlistContext";
@@ -12,9 +12,10 @@ function ProductDetail({ openMiniCart }) {
   const { id } = useParams();          
   const productId = Number(id);        
   const navigate = useNavigate();
+  const location = useLocation();
   const { addItem, items: cartItems } = useCart();
   const { toggleItem, inWishlist } = useWishlist();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { isDark } = useTheme();
   const isStaff = user?.role && user.role !== "customer";
 
@@ -350,7 +351,13 @@ function ProductDetail({ openMiniCart }) {
             {!isStaff && (
               <div style={buttonRow}>
                 <button
-                  onClick={() => toggleItem(product)}
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      navigate("/login", { state: { from: location } });
+                      return;
+                    }
+                    toggleItem(product);
+                  }}
                   style={wishlistBtn(inWishlist(product.id), isDark)}
                 >
                   <span style={{ color: inWishlist(product.id) ? "#e11d48" : (isDark ? "#7dd3fc" : "#1e293b") }}>
@@ -401,26 +408,26 @@ function ProductDetail({ openMiniCart }) {
             : "";
           const hasText = (c.comment_text || "").trim().length > 0;
 
-      return (
-        <div key={c.comment_id} style={reviewBlock(isDark)}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 10,
-              marginBottom: 6,
-            }}
-          >
-            <strong style={{ color: isDark ? "#e2e8f0" : "#0f172a" }}>
-              {c.display_name || "Verified buyer"}
-            </strong>
-            {hasText && user?.id === c.user_id && status !== "approved" && (
-              <span
+          return (
+            <div key={c.comment_id} style={reviewBlock(isDark)}>
+              <div
                 style={{
-                  padding: "4px 10px",
-                  borderRadius: 12,
-                  backgroundColor: `${statusColor}1a`,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 10,
+                  marginBottom: 6,
+                }}
+              >
+                <strong style={{ color: isDark ? "#e2e8f0" : "#0f172a" }}>
+                  {c.display_name || "Verified buyer"}
+                </strong>
+                {hasText && user?.id === c.user_id && status !== "approved" && (
+                  <span
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 12,
+                      backgroundColor: `${statusColor}1a`,
                       color: statusColor,
                       fontWeight: 700,
                       fontSize: "0.85rem",
@@ -433,8 +440,8 @@ function ProductDetail({ openMiniCart }) {
               </div>
 
               <div style={stars}>
-                {"★".repeat(Number(c.rating) || 0)}
-                {"☆".repeat(5 - (Number(c.rating) || 0))}
+                {"?".repeat(Number(c.rating) || 0)}
+                {"?".repeat(5 - (Number(c.rating) || 0))}
               </div>
 
               {c.comment_text ? (

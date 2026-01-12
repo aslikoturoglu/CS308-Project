@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { fetchProductsWithMeta } from "../services/productService";
+import { getMainCategories } from "../services/mainCategoryService";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import Spinner from "../components/ui/Spinner";
@@ -8,16 +9,15 @@ import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 
 
-const categories = [
-  { label: "All", keywords: [] },
-  { label: "Living Room", keywords: ["sofa", "armchair", "tv unit", "coffee table", "side table", "rug", "curtain", "pillow"] },
-  { label: "Bedroom", keywords: ["bed", "wardrobe", "pillow", "duvet", "blanket", "rug", "curtain"] },
-  { label: "Workspace", keywords: ["desk", "chair", "lamp", "lighting", "table", "shelf", "storage"] },
-  { label: "Seating", keywords: ["chair", "sofa", "stool", "armchair"] },
-  { label: "Tables", keywords: ["table", "desk", "coffee"] },
-  { label: "Storage", keywords: ["shelf", "cabinet", "wardrobe", "bookshelf", "storage"] },
-  { label: "Lighting", keywords: ["lamp", "lighting", "light"] },
-  { label: "Bedding", keywords: ["bed", "pillow", "duvet", "blanket"] },
+const fallbackMainCategories = [
+  "living room",
+  "bedroom",
+  "workspace",
+  "seating",
+  "tables",
+  "storage",
+  "lighting",
+  "bedding",
 ];
 
 const PAGE_SIZE = 12;
@@ -27,13 +27,14 @@ function ProductList({openMiniCart}) {
   const navigate = useNavigate();
   const { isDark } = useTheme();
   const [products, setProducts] = useState([]);
-  const [category, setCategory] = useState("All");
+  const [category, setCategory] = useState("all");
   const [roomFilter, setRoomFilter] = useState("");
   const [page, setPage] = useState(1);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [sort, setSort] = useState("popularity");
+  const [mainCategoryOptions, setMainCategoryOptions] = useState([]);
 
   const { addItem, items: cartItems, increment, decrement, removeItem } = useCart();
   const { toggleItem, inWishlist } = useWishlist();
@@ -133,6 +134,34 @@ const handleDecrease = (p) => {
       .finally(() => setLoading(false));
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getMainCategories(controller.signal)
+      .then((data) => {
+        const normalized = (data || [])
+          .map((item) => String(item.name || "").trim().toLowerCase())
+          .filter(Boolean);
+        setMainCategoryOptions(normalized);
+      })
+      .catch(() => {
+        setMainCategoryOptions([]);
+      });
+    return () => controller.abort();
+  }, []);
+
+  const categoryOptions = useMemo(() => {
+    const source = mainCategoryOptions.length ? mainCategoryOptions : fallbackMainCategories;
+    return ["all", ...source];
+  }, [mainCategoryOptions]);
+
+  const formatCategoryLabel = (value) => {
+    if (value === "all") return "All";
+    return value
+      .split(" ")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -236,14 +265,13 @@ const handleDecrease = (p) => {
         });
       }
     }
-    if (category !== "All") {
-      const rule = categories.find((c) => c.label === category);
-      if (rule && rule.keywords.length > 0) {
-        const keywords = rule.keywords;
-        list = list.filter((p) =>
-          keywords.some((kw) => p.name.toLowerCase().includes(kw.toLowerCase()))
-        );
-      }
+    if (category !== "all") {
+      list = list.filter((p) => {
+        if (Array.isArray(p.mainCategory)) {
+          return p.mainCategory.some((entry) => String(entry).toLowerCase() === category);
+        }
+        return String(p.mainCategory || "").toLowerCase() === category;
+      });
     }
     if (sort === "price-asc") {
       list = [...list].sort((a, b) => a.price - b.price);
@@ -331,26 +359,26 @@ const handleDecrease = (p) => {
             )}
           </div>
           <div style={{ flex: 1, minWidth: 240, display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            {categories.map((cat) => (
+            {categoryOptions.map((cat) => (
               <button
-                key={cat.label}
+                key={cat}
                 type="button"
                 onClick={() => {
-                  setCategory(cat.label);
+                  setCategory(cat);
                   setPage(1);
                 }}
                 style={{
                   border: "1px solid",
-                  borderColor: cat.label === category ? (isDark ? "#38bdf8" : "#0058a3") : (isDark ? "#1f2937" : "#cbd5f5"),
-                  background: isDark ? "#0f172a" : (cat.label === category ? "#0058a3" : "#ffffff"),
-                  color: cat.label === category ? (isDark ? "#7dd3fc" : "#ffffff") : (isDark ? "#e5e7eb" : "#0f172a"),
+                  borderColor: cat === category ? (isDark ? "#38bdf8" : "#0058a3") : (isDark ? "#1f2937" : "#cbd5f5"),
+                  background: isDark ? "#0f172a" : (cat === category ? "#0058a3" : "#ffffff"),
+                  color: cat === category ? (isDark ? "#7dd3fc" : "#ffffff") : (isDark ? "#e5e7eb" : "#0f172a"),
                   padding: "8px 12px",
                   borderRadius: 10,
                   fontWeight: 700,
                   cursor: "pointer",
                 }}
               >
-                {cat.label}
+                {formatCategoryLabel(cat)}
               </button>
             ))}
             <select
@@ -475,28 +503,50 @@ const handleDecrease = (p) => {
                       <div style={{ display:"flex", gap:8, padding:"0 14px 14px" }}>
 
                         {cartQty(p.id) === 0 ? (
-                          // ---------------- ADD TO CART (başlangıç) ----------------
-                          <button
-                            onClick={() => handleAddFirst(p)}
-                            disabled={p.availableStock<=0}
-                            style={{
-                              flex:1,
-                              background:"#0058a3",
-                              color:"#fff",
-                              borderRadius:10,
-                              padding:"10px 12px",
-                              fontWeight:800,
-                              cursor:p.availableStock<=0?"not-allowed":"pointer",
-                              opacity:p.availableStock<=0?0.6:1,
-                              border:"none",
-                              transition:".2s"
-                            }}
-                          >
-                            {p.availableStock<=0 ? "Out of stock" : "Add to cart"}
-                          </button>
+                          // ---------------- ADD TO CART (ba?lang??) ----------------
+                          <>
+                            <button
+                              onClick={() => handleAddFirst(p)}
+                              disabled={p.availableStock<=0}
+                              style={{
+                                flex:1,
+                                background:"#0058a3",
+                                color:"#fff",
+                                borderRadius:10,
+                                padding:"10px 12px",
+                                fontWeight:800,
+                                cursor:p.availableStock<=0?"not-allowed":"pointer",
+                                opacity:p.availableStock<=0?0.6:1,
+                                border:"none",
+                                transition:".2s"
+                              }}
+                            >
+                              {p.availableStock<=0 ? "Out of stock" : "Add to cart"}
+                            </button>
+                            {isAuthenticated && (
+                              <button
+                                onClick={() => handleWishlist(p)}
+                                style={{
+                                  width:48,
+                                  borderRadius:10,
+                                  border: isDark ? "1px solid #3a4250" : "1px solid #cbd5e1",
+                                  background: inWishlist(p.id)
+                                    ? (isDark ? "#3b1f26" : "#fee2e2")
+                                    : (isDark ? "#2b2f36" : "#fff"),
+                                  cursor:"pointer",
+                                  fontSize:"1.1rem",
+                                  fontWeight:700,
+                                  color: isDark ? "#cbd5e1" : "#0f172a"
+                                }}
+                              >
+                                {inWishlist(p.id) ? "♥" : "♡"}
+                              </button>
+                            )}
+                          </>
                         ) : (
 
-                          // ---------------- Sayaç görünümü ----------------
+                          <>
+                            {/* ---------------- Saya? g?r?n?m? ---------------- */}
                           <div style={{
                             flex:1,
                             display:"flex",
@@ -553,25 +603,28 @@ const handleDecrease = (p) => {
                             </button>
 
                           </div>
+
+                          <button
+                            onClick={() => handleWishlist(p)}
+                            style={{
+                              width: 48,
+                              borderRadius: 10,
+                              border: isDark ? "1px solid #3a4250" : "1px solid #cbd5e1",
+                              background: inWishlist(p.id)
+                                ? (isDark ? "#3b1f26" : "#fee2e2")
+                                : (isDark ? "#2b2f36" : "#fff"),
+                              cursor: "pointer",
+                              fontSize: "1.1rem",
+                              fontWeight: 700,
+                              color: isDark ? "#cbd5e1" : "#0f172a",
+                            }}
+                          >
+                            {inWishlist(p.id) ? "♥" : "♡"}
+                          </button>
+                          </>
                         )}
 
-                        <button
-                          onClick={() => handleWishlist(p)}
-                          style={{
-                            width:48,
-                            borderRadius:10,
-                            border: isDark ? "1px solid #3a4250" : "1px solid #cbd5e1",
-                            background: inWishlist(p.id)
-                              ? (isDark ? "#3b1f26" : "#fee2e2")
-                              : (isDark ? "#2b2f36" : "#fff"),
-                            cursor:"pointer",
-                            fontSize:"1.1rem",
-                            fontWeight:700,
-                            color: isDark ? "#cbd5e1" : "#0f172a"
-                          }}
-                        >
-                          {inWishlist(p.id) ? "♥" : "♡"}
-                        </button>
+                          
                       </div>
                     </>
                   )}

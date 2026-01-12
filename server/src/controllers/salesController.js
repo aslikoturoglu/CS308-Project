@@ -493,10 +493,15 @@ export function updateReturnRequestStatus(req, res) {
       oi.product_id,
       oi.quantity,
       oi.unit_price,
-      o.status AS order_status
+      o.status AS order_status,
+      u.email AS customer_email,
+      u.full_name AS customer_name,
+      p.product_name
     FROM return_requests rr
     JOIN order_items oi ON oi.order_item_id = rr.order_item_id
     JOIN orders o ON o.order_id = oi.order_id
+    JOIN users u ON u.user_id = o.user_id
+    JOIN products p ON p.product_id = oi.product_id
     WHERE rr.return_id = ?
     LIMIT 1
   `;
@@ -656,7 +661,33 @@ export function updateReturnRequestStatus(req, res) {
             }
 
             updateDeliveryStatus("refunded", () =>
-              updateReturn(() => syncOrderStatus("refunded", "refunded", respond))
+              updateReturn(() =>
+                syncOrderStatus("refunded", "refunded", () => {
+                  if (row.customer_email) {
+                    const subject = "Your refund has been processed";
+                    const productLine = row.product_name ? `Product: ${row.product_name}\n` : "";
+                    const text =
+                      `Hello ${row.customer_name || "Customer"},\n\n` +
+                      "Your refund has been processed.\n\n" +
+                      `${productLine}` +
+                      `Quantity: ${row.quantity}\n` +
+                      `Amount: ${amount.toLocaleString("tr-TR")} TL\n\n` +
+                      "If you have any questions, please contact support.";
+                    const html = `
+                      <p>Hello ${row.customer_name || "Customer"},</p>
+                      <p>Your refund has been processed.</p>
+                      ${row.product_name ? `<p><strong>Product:</strong> ${row.product_name}</p>` : ""}
+                      <p><strong>Quantity:</strong> ${row.quantity}</p>
+                      <p><strong>Amount:</strong> ${amount.toLocaleString("tr-TR")} TL</p>
+                      <p>If you have any questions, please contact support.</p>
+                    `;
+                    sendMail({ to: row.customer_email, subject, text, html }).catch((mailErr) => {
+                      console.error("Refund email failed:", mailErr);
+                    });
+                  }
+                  return respond();
+                })
+              )
             );
           });
         });

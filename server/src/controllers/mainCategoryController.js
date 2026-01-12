@@ -61,23 +61,43 @@ export function deleteMainCategory(req, res) {
       return res.status(404).json({ error: "Main category not found" });
     }
 
-    const usageSql = "SELECT COUNT(*) AS total FROM product_main_categories WHERE main_category_id = ?";
-    db.query(usageSql, [categoryId], (usageErr, usageRows = []) => {
-      if (usageErr) {
-        console.error("Main category usage check failed:", usageErr);
-        return res.status(500).json({ error: "Main category usage check failed" });
+    const productsSql = "SELECT DISTINCT product_id FROM product_main_categories WHERE main_category_id = ?";
+    db.query(productsSql, [categoryId], (productErr, productRows = []) => {
+      if (productErr) {
+        console.error("Main category product lookup failed:", productErr);
+        return res.status(500).json({ error: "Main category could not be deleted" });
       }
-      const usageCount = Number(usageRows?.[0]?.total || 0);
-      if (usageCount > 0) {
-        return res.status(400).json({ error: "Main category is in use by products" });
-      }
+      const affectedProductIds = productRows.map((row) => row.product_id);
 
       db.query("DELETE FROM main_categories WHERE main_category_id = ?", [categoryId], (deleteErr) => {
         if (deleteErr) {
           console.error("Main category delete failed:", deleteErr);
           return res.status(500).json({ error: "Main category could not be deleted" });
         }
-        return res.json({ success: true, id: categoryId });
+        if (!affectedProductIds.length) {
+          return res.json({ success: true, id: categoryId });
+        }
+
+        const placeholders = affectedProductIds.map(() => "?").join(",");
+        const updateSql = `
+          UPDATE products p
+          LEFT JOIN (
+            SELECT
+              pmc.product_id,
+              GROUP_CONCAT(DISTINCT mc.name ORDER BY mc.name SEPARATOR ', ') AS main_categories
+            FROM product_main_categories pmc
+            JOIN main_categories mc ON mc.main_category_id = pmc.main_category_id
+            GROUP BY pmc.product_id
+          ) mcats ON mcats.product_id = p.product_id
+          SET p.product_main_category = mcats.main_categories
+          WHERE p.product_id IN (${placeholders})
+        `;
+        db.query(updateSql, affectedProductIds, (updateErr) => {
+          if (updateErr) {
+            console.error("Main category product update failed:", updateErr);
+          }
+          return res.json({ success: true, id: categoryId });
+        });
       });
     });
   });
