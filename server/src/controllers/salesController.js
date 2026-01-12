@@ -397,8 +397,15 @@ export function getReturnRequests(req, res) {
 
     const now = Date.now();
     const payload = rows.map((row) => {
-      const status = String(row.delivery_status || row.order_status || "").toLowerCase();
-      const delivered = status === "delivered";
+      const status = String(row.delivery_status || row.order_status || "")
+        .toLowerCase()
+        .replace(/-/g, "_")
+        .replace(/\s+/g, "_");
+      const delivered =
+        status === "delivered" ||
+        status === "refund_waiting" ||
+        status === "refund_rejected" ||
+        status === "refunded";
       const orderDate = row.order_date ? new Date(row.order_date) : null;
       const ageDays = orderDate ? (now - orderDate.getTime()) / (1000 * 60 * 60 * 24) : null;
       const returnEligible = Boolean(delivered && ageDays !== null && ageDays <= 30);
@@ -418,6 +425,7 @@ export function getReturnRequests(req, res) {
         reason: row.reason,
         return_status: row.return_status,
         order_date: row.order_date,
+        order_status: row.order_status,
         delivery_status: row.delivery_status,
         return_eligible: returnEligible,
         requested_at: row.requested_at,
