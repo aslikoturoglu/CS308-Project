@@ -102,13 +102,13 @@ const canDownloadInvoice = (order) => {
 
 const getRefundState = (order) => {
   if (order?.status === "Refund Waiting") {
-    return { allowed: false, label: "Refund Waiting", reason: "Waiting for sales manager approval" };
+    return { allowed: false, label: "Refund in progress", reason: "Waiting for sales manager approval" };
   }
   if (order?.status === "Refunded") {
-    return { allowed: false, label: "Refunded", reason: "Order already refunded" };
+    return { allowed: false, label: "Refund accepted", reason: "Order already refunded" };
   }
   if (order?.status === "Not Refunded") {
-    return { allowed: false, label: "Not Refunded", reason: "Refund request was rejected" };
+    return { allowed: false, label: "Refund rejected", reason: "Refund request was rejected" };
   }
   if (order?.status === "Cancelled") {
     return { allowed: false, label: "Cannot be refunded", reason: "Cancelled orders cannot be refunded" };
@@ -122,7 +122,7 @@ const getRefundState = (order) => {
   if (!isRefundWindowOpen(order)) {
     return {
       allowed: false,
-      label: "Cannot be refunded",
+      label: "Refund expired",
       reason: "Refunds are only available within 30 days of the order date.",
     };
   }
@@ -141,17 +141,17 @@ const getCancelState = (order) => {
 
 const getDisplayStatus = (status) => {
   if (["Cancelled", "Canceled"].includes(status)) return "Cancelled";
-  if (status === "Refund Waiting") return "Refund Waiting";
-  if (status === "Refunded") return "Refunded";
-  if (status === "Not Refunded") return "Not Refunded";
+  if (status === "Refund Waiting") return "Refund in progress";
+  if (status === "Refunded") return "Refund accepted";
+  if (status === "Not Refunded") return "Refund rejected";
   return status;
 };
 
 const formatReturnStatus = (value) => {
   const normalized = String(value || "").toLowerCase();
-  if (["requested", "accepted", "received"].includes(normalized)) return "Refund Waiting";
-  if (normalized === "refunded") return "Refunded";
-  if (normalized === "rejected") return "Return rejected";
+  if (["requested", "accepted", "received"].includes(normalized)) return "Refund in progress";
+  if (normalized === "refunded") return "Refund accepted";
+  if (normalized === "rejected") return "Refund rejected";
   return value || "";
 };
 
@@ -531,7 +531,7 @@ const handleRefundOrder = async (order) => {
                     color: "#15803d",
                     border: "#22c55e",
                   },
-                  "Refund Waiting": {
+                  "Refund in progress": {
                     bg: "rgba(249,115,22,0.18)",
                     color: "#c2410c",
                     border: "#fdba74",
@@ -541,12 +541,12 @@ const handleRefundOrder = async (order) => {
                     color: "#0f766e",
                     border: "#5eead4",
                   },
-                  Refunded: {
+                  "Refund accepted": {
                     bg: "#e0f2fe",
                     color: "#1d4ed8",
                     border: "#93c5fd",
                   },
-                  "Not Refunded": {
+                  "Refund rejected": {
                     bg: "rgba(148,163,184,0.18)",
                     color: "#64748b",
                     border: "#cbd5e1",
@@ -649,7 +649,7 @@ const handleRefundOrder = async (order) => {
                           </button>
                         );
                       })()}
-                      {["Delivered", "Refund Waiting", "Refunded", "Not Refunded", "Cancelled", "Canceled"].includes(order?.status) &&
+                      {["Delivered", "Refund Waiting", "Refunded", "Not Refunded"].includes(order?.status) &&
                         order?.status !== "Refunded" && (() => {
                         const refundState = getRefundState(order);
                         const label = hasActiveReturn ? formatReturnStatus(orderReturnStatus) : refundState.label;

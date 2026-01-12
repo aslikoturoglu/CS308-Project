@@ -20,21 +20,30 @@ const timelineSteps = [
   "Processing",
   "In-transit",
   "Delivered",
-  "Refund Waiting",
-  "Refunded",
-  "Not Refunded",
   "Cancelled",
+  "Refund in progress",
+  "Refund accepted",
+  "Refund rejected",
 ];
-const filterOptions = ["All", ...timelineSteps];
+const filterOptions = [
+  { value: "All", label: "All" },
+  { value: "Processing", label: "Processing" },
+  { value: "In-transit", label: "In-transit" },
+  { value: "Delivered", label: "Delivered" },
+  { value: "Refund Waiting", label: "Refund in progress" },
+  { value: "Refunded", label: "Refund accepted" },
+  { value: "Not Refunded", label: "Refund rejected" },
+  { value: "Cancelled", label: "Cancelled" },
+];
 
 const statusPills = {
   Processing: { bg: "rgba(234,179,8,0.2)", color: "#b45309", border: "#eab308" },
   "In-transit": { bg: "rgba(59,130,246,0.15)", color: "#1d4ed8", border: "#60a5fa" },
   Delivered: { bg: "rgba(34,197,94,0.15)", color: "#15803d", border: "#22c55e" },
   Cancelled: { bg: "rgba(248,113,113,0.18)", color: "#b91c1c", border: "#f87171" },
-  "Refund Waiting": { bg: "rgba(249,115,22,0.18)", color: "#c2410c", border: "#fdba74" },
-  Refunded: { bg: "rgba(15,118,110,0.15)", color: "#0f766e", border: "#5eead4" },
-  "Not Refunded": { bg: "rgba(148,163,184,0.18)", color: "#64748b", border: "#cbd5e1" },
+  "Refund in progress": { bg: "rgba(249,115,22,0.18)", color: "#c2410c", border: "#fdba74" },
+  "Refund accepted": { bg: "rgba(15,118,110,0.15)", color: "#0f766e", border: "#5eead4" },
+  "Refund rejected": { bg: "rgba(148,163,184,0.18)", color: "#64748b", border: "#cbd5e1" },
 };
 
 const REFUND_WINDOW_DAYS = 30;
@@ -82,13 +91,13 @@ function canDownloadInvoice(order) {
 
 function getRefundState(order) {
   if (order.status === "Refund Waiting") {
-    return { allowed: false, label: "Refund Waiting", reason: "Waiting for sales manager approval" };
+    return { allowed: false, label: "Refund in progress", reason: "Waiting for sales manager approval" };
   }
   if (order.status === "Refunded") {
-    return { allowed: false, label: "Refunded", reason: "Order already refunded" };
+    return { allowed: false, label: "Refund accepted", reason: "Order already refunded" };
   }
   if (order.status === "Not Refunded") {
-    return { allowed: false, label: "Not Refunded", reason: "Refund request was rejected" };
+    return { allowed: false, label: "Refund rejected", reason: "Refund request was rejected" };
   }
   if (order.status === "Cancelled") {
     return { allowed: false, label: "Cannot be refunded", reason: "Cancelled orders cannot be refunded" };
@@ -121,17 +130,17 @@ function getCancelState(order) {
 
 function getDisplayStatus(status) {
   if (status === "Cancelled") return "Cancelled";
-  if (status === "Refund Waiting") return "Refund Waiting";
-  if (status === "Refunded") return "Refunded";
-  if (status === "Not Refunded") return "Not Refunded";
+  if (status === "Refund Waiting") return "Refund in progress";
+  if (status === "Refunded") return "Refund accepted";
+  if (status === "Not Refunded") return "Refund rejected";
   return status;
 }
 
 function formatReturnStatus(value) {
   const normalized = String(value || "").toLowerCase();
-  if (["requested", "accepted", "received"].includes(normalized)) return "Refund Waiting";
-  if (normalized === "refunded") return "Refunded";
-  if (normalized === "rejected") return "Rejected";
+  if (["requested", "accepted", "received"].includes(normalized)) return "Refund in progress";
+  if (normalized === "refunded") return "Refund accepted";
+  if (normalized === "rejected") return "Refund rejected";
   return value || "";
 }
 
@@ -411,21 +420,21 @@ function OrderHistory() {
         >
           {filterOptions.map((option) => (
             <button
-              key={option}
+              key={option.value}
               type="button"
-              onClick={() => setFilter(option)}
+              onClick={() => setFilter(option.value)}
               style={{
                 border: "1px solid",
-                borderColor: option === filter ? (isDark ? "#38bdf8" : "#0058a3") : (isDark ? "#1f2937" : "#cbd5f5"),
-                backgroundColor: option === filter ? (isDark ? "#0b3a6b" : "#0058a3") : (isDark ? "#0f172a" : "#ffffff"),
-                color: option === filter ? "#ffffff" : palette.text,
+                borderColor: option.value === filter ? (isDark ? "#38bdf8" : "#0058a3") : (isDark ? "#1f2937" : "#cbd5f5"),
+                backgroundColor: option.value === filter ? (isDark ? "#0b3a6b" : "#0058a3") : (isDark ? "#0f172a" : "#ffffff"),
+                color: option.value === filter ? "#ffffff" : palette.text,
                 padding: "10px 18px",
                 borderRadius: 999,
                 fontWeight: 600,
                 cursor: "pointer",
               }}
             >
-              {option}
+              {option.label}
             </button>
           ))}
         </div>
@@ -570,30 +579,50 @@ function OrderHistory() {
                       {order.deliveredAt && <Info label="Delivered" value={order.deliveredAt} />}
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: `repeat(${timelineSteps.length}, minmax(0, 1fr))`, gap: 12 }}>
-                      {timelineSteps.map((step) => {
-                        const isActive = step === displayStatus;
-                        const stepPill = statusPills[step];
-                        return (
-                          <div
-                            key={step}
-                            style={{
-                              padding: 12,
-                              borderRadius: 14,
-                              border: `2px solid ${isActive ? stepPill.border : palette.panelBorder}`,
-                              backgroundColor: isActive ? stepPill.bg : palette.softBg,
-                              color: isActive ? stepPill.color : palette.textFaint,
-                              fontWeight: 800,
-                              textAlign: "center",
-                              boxShadow: isActive ? "0 6px 16px rgba(34,197,94,0.18)" : "none",
-                              transition: "all 0.2s ease",
-                            }}
-                          >
-                            {step}
-                          </div>
-                        );
-                      })}
-                    </div>
+                    {(() => {
+                      const refundSteps = new Set([
+                        "Refund in progress",
+                        "Refund accepted",
+                        "Refund rejected",
+                      ]);
+                      const showRefundSteps = ["Refund Waiting", "Refunded", "Not Refunded"].includes(order.status);
+                      const steps = showRefundSteps
+                        ? timelineSteps
+                        : timelineSteps.filter((step) => !refundSteps.has(step));
+
+                      return (
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))`,
+                            gap: 12,
+                          }}
+                        >
+                          {steps.map((step) => {
+                            const isActive = step === displayStatus;
+                            const stepPill = statusPills[step];
+                            return (
+                              <div
+                                key={step}
+                                style={{
+                                  padding: 12,
+                                  borderRadius: 14,
+                                  border: `2px solid ${isActive ? stepPill.border : palette.panelBorder}`,
+                                  backgroundColor: isActive ? stepPill.bg : palette.softBg,
+                                  color: isActive ? stepPill.color : palette.textFaint,
+                                  fontWeight: 800,
+                                  textAlign: "center",
+                                  boxShadow: isActive ? "0 6px 16px rgba(34,197,94,0.18)" : "none",
+                                  transition: "all 0.2s ease",
+                                }}
+                              >
+                                {step}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
 
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       <p style={{ margin: 0, color: palette.text, fontWeight: 700 }}>Items</p>
