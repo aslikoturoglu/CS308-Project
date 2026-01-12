@@ -200,7 +200,7 @@ function AdminDashboard() {
   const CHAT_PAGE_SIZE = 6;
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
-  const [showUnclaimedOnly, setShowUnclaimedOnly] = useState(true);
+  const [chatFilter, setChatFilter] = useState("unclaimed");
   const [customerOrders, setCustomerOrders] = useState([]);
   const [customerWishlist, setCustomerWishlist] = useState([]);
   const [customerProfile, setCustomerProfile] = useState(null);
@@ -374,22 +374,26 @@ function AdminDashboard() {
     [chats, activeConversationId]
   );
   const filteredChats = useMemo(() => {
-    if (!showUnclaimedOnly) return chats;
-    return chats.filter((chat) => chat.status === "open");
-  }, [chats, showUnclaimedOnly]);
+    if (chatFilter === "all") return chats;
+    if (chatFilter === "mine") {
+      return chats.filter(
+        (chat) => String(chat.assigned_agent_id ?? "") === String(user?.id ?? "")
+      );
+    }
+    return chats.filter((chat) => chat.status === "open" && !chat.assigned_agent_id);
+  }, [chats, chatFilter, user?.id]);
 
   useEffect(() => {
     setChatPage(1);
-  }, [showUnclaimedOnly]);
+  }, [chatFilter]);
 
   useEffect(() => {
-    if (!showUnclaimedOnly) return;
     if (!activeConversationId) return;
     const stillVisible = filteredChats.some((chat) => chat.id === activeConversationId);
     if (!stillVisible && filteredChats.length > 0) {
       setActiveConversationId(filteredChats[0].id);
     }
-  }, [showUnclaimedOnly, filteredChats, activeConversationId]);
+  }, [filteredChats, activeConversationId]);
 
   useEffect(() => {
     if (activeSection !== "support") return;
@@ -1127,27 +1131,55 @@ function AdminDashboard() {
 
   const handleClaimConversation = async (conversationId) => {
     try {
-      await claimSupportConversation(conversationId);
+      const agentId = Number(user?.id);
+      const payload = await claimSupportConversation(
+        conversationId,
+        Number.isFinite(agentId) && agentId > 0 ? agentId : undefined
+      );
       setChats((prev) =>
-        prev.map((chat) => (chat.id === conversationId ? { ...chat, status: "pending" } : chat))
+        prev.map((chat) =>
+          chat.id === conversationId
+            ? {
+                ...chat,
+                status: payload?.status || "pending",
+                assigned_agent_id: payload?.assigned_user_id ?? agentId ?? chat.assigned_agent_id ?? null,
+                assigned_agent_name: user?.name || chat.assigned_agent_name || null,
+                assigned_agent_email: user?.email || chat.assigned_agent_email || null,
+              }
+            : chat
+        )
       );
       addToast("Conversation claimed", "info");
     } catch (error) {
       console.error("Support claim failed", error);
-      addToast("Conversation could not be claimed", "error");
+      addToast(error.message || "Conversation could not be claimed", "error");
     }
   };
 
   const handleUnclaimConversation = async (conversationId) => {
     try {
-      await unclaimSupportConversation(conversationId);
+      const agentId = Number(user?.id);
+      const payload = await unclaimSupportConversation(
+        conversationId,
+        Number.isFinite(agentId) && agentId > 0 ? agentId : undefined
+      );
       setChats((prev) =>
-        prev.map((chat) => (chat.id === conversationId ? { ...chat, status: "open" } : chat))
+        prev.map((chat) =>
+          chat.id === conversationId
+            ? {
+                ...chat,
+                status: payload?.status || "open",
+                assigned_agent_id: null,
+                assigned_agent_name: null,
+                assigned_agent_email: null,
+              }
+            : chat
+        )
       );
       addToast("Conversation unclaimed", "info");
     } catch (error) {
       console.error("Support unclaim failed", error);
-      addToast("Conversation could not be unclaimed", "error");
+      addToast(error.message || "Conversation could not be unclaimed", "error");
     }
   };
 
@@ -1303,6 +1335,16 @@ function AdminDashboard() {
     setReplyFiles((prev) => prev.filter((file) => file.name !== name));
     if (replyFileInputRef.current) replyFileInputRef.current.value = "";
   };
+
+  const filterButtonStyle = (isActive) => ({
+    padding: "6px 10px",
+    borderRadius: 999,
+    border: isActive ? "1px solid #0ea5e9" : "1px solid #e5e7eb",
+    background: isActive ? "rgba(14,165,233,0.12)" : "white",
+    color: isActive ? "#0ea5e9" : "#475569",
+    fontWeight: 700,
+    cursor: "pointer",
+  });
 
   const sections = [
     { id: "dashboard", label: "Overview" },
@@ -2786,14 +2828,29 @@ function AdminDashboard() {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                     <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Active chat queue</h3>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <label style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#475569", fontSize: "0.85rem" }}>
-                        <input
-                          type="checkbox"
-                          checked={showUnclaimedOnly}
-                          onChange={(event) => setShowUnclaimedOnly(event.target.checked)}
-                        />
-                        Unclaimed only
-                      </label>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <button
+                          type="button"
+                          onClick={() => setChatFilter("unclaimed")}
+                          style={filterButtonStyle(chatFilter === "unclaimed")}
+                        >
+                          Unclaimed
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setChatFilter("mine")}
+                          style={filterButtonStyle(chatFilter === "mine")}
+                        >
+                          My chats
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setChatFilter("all")}
+                          style={filterButtonStyle(chatFilter === "all")}
+                        >
+                          All
+                        </button>
+                      </div>
                       {isLoadingChats && <span style={{ color: "#0ea5e9", fontWeight: 700 }}>Syncing...</span>}
                     </div>
                   </div>
@@ -2802,6 +2859,8 @@ function AdminDashboard() {
                       .slice((chatPage - 1) * CHAT_PAGE_SIZE, chatPage * CHAT_PAGE_SIZE)
                       .map((chat) => {
                       const isActive = chat.id === activeConversationId;
+                      const isMine = String(chat.assigned_agent_id ?? "") === String(user?.id ?? "");
+                      const hasAgent = Boolean(chat.assigned_agent_id);
                       return (
                         <div
                           key={chat.id}
@@ -2863,6 +2922,13 @@ function AdminDashboard() {
                             </div>
                           </div>
                           <p style={{ margin: 0, color: "#0f172a" }}>{chat.last_message}</p>
+                          <small style={{ color: isMine ? "#0f766e" : "#64748b" }}>
+                            {hasAgent
+                              ? isMine
+                                ? "Assigned to you"
+                                : `Assigned to ${chat.assigned_agent_name || "another agent"}`
+                              : "Unclaimed"}
+                          </small>
                           <small style={{ color: "#6b7280" }}>
                             Last update: {new Date(chat.last_message_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
                           </small>
@@ -2880,7 +2946,7 @@ function AdminDashboard() {
                             >
                               Open
                             </button>
-                            {chat.status === "open" && (
+                            {!hasAgent && chat.status === "open" && (
                               <button
                                 type="button"
                                 onClick={(event) => {
@@ -2900,7 +2966,7 @@ function AdminDashboard() {
                                 Claim
                               </button>
                             )}
-                            {chat.status === "pending" && (
+                            {isMine && chat.status === "pending" && (
                               <button
                                 type="button"
                                 onClick={(event) => {
@@ -2982,7 +3048,11 @@ function AdminDashboard() {
                     )}
                     {!filteredChats.length && !isLoadingChats && (
                       <p style={{ margin: 0, color: "#6b7280" }}>
-                        {showUnclaimedOnly ? "No unclaimed chats yet." : "No active chats yet."}
+                        {chatFilter === "unclaimed"
+                          ? "No unclaimed chats yet."
+                          : chatFilter === "mine"
+                          ? "No chats assigned to you yet."
+                          : "No active chats yet."}
                       </p>
                     )}
                   </div>
