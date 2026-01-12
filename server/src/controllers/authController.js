@@ -14,6 +14,12 @@ const demoUsers = {
   "support5@suhome.com": { name: "Support Agent 5", password: "support", role: "support" },
 };
 
+function buildDemoTaxId(email) {
+  const hash = crypto.createHash("sha256").update(email).digest("hex");
+  const digits = hash.replace(/[a-f]/g, (char) => String(parseInt(char, 16) % 10));
+  return digits.slice(0, 11).padEnd(11, "0");
+}
+
 const RESET_TABLE_SQL = `
   CREATE TABLE IF NOT EXISTS password_resets (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -54,7 +60,8 @@ async function upsertDemoUser(email) {
       VALUES (?, ?, ?, ?, '')
       ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash)
     `;
-    db.query(sql, [demo.name, email, hashed, `DEMO-${email}`], (err, result) => {
+    const taxId = buildDemoTaxId(email);
+    db.query(sql, [demo.name, email, hashed, taxId], (err, result) => {
       if (err) return reject(err);
       resolve({ id: result.insertId || null, role: demo.role, name: demo.name });
     });
