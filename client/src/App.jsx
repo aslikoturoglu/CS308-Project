@@ -79,7 +79,7 @@ function AdminTopbar() {
 function AppChrome() {
   const location = useLocation();
   const hideShell = location.pathname.startsWith("/admin");
-  const { isDark, setTheme } = useTheme();
+  const { theme, isDark, setTheme } = useTheme();
   const { user } = useAuth();
   const hideMiniCart =
     location.pathname.startsWith("/checkout") ||
@@ -94,10 +94,28 @@ function AppChrome() {
   }, [hideShell]);
 
   useEffect(() => {
-    if (user && user.role !== "customer" && isDark) {
-      setTheme("light");
+    if (!user?.role) return;
+    const customerThemeKey = "theme_customer";
+    if (user.role !== "customer") {
+      try {
+        window.localStorage.setItem(customerThemeKey, theme);
+      } catch {
+        // ignore storage errors
+      }
+      if (isDark) {
+        setTheme("light");
+      }
+      return;
     }
-  }, [user, isDark, setTheme]);
+    try {
+      const stored = window.localStorage.getItem(customerThemeKey);
+      if (stored === "dark" || stored === "light") {
+        setTheme(stored);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [user?.role, theme, isDark, setTheme]);
 
   useEffect(() => {
     if (hideMiniCart && showMiniCart) {

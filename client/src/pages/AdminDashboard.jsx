@@ -227,6 +227,7 @@ function AdminDashboard() {
   const [pmEditProductId, setPmEditProductId] = useState("");
   const [pmEditProduct, setPmEditProduct] = useState(null);
   const [pmUseSuhomeLogistics, setPmUseSuhomeLogistics] = useState(false);
+  const [removeCategoryId, setRemoveCategoryId] = useState("");
   const [filters, setFilters] = useState({ invoiceFrom: "", invoiceTo: "" });
   const [invoices, setInvoices] = useState([]);
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
@@ -1124,9 +1125,10 @@ function AdminDashboard() {
     }
   };
 
-  const handleDeleteCategory = async (category) => {
+  const handleDeleteCategory = async (category, options = {}) => {
     if (!category?.id) return;
-    if (!window.confirm(`Delete category "${category.name}"?`)) return;
+    const confirmMessage = options.confirmMessage || `Delete category "${category.name}"?`;
+    if (!window.confirm(confirmMessage)) return;
     try {
       await deleteCategory(category.id);
       setCategories((prev) => prev.filter((item) => item.id !== category.id));
@@ -2230,24 +2232,6 @@ function AdminDashboard() {
                       }}
                     >
                       {category.name}
-                      {categories.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteCategory(category)}
-                          style={{
-                            border: "none",
-                            background: "transparent",
-                            color: "#b91c1c",
-                            cursor: "pointer",
-                            fontWeight: 800,
-                            lineHeight: 1,
-                          }}
-                          aria-label={`Delete ${category.name}`}
-                          title={`Delete ${category.name}`}
-                        >
-                          ×
-                        </button>
-                      )}
                     </span>
                   ))}
                 </div>
@@ -2265,6 +2249,35 @@ function AdminDashboard() {
                     style={{ ...secondaryBtn, minWidth: 140 }}
                   >
                     {isSavingCategory ? "Adding..." : "Add category"}
+                  </button>
+                </div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <select
+                    value={removeCategoryId}
+                    onChange={(e) => setRemoveCategoryId(e.target.value)}
+                    style={{ ...inputStyle, flex: "1 1 240px" }}
+                  >
+                    <option value="">Remove category</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const selected = categories.find((c) => String(c.id) === String(removeCategoryId));
+                      if (!selected) return;
+                      handleDeleteCategory(selected, {
+                        confirmMessage: `Are you sure you want to remove "${selected.name}"?`,
+                      });
+                      setRemoveCategoryId("");
+                    }}
+                    disabled={!removeCategoryId}
+                    style={{ ...secondaryBtn, minWidth: 140 }}
+                  >
+                    Remove
                   </button>
                 </div>
               </div>
