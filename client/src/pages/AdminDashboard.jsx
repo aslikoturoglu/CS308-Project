@@ -282,6 +282,7 @@ function AdminDashboard() {
   const [highlightedProductId, setHighlightedProductId] = useState(null);
   const productListRef = useRef(null);
   const productFormRef = useRef(null);
+  const pmEditRef = useRef(null);
   const replyFileInputRef = useRef(null);
 
   useEffect(() => {
@@ -1078,9 +1079,9 @@ function AdminDashboard() {
   };
 
   const handleDeleteProduct = async (productId) => {
-    if (user?.role === "product_manager") {
-      addToast("Product managers cannot delete products", "error");
-      return;
+    if (user?.role !== "product_manager") {
+      addToast("Only product managers can delete products", "error");
+      return false;
     }
     try {
       const res = await fetch(`/api/products/${productId}`, { method: "DELETE" });
@@ -1092,9 +1093,11 @@ function AdminDashboard() {
       const refreshed = await fetchProductsWithMeta(controller.signal);
       setProducts(refreshed);
       addToast("Product deleted", "info");
+      return true;
     } catch (error) {
       console.error("Product delete failed:", error);
       addToast(error.message || "Product delete failed", "error");
+      return false;
     }
   };
 
@@ -1154,6 +1157,9 @@ function AdminDashboard() {
       image: target.image || "",
     });
     setPmUseSuhomeLogistics(target.distributor === "SUHome Logistics");
+    requestAnimationFrame(() => {
+      pmEditRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   const handleSavePmEdit = async () => {
@@ -2206,6 +2212,7 @@ function AdminDashboard() {
 
               {user?.role === "product_manager" && (
                 <div
+                  ref={pmEditRef}
                   style={{
                     background: "white",
                     borderRadius: 14,
@@ -2460,6 +2467,23 @@ function AdminDashboard() {
                         <button type="button" onClick={handleSavePmEdit} style={primaryBtn}>
                           Save updates
                         </button>
+                        {pmEditProduct?.id && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const ok = window.confirm("Delete this product? This cannot be undone.");
+                              if (!ok) return;
+                              const deleted = await handleDeleteProduct(pmEditProduct.id);
+                              if (deleted) {
+                                setPmEditProductId("");
+                                setPmEditProduct(null);
+                              }
+                            }}
+                            style={{ ...primaryBtn, background: "#fee2e2", color: "#b91c1c" }}
+                          >
+                            Delete product
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}
@@ -2766,16 +2790,13 @@ function AdminDashboard() {
                           <td style={td}>{p.category || "General"}</td>
                           <td style={td}>
                             {user?.role === "product_manager" ? (
-                              <span style={{ color: "#94a3b8", fontWeight: 700 }}>View only</span>
+                              <button type="button" style={linkBtn} onClick={() => handleSelectPmEditProduct(p.id)}>
+                                Edit
+                              </button>
                             ) : (
-                              <>
-                                <button type="button" style={linkBtn} onClick={() => handleEditProduct(p)}>
-                                  Edit
-                                </button>
-                                <button type="button" style={linkBtn} onClick={() => handleDeleteProduct(p.id)}>
-                                  Delete
-                                </button>
-                              </>
+                              <button type="button" style={linkBtn} onClick={() => handleEditProduct(p)}>
+                                Edit
+                              </button>
                             )}
                           </td>
                         </tr>
