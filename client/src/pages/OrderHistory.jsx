@@ -16,15 +16,15 @@ import { formatPrice } from "../utils/formatPrice";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 
-const timelineSteps = ["Processing", "In-transit", "Delivered", "Cancel", "Refund"];
+const timelineSteps = ["Processing", "In-transit", "Delivered", "Cancelled", "Refunded"];
 const filterOptions = ["All", ...timelineSteps];
 
 const statusPills = {
   Processing: { bg: "rgba(234,179,8,0.2)", color: "#b45309", border: "#eab308" },
   "In-transit": { bg: "rgba(59,130,246,0.15)", color: "#1d4ed8", border: "#60a5fa" },
   Delivered: { bg: "rgba(34,197,94,0.15)", color: "#15803d", border: "#22c55e" },
-  Cancel: { bg: "rgba(248,113,113,0.18)", color: "#b91c1c", border: "#f87171" },
-  Refund: { bg: "rgba(15,118,110,0.15)", color: "#0f766e", border: "#5eead4" },
+  Cancelled: { bg: "rgba(248,113,113,0.18)", color: "#b91c1c", border: "#f87171" },
+  Refunded: { bg: "rgba(15,118,110,0.15)", color: "#0f766e", border: "#5eead4" },
 };
 
 const REFUND_WINDOW_DAYS = 30;
@@ -82,8 +82,8 @@ function getCancelState(order) {
 }
 
 function getDisplayStatus(status) {
-  if (status === "Cancelled") return "Cancel";
-  if (["Refund Waiting", "Refunded", "Not Refunded"].includes(status)) return "Refund";
+  if (status === "Cancelled") return "Cancelled";
+  if (["Refund Waiting", "Refunded", "Not Refunded"].includes(status)) return "Refunded";
   return status;
 }
 
