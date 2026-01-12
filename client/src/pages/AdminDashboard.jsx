@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { fetchProductsWithMeta } from "../services/productService";
-import { createCategory, getCategories } from "../services/categoryService";
+import { createCategory, getCategories, deleteCategory } from "../services/categoryService";
 import {
   fetchSupportInbox,
   fetchSupportMessages,
@@ -972,6 +972,19 @@ function AdminDashboard() {
     }
   };
 
+  const handleDeleteCategory = async (category) => {
+    if (!category?.id) return;
+    if (!window.confirm(`Delete category "${category.name}"?`)) return;
+    try {
+      await deleteCategory(category.id);
+      setCategories((prev) => prev.filter((item) => item.id !== category.id));
+      addToast("Category deleted", "info");
+    } catch (error) {
+      console.error("Category delete failed:", error);
+      addToast(error.message || "Category delete failed", "error");
+    }
+  };
+
   const handlePublishProductRequest = async (requestId) => {
     const priceValue = publishPrices[requestId];
     if (priceValue === "" || priceValue == null) {
@@ -1789,9 +1802,9 @@ function AdminDashboard() {
                   </span>
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {(categories.length ? categories.map((c) => c.name) : PRODUCT_CATEGORIES).map((category) => (
+                  {(categories.length ? categories : PRODUCT_CATEGORIES.map((name, idx) => ({ id: `default-${idx}`, name }))).map((category) => (
                     <span
-                      key={category}
+                      key={category.id}
                       style={{
                         padding: "4px 10px",
                         borderRadius: 999,
@@ -1800,9 +1813,30 @@ function AdminDashboard() {
                         fontSize: "0.85rem",
                         fontWeight: 600,
                         color: "#0f172a",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
                       }}
                     >
-                      {category}
+                      {category.name}
+                      {categories.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCategory(category)}
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            color: "#b91c1c",
+                            cursor: "pointer",
+                            fontWeight: 800,
+                            lineHeight: 1,
+                          }}
+                          aria-label={`Delete ${category.name}`}
+                          title={`Delete ${category.name}`}
+                        >
+                          ×
+                        </button>
+                      )}
                     </span>
                   ))}
                 </div>

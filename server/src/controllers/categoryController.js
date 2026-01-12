@@ -44,3 +44,42 @@ export function createCategory(req, res) {
     });
   });
 }
+
+export function deleteCategory(req, res) {
+  const categoryId = Number(req.params.id);
+  if (!Number.isFinite(categoryId)) {
+    return res.status(400).json({ error: "Invalid category id" });
+  }
+
+  const lookupSql = "SELECT category_id, name FROM categories WHERE category_id = ? LIMIT 1";
+  db.query(lookupSql, [categoryId], (lookupErr, rows = []) => {
+    if (lookupErr) {
+      console.error("Category lookup failed:", lookupErr);
+      return res.status(500).json({ error: "Category lookup failed" });
+    }
+    if (!rows.length) {
+      return res.status(404).json({ error: "Category not found" });
+    }
+
+    const categoryName = String(rows[0].name || "");
+    const usageSql = "SELECT COUNT(*) AS total FROM products WHERE product_category = ?";
+    db.query(usageSql, [categoryName], (usageErr, usageRows = []) => {
+      if (usageErr) {
+        console.error("Category usage check failed:", usageErr);
+        return res.status(500).json({ error: "Category usage check failed" });
+      }
+      const usageCount = Number(usageRows?.[0]?.total || 0);
+      if (usageCount > 0) {
+        return res.status(400).json({ error: "Category is in use by products" });
+      }
+
+      db.query("DELETE FROM categories WHERE category_id = ?", [categoryId], (deleteErr) => {
+        if (deleteErr) {
+          console.error("Category delete failed:", deleteErr);
+          return res.status(500).json({ error: "Category could not be deleted" });
+        }
+        return res.json({ success: true, id: categoryId });
+      });
+    });
+  });
+}

@@ -19,3 +19,14 @@ export async function createCategory(name) {
   }
   return data;
 }
+
+export async function deleteCategory(categoryId) {
+  const res = await fetch(`${API_URL}/categories/${encodeURIComponent(categoryId)}`, {
+    method: "DELETE",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.error || "Category delete failed");
+  }
+  return data;
+}
