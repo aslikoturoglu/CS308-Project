@@ -215,6 +215,10 @@ function AdminDashboard() {
   const [isSendingReply, setIsSendingReply] = useState(false);
   const [returnRequests, setReturnRequests] = useState([]);
   const [isLoadingReturns, setIsLoadingReturns] = useState(false);
+  const [productRequests, setProductRequests] = useState([]);
+  const [isLoadingProductRequests, setIsLoadingProductRequests] = useState(false);
+  const [publishPrices, setPublishPrices] = useState({});
+  const [publishingRequestId, setPublishingRequestId] = useState(null);
   const [filters, setFilters] = useState({ invoiceFrom: "", invoiceTo: "" });
   const [invoices, setInvoices] = useState([]);
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
@@ -443,6 +447,26 @@ function AdminDashboard() {
         setReturnRequests([]);
       })
       .finally(() => setIsLoadingReturns(false));
+  }, [activeSection, addToast]);
+
+  useEffect(() => {
+    if (activeSection !== "sales") return;
+    setIsLoadingProductRequests(true);
+    fetch(`${API_BASE}/api/product-requests`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setProductRequests(data);
+        } else {
+          setProductRequests([]);
+        }
+      })
+      .catch((error) => {
+        console.error("Product requests fetch failed", error);
+        addToast("Product requests could not be loaded", "error");
+        setProductRequests([]);
+      })
+      .finally(() => setIsLoadingProductRequests(false));
   }, [activeSection, addToast]);
 
   const handleViewLowStock = () => {
@@ -743,20 +767,20 @@ function AdminDashboard() {
   }, [orderTab, orders.length]);
 
   const handleAddProduct = async () => {
-    if (!newProduct.name || !newProduct.price) {
-      addToast("Name and price required", "error");
-      return;
-    }
-    if (!newProduct.stock || Number(newProduct.stock) < 1) {
-      addToast("Stock must be at least 1", "error");
-      return;
-    }
     try {
-      const payload = {
+      if (!newProduct.name) {
+        addToast("Name required", "error");
+        return;
+      }
+      if (!newProduct.stock || Number(newProduct.stock) < 1) {
+        addToast("Stock must be at least 1", "error");
+        return;
+      }
+
+      const basePayload = {
         name: newProduct.name,
         model: newProduct.model,
         serialNumber: newProduct.serialNumber,
-        price: Number(newProduct.price),
         stock: Number(newProduct.stock),
         category: newProduct.category || "General",
         mainCategory: newProduct.mainCategory,
@@ -767,6 +791,43 @@ function AdminDashboard() {
         features: newProduct.features,
         image: newProduct.image,
       };
+
+      if (user?.role === "product_manager") {
+        const res = await fetch("/api/product-requests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...basePayload, requestedBy: user?.id }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data?.error || "Product request failed");
+        }
+        setNewProduct({
+          name: "",
+          model: "",
+          serialNumber: "",
+          price: "",
+          stock: "",
+          category: "",
+          mainCategory: "",
+          material: "",
+          color: "",
+          colorHex: "",
+          warranty: "",
+          distributor: "",
+          features: "",
+          image: "",
+        });
+        addToast("Product request sent to sales manager", "info");
+        return;
+      }
+
+      if (!newProduct.price) {
+        addToast("Name and price required", "error");
+        return;
+      }
+
+      const payload = { ...basePayload, price: Number(newProduct.price) };
 
       const res = await fetch(
         editingProductId ? `/api/products/${editingProductId}` : "/api/products",
@@ -814,6 +875,10 @@ function AdminDashboard() {
   };
 
   const handleEditProduct = (product) => {
+    if (user?.role === "product_manager") {
+      addToast("Product managers cannot edit products directly", "error");
+      return;
+    }
     setEditingProductId(product.id);
     setNewProduct({
       name: product.name || "",
@@ -859,6 +924,10 @@ function AdminDashboard() {
   };
 
   const handleDeleteProduct = async (productId) => {
+    if (user?.role === "product_manager") {
+      addToast("Product managers cannot delete products", "error");
+      return;
+    }
     try {
       const res = await fetch(`/api/products/${productId}`, { method: "DELETE" });
       const data = await res.json().catch(() => ({}));
@@ -900,6 +969,47 @@ function AdminDashboard() {
       addToast(error.message || "Category create failed", "error");
     } finally {
       setIsSavingCategory(false);
+    }
+  };
+
+  const handlePublishProductRequest = async (requestId) => {
+    const priceValue = publishPrices[requestId];
+    if (priceValue === "" || priceValue == null) {
+      addToast("Enter a price to publish", "error");
+      return;
+    }
+    const price = Number(priceValue);
+    if (!Number.isFinite(price) || price < 0) {
+      addToast("Enter a valid price", "error");
+      return;
+    }
+    try {
+      setPublishingRequestId(requestId);
+      const res = await fetch(`/api/product-requests/${requestId}/publish`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ price }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Publish failed");
+      }
+      const refreshed = await fetch(`${API_BASE}/api/product-requests`).then((r) => r.json());
+      setProductRequests(Array.isArray(refreshed) ? refreshed : []);
+      const controller = new AbortController();
+      const productsRefreshed = await fetchProductsWithMeta(controller.signal);
+      setProducts(productsRefreshed);
+      setPublishPrices((prev) => {
+        const next = { ...prev };
+        delete next[requestId];
+        return next;
+      });
+      addToast("Product published", "info");
+    } catch (error) {
+      console.error("Publish failed:", error);
+      addToast(error.message || "Publish failed", "error");
+    } finally {
+      setPublishingRequestId(null);
     }
   };
 
@@ -1498,7 +1608,9 @@ function AdminDashboard() {
                   gap: 12,
                 }}
               >
-                <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Product Manager Panel</h3>
+                <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>
+                  {user?.role === "product_manager" ? "Add product request" : "Add product"}
+                </h3>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
                   <input
                     placeholder="Name"
@@ -1518,13 +1630,15 @@ function AdminDashboard() {
                     onChange={(e) => setNewProduct((p) => ({ ...p, serialNumber: e.target.value }))}
                     style={inputStyle}
                   />
-                  <input
-                    placeholder="Price"
-                    type="number"
-                    value={newProduct.price}
-                    onChange={(e) => setNewProduct((p) => ({ ...p, price: e.target.value }))}
-                    style={inputStyle}
-                  />
+                  {user?.role !== "product_manager" && (
+                    <input
+                      placeholder="Price"
+                      type="number"
+                      value={newProduct.price}
+                      onChange={(e) => setNewProduct((p) => ({ ...p, price: e.target.value }))}
+                      style={inputStyle}
+                    />
+                  )}
                   <input
                     placeholder="Stock"
                     type="number"
@@ -1636,7 +1750,12 @@ function AdminDashboard() {
                     style={inputStyle}
                   />
                 </div>
-                {editingProductId && (
+                {user?.role === "product_manager" && (
+                  <p style={{ margin: "0 0 4px", color: "#64748b" }}>
+                    Sales manager will set the final price before publishing.
+                  </p>
+                )}
+                {editingProductId && user?.role !== "product_manager" && (
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                     <button type="button" onClick={handleAddProduct} style={{ ...primaryBtn, marginTop: 10 }}>
                       Save changes
@@ -1646,57 +1765,9 @@ function AdminDashboard() {
                     </button>
                   </div>
                 )}
-                <div
-                  style={{
-                    display: "grid",
-                    gap: 8,
-                    padding: "6px 0 2px",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                    <strong style={{ color: "#0f172a" }}>Categories</strong>
-                    <span style={{ color: "#64748b", fontSize: "0.9rem" }}>
-                      {categories.length ? categories.length : PRODUCT_CATEGORIES.length} available
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {(categories.length ? categories.map((c) => c.name) : PRODUCT_CATEGORIES).map((category) => (
-                      <span
-                        key={category}
-                        style={{
-                          padding: "4px 10px",
-                          borderRadius: 999,
-                          border: "1px solid #e5e7eb",
-                          background: "#f8fafc",
-                          fontSize: "0.85rem",
-                          fontWeight: 600,
-                          color: "#0f172a",
-                        }}
-                      >
-                        {category}
-                      </span>
-                    ))}
-                  </div>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <input
-                      placeholder="Add new category"
-                      value={categoryDraft}
-                      onChange={(e) => setCategoryDraft(e.target.value)}
-                      style={{ ...inputStyle, flex: "1 1 240px" }}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddCategory}
-                      disabled={isSavingCategory}
-                      style={{ ...secondaryBtn, minWidth: 140 }}
-                    >
-                      {isSavingCategory ? "Adding..." : "Add category"}
-                    </button>
-                  </div>
-                </div>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <button type="button" onClick={handleAddProduct} style={{ ...primaryBtn, marginTop: 10 }}>
-                    Add product
+                    {user?.role === "product_manager" ? "Send request" : "Add product"}
                   </button>
                 </div>
               </div>
@@ -1705,13 +1776,65 @@ function AdminDashboard() {
                 style={{
                   background: "white",
                   borderRadius: 14,
-              padding: 18,
-              boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
-              display: "grid",
-              gap: 12,
-            }}
-            ref={productListRef}
-          >
+                  padding: 18,
+                  boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
+                  display: "grid",
+                  gap: 12,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <strong style={{ color: "#0f172a" }}>Categories</strong>
+                  <span style={{ color: "#64748b", fontSize: "0.9rem" }}>
+                    {categories.length ? categories.length : PRODUCT_CATEGORIES.length} available
+                  </span>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {(categories.length ? categories.map((c) => c.name) : PRODUCT_CATEGORIES).map((category) => (
+                    <span
+                      key={category}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: 999,
+                        border: "1px solid #e5e7eb",
+                        background: "#f8fafc",
+                        fontSize: "0.85rem",
+                        fontWeight: 600,
+                        color: "#0f172a",
+                      }}
+                    >
+                      {category}
+                    </span>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <input
+                    placeholder="Add new category"
+                    value={categoryDraft}
+                    onChange={(e) => setCategoryDraft(e.target.value)}
+                    style={{ ...inputStyle, flex: "1 1 240px" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCategory}
+                    disabled={isSavingCategory}
+                    style={{ ...secondaryBtn, minWidth: 140 }}
+                  >
+                    {isSavingCategory ? "Adding..." : "Add category"}
+                  </button>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: "white",
+                  borderRadius: 14,
+                  padding: 18,
+                  boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
+                  display: "grid",
+                  gap: 12,
+                }}
+                ref={productListRef}
+              >
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                 <h4 style={{ margin: 0 }}>Product list</h4>
@@ -1773,12 +1896,18 @@ function AdminDashboard() {
                           <td style={td}>{p.availableStock}</td>
                           <td style={td}>{p.category || "General"}</td>
                           <td style={td}>
-                            <button type="button" style={linkBtn} onClick={() => handleEditProduct(p)}>
-                              Edit
-                            </button>
-                            <button type="button" style={linkBtn} onClick={() => handleDeleteProduct(p.id)}>
-                              Delete
-                            </button>
+                            {user?.role === "product_manager" ? (
+                              <span style={{ color: "#94a3b8", fontWeight: 700 }}>View only</span>
+                            ) : (
+                              <>
+                                <button type="button" style={linkBtn} onClick={() => handleEditProduct(p)}>
+                                  Edit
+                                </button>
+                                <button type="button" style={linkBtn} onClick={() => handleDeleteProduct(p.id)}>
+                                  Delete
+                                </button>
+                              </>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -2202,6 +2331,66 @@ function AdminDashboard() {
 
           {activeSection === "sales" && (
             <section style={{ display: "grid", gap: 18 }}>
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <h3 style={{ margin: 0, color: "#0f172a" }}>Pending product requests</h3>
+                  <span style={{ color: "#94a3b8", fontWeight: 700 }}>{productRequests.length} total</span>
+                </div>
+                {isLoadingProductRequests && <p style={{ margin: 0, color: "#64748b" }}>Loading product requests...</p>}
+                {!isLoadingProductRequests && productRequests.length === 0 && (
+                  <p style={{ margin: 0, color: "#94a3b8" }}>No product requests yet.</p>
+                )}
+                <div style={{ display: "grid", gap: 12 }}>
+                  {productRequests.map((req) => (
+                    <div
+                      key={req.request_id}
+                      style={{
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 12,
+                        padding: 12,
+                        background: "#f8fafc",
+                        display: "grid",
+                        gap: 8,
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                        <div>
+                          <strong>{req.name}</strong>
+                          <p style={{ margin: "2px 0 0", color: "#64748b" }}>
+                            {req.mainCategory || "General"} • {req.category || "General"}
+                          </p>
+                          <p style={{ margin: "2px 0 0", color: "#64748b" }}>
+                            Stock: {req.stock} • Material: {req.material || "N/A"} • Color: {req.color || "N/A"}
+                          </p>
+                        </div>
+                        <small style={{ color: "#94a3b8" }}>
+                          {req.requested_at ? new Date(req.requested_at).toLocaleString("tr-TR") : "Date unavailable"}
+                        </small>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
+                        <input
+                          type="number"
+                          placeholder="Set price"
+                          value={publishPrices[req.request_id] ?? ""}
+                          onChange={(e) =>
+                            setPublishPrices((prev) => ({ ...prev, [req.request_id]: e.target.value }))
+                          }
+                          style={inputStyle}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handlePublishProductRequest(req.request_id)}
+                          style={primaryBtn}
+                          disabled={publishingRequestId === req.request_id}
+                        >
+                          {publishingRequestId === req.request_id ? "Publishing..." : "Publish product"}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <h3 style={{ margin: 0, color: "#0f172a" }}>Return requests</h3>
