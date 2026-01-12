@@ -2,8 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
-import { updateUserProfile } from "../services/userService";
-import { cancelOrder, fetchUserOrders, formatOrderId, getOrders, refundOrder } from "../services/orderService";
+import { fetchUserProfile, updateUserProfile } from "../services/userService";
+import {
+  cancelOrder,
+  fetchUserOrders,
+  formatOrderId,
+  getOrders,
+  requestReturn,
+  fetchUserReturnRequests,
+} from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
 import { useTheme } from "../context/ThemeContext";
 
@@ -35,6 +42,7 @@ function Profile() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(profile || {});
   const [orders, setOrders] = useState([]);
+  const [returnRequests, setReturnRequests] = useState([]);
   const [emailNotifications, setEmailNotifications] = useState(() => profile?.emailNotifications ?? true);
 
   useEffect(() => {
@@ -107,9 +115,19 @@ const getCancelState = (order) => {
 };
 
 const getDisplayStatus = (status) => {
-  if (["Cancelled", "Canceled"].includes(status)) return "Cancelled";
+  if (["Cancelled", "Canceled"].includes(status)) return "Cancel";
   if (["Refund Waiting", "Refunded", "Not Refunded"].includes(status)) return "Refund";
   return status;
+};
+
+const formatReturnStatus = (value) => {
+  const normalized = String(value || "").toLowerCase();
+  if (normalized === "requested") return "Return requested";
+  if (normalized === "accepted") return "Return accepted";
+  if (normalized === "received") return "Return received";
+  if (normalized === "refunded") return "Refunded";
+  if (normalized === "rejected") return "Return rejected";
+  return value || "";
 };
 
 const handleCancelOrder = async (orderId) => {
@@ -130,20 +148,43 @@ const handleCancelOrder = async (orderId) => {
   }
 };
 
-const handleRefundOrder = async (orderId) => {
-  if (!window.confirm("Request a refund for this delivered order?")) return;
+const handleRefundOrder = async (order) => {
+  if (!window.confirm("Request a return for delivered items?")) return;
+  if (!order?.items?.length) {
+    alert("No items found to return.");
+    return;
+  }
+
+  const targets = order.items.filter((item) => item.orderItemId);
+  if (!targets.length) {
+    alert("Return request could not be created for this order.");
+    return;
+  }
 
   try {
-    await refundOrder(orderId);
-    setOrders(prev =>
-      prev.map(o =>
-        o.id === orderId
-          ? { ...o, status: "Refund Waiting" }
-          : o
+    const results = await Promise.allSettled(
+      targets.map((item) =>
+        requestReturn({
+          userId: user?.id,
+          orderItemId: item.orderItemId,
+          reason: null,
+        })
       )
     );
+    const hasSuccess = results.some((r) => r.status === "fulfilled");
+    if (!hasSuccess) {
+      const firstError = results.find((r) => r.status === "rejected");
+      throw firstError?.reason || new Error("Return request failed.");
+    }
+    setReturnRequests((prev) => {
+      const additions = targets.map((item) => ({
+        order_item_id: item.orderItemId,
+        status: "requested",
+      }));
+      return [...additions, ...prev];
+    });
   } catch (err) {
-    alert(err?.message || "Refund failed.");
+    alert(err?.message || "Return request failed.");
   }
 };
 
@@ -155,29 +196,82 @@ const handleRefundOrder = async (orderId) => {
   useEffect(() => {
     if (!user) {
       setOrders([]);
+      setReturnRequests([]);
       return;
     }
     const controller = new AbortController();
+    let isActive = true;
     fetchUserOrders(user.id, controller.signal)
       .then((data) => {
-        if (Array.isArray(data) && data.length) {
-          setOrders(data);
-          return;
-        }
-        setOrders([]);
+        if (!isActive) return;
+        setOrders(Array.isArray(data) ? data : []);
       })
       .catch((err) => {
+        if (!isActive) return;
+        if (err?.name === "AbortError") return;
         console.error("Order history load failed", err);
         setOrders([]);
       });
 
-    return () => controller.abort();
+    fetchUserReturnRequests(user.id)
+      .then((data) => {
+        if (!isActive) return;
+        setReturnRequests(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        if (!isActive) return;
+        console.error("Return requests load failed", err);
+        setReturnRequests([]);
+      });
+
+    fetchUserProfile(user.id)
+      .then((data) => {
+        if (!isActive) return;
+        const nextProfile = {
+          name: data?.name || user?.name || "",
+          email: data?.email || user?.email || "",
+          address: data?.address || "",
+          taxId: data?.taxId || "",
+        };
+        const merged = { ...(profile || {}), ...nextProfile };
+        setProfile(merged);
+        if (storageKey) saveProfile(storageKey, merged);
+        if (!editing) setDraft(merged);
+        updateUser({ name: merged.name, address: merged.address, taxId: merged.taxId });
+      })
+      .catch((err) => {
+        if (!isActive) return;
+        if (err?.name === "AbortError") return;
+        console.error("Profile fetch failed", err);
+      });
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
   }, [user]);
 
   const completedOrders = useMemo(
     () => orders.filter((o) => o.status === "Delivered").length,
     [orders]
   );
+
+  const recentOrders = useMemo(() => {
+    const withDates = orders.map((order) => {
+      const ts = order?.date ? Date.parse(order.date) : NaN;
+      return { order, ts: Number.isFinite(ts) ? ts : 0 };
+    });
+    withDates.sort((a, b) => b.ts - a.ts);
+    return withDates.map((item) => item.order).slice(0, 3);
+  }, [orders]);
+
+  const returnRequestMap = useMemo(() => {
+    const map = new Map();
+    returnRequests.forEach((req) => {
+      if (req.order_item_id) map.set(req.order_item_id, req);
+    });
+    return map;
+  }, [returnRequests]);
 
   if (!user) {
     return (
@@ -278,14 +372,14 @@ const handleRefundOrder = async (orderId) => {
         <div>
           <p style={{ margin: 0, color: isDark ? "#7dd3fc" : "#4b5563", letterSpacing: 1 }}>WELCOME</p>
           <h1 style={{ margin: "4px 0 0", color: isDark ? "#7dd3fc" : "#0058a3" }}>{profile?.name}</h1>
+          <p style={{ margin: "6px 0 0", color: isDark ? "#a3b3c6" : "#475569" }}>
+            User ID: {user?.id ?? "Not set"} - Tax ID: {profile?.taxId || "Not set"}
+          </p>
           <span style={{ color: isDark ? "#94a3b8" : "#6b7280" }}>
             {profile?.email} - SUHome member since {profile?.memberSince ?? "2025"}
           </span>
           <p style={{ margin: "8px 0 0", color: isDark ? "#a3b3c6" : "#475569" }}>
             Address: {profile?.address || "Not set"}
-          </p>
-          <p style={{ margin: "4px 0 0", color: isDark ? "#a3b3c6" : "#475569" }}>
-            Tax ID: {profile?.taxId || "Not set"}
           </p>
         </div>
 
@@ -375,10 +469,10 @@ const handleRefundOrder = async (orderId) => {
               Recent orders
             </h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {orders.slice(0, 3).map((order) => {
-                const formattedId = order.formattedId;
+              {recentOrders.map((order) => {
+                const formattedId = order.formattedId || formatOrderId(order.id);
                 const statusStyle = {
-                  Cancelled: {
+                  Cancel: {
                     bg: "rgba(148,163,184,0.18)",
                     color: "#64748b",
                     border: "#cbd5e1",
@@ -405,6 +499,9 @@ const handleRefundOrder = async (orderId) => {
                   },
                 };
                 const displayStatus = getDisplayStatus(order.status);
+                const orderReturnStatus =
+                  order?.items?.map((item) => returnRequestMap.get(item.orderItemId)?.status).find(Boolean) || "";
+                const hasActiveReturn = Boolean(orderReturnStatus && orderReturnStatus !== "rejected");
                 const pill = statusStyle[displayStatus] || statusStyle.Processing;
 
 
@@ -418,84 +515,75 @@ const handleRefundOrder = async (orderId) => {
                       backgroundColor: isDark ? "#0b1220" : "transparent",
                     }}
                   >
-
                   <div
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
-                      marginBottom: 8,
+                      flexWrap: "wrap",
+                      gap: 12,
                     }}
                   >
-                    <strong style={{ color: isDark ? "#e2e8f0" : "#0f172a" }}>{formattedId}</strong>
-                    <span style={{ color: isDark ? "#94a3b8" : "#6b7280", fontSize: "0.9rem" }}>{order.date}</span>
+                    <div>
+                      <p
+                        style={{
+                          margin: 0,
+                          color: isDark ? "#94a3b8" : "#9ca3af",
+                          letterSpacing: 1,
+                          fontSize: "0.75rem",
+                        }}
+                      >
+                        ORDER
+                      </p>
+                      <p style={{ margin: "4px 0 0", fontWeight: 800, color: isDark ? "#e2e8f0" : "#0f172a" }}>
+                        {formattedId}
+                      </p>
+                      <p style={{ margin: "4px 0 0", color: isDark ? "#94a3b8" : "#6b7280", fontSize: "0.9rem" }}>
+                        {order.date}
+                      </p>
+                    </div>
+
+                    <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                      <span
+                        style={{
+                          backgroundColor: pill.bg,
+                          color: pill.color,
+                          border: `1px solid ${pill.border}`,
+                          padding: "6px 12px",
+                          borderRadius: 999,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {displayStatus}
+                      </span>
+                      {["Delivered", "Refund Waiting", "Refunded", "Not Refunded", "Cancelled", "Canceled"].includes(order?.status) && (() => {
+                        const refundState = getRefundState(order);
+                        const label = hasActiveReturn ? formatReturnStatus(orderReturnStatus) : refundState.label;
+                        const disabled = hasActiveReturn ? true : !refundState.allowed;
+                        return (
+                          <button
+                            onClick={() => handleRefundOrder(order)}
+                            style={{
+                              backgroundColor: !disabled ? "#e0f2fe" : "#f1f5f9",
+                              color: !disabled ? "#0369a1" : "#94a3b8",
+                              border: `1px solid ${!disabled ? "#bae6fd" : "#e2e8f0"}`,
+                              padding: "6px 12px",
+                              borderRadius: 999,
+                              cursor: !disabled ? "pointer" : "not-allowed",
+                              fontWeight: 700,
+                              opacity: !disabled ? 1 : 0.65,
+                            }}
+                            disabled={disabled}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })()}
+                      <span style={{ fontWeight: 800, color: isDark ? "#e2e8f0" : "#0f172a" }}>
+                        {formatPrice(order.total)}
+                      </span>
+                    </div>
                   </div>
-                  <p style={{ margin: "4px 0", color: isDark ? "#cbd5e1" : "#4b5563" }}>
-                    {order.items.map((it) => it.name).join(", ")}
-                  </p>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-  <span style={{ fontWeight: 600, color: isDark ? "#e2e8f0" : "#0f172a" }}>
-    {formatPrice(order.total)}
-  </span>
-
-  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-    <span
-  style={{
-      backgroundColor: pill.bg,
-      color: pill.color,
-      border: `1px solid ${pill.border}`,
-      padding: "4px 10px",
-      borderRadius: 999,
-      fontWeight: 700,
-  }}
->
-  {displayStatus}
-</span>
-
-    {order?.status === "Processing" && (() => {
-      const cancelState = getCancelState(order);
-      return (
-        <button
-          onClick={() => handleCancelOrder(order.id)}
-          disabled={!cancelState.allowed}
-          style={{
-            backgroundColor: cancelState.allowed ? "#fee2e2" : "#f1f5f9",
-            color: cancelState.allowed ? "#b91c1c" : "#94a3b8",
-            border: `1px solid ${cancelState.allowed ? "#fecaca" : "#e2e8f0"}`,
-            padding: "6px 12px",
-            borderRadius: 8,
-            cursor: cancelState.allowed ? "pointer" : "not-allowed",
-            fontWeight: 700,
-            opacity: cancelState.allowed ? 1 : 0.65,
-          }}
-        >
-          {cancelState.label}
-        </button>
-      );
-    })()}
-    {["Delivered", "Refund Waiting", "Refunded", "Not Refunded", "Cancelled", "Canceled"].includes(order?.status) && (() => {
-      const refundState = getRefundState(order);
-      return (
-        <button
-          onClick={() => handleRefundOrder(order.id)}
-          style={{
-            backgroundColor: refundState.allowed ? "#e0f2fe" : "#f1f5f9",
-            color: refundState.allowed ? "#0369a1" : "#94a3b8",
-            border: `1px solid ${refundState.allowed ? "#bae6fd" : "#e2e8f0"}`,
-            padding: "6px 12px",
-            borderRadius: 8,
-            cursor: refundState.allowed ? "pointer" : "not-allowed",
-            fontWeight: 700,
-            opacity: refundState.allowed ? 1 : 0.65,
-          }}
-          disabled={!refundState.allowed}
-        >
-          {refundState.label}
-        </button>
-      );
-    })()}
-  </div>
-</div>
 
                 </article>
               );

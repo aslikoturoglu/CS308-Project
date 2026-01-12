@@ -6,6 +6,7 @@ import {
   getInvoicesByDate,
   getProfitReport,
   getReturnRequests,
+  updateReturnRequestStatus,
 } from "../controllers/salesController.js";
 
 const router = Router();
@@ -16,5 +17,6 @@ router.put("/products/:id/cost", updateProductCost);
 router.get("/invoices", getInvoicesByDate);
 router.get("/reports/profit", getProfitReport);
 router.get("/return-requests", getReturnRequests);
+router.put("/return-requests/:return_id/status", updateReturnRequestStatus);
 
 export default router;

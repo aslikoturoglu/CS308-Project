@@ -34,3 +34,12 @@ export async function updateUserProfile({ userId, name, address, taxId }) {
   });
   return handle(res);
 }
+
+export async function fetchUserProfile(userId) {
+  const numericId = Number(userId);
+  if (!Number.isFinite(numericId) || numericId <= 0) {
+    throw new Error("Invalid user id");
+  }
+  const res = await fetch(`${API_BASE}/api/users/${encodeURIComponent(numericId)}`);
+  return handle(res);
+}

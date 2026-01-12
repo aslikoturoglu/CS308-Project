@@ -46,3 +46,29 @@ export function updateUserProfile(req, res) {
     return res.json({ success: true, name: nextName, address: nextAddress, taxId: nextTaxId });
   });
 }
+
+export function getUserProfile(req, res) {
+  const userId = Number(req.params.userId);
+  if (!Number.isFinite(userId) || userId <= 0) {
+    return res.status(400).json({ error: "user_id is required" });
+  }
+
+  const sql = "SELECT user_id, full_name, email, home_address, tax_id FROM users WHERE user_id = ? LIMIT 1";
+  db.query(sql, [userId], (err, rows) => {
+    if (err) {
+      console.error("User profile fetch failed:", err);
+      return res.status(500).json({ error: "Profile fetch failed" });
+    }
+    if (!rows.length) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const row = rows[0];
+    return res.json({
+      id: row.user_id,
+      name: row.full_name || "",
+      email: row.email || "",
+      address: row.home_address || "",
+      taxId: row.tax_id || "",
+    });
+  });
+}

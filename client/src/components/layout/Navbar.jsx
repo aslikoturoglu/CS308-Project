@@ -59,6 +59,7 @@ function Navbar({showMiniCart, setShowMiniCart }) {
         setNotifications(matches);
       })
       .catch((error) => {
+        if (error?.name === "AbortError") return;
         console.error("Notification refresh failed", error);
       });
 

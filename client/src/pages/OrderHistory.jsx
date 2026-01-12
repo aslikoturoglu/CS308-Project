@@ -4,7 +4,14 @@ import {
   addComment as addCommentApi,
   fetchUserComments,
 } from "../services/commentService";
-import { cancelOrder, formatOrderId, fetchUserOrders, refundOrder } from "../services/orderService";
+import {
+  cancelOrder,
+  formatOrderId,
+  fetchUserOrders,
+  refundOrder,
+  requestReturn,
+  fetchUserReturnRequests,
+} from "../services/orderService";
 import { formatPrice } from "../utils/formatPrice";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -80,6 +87,16 @@ function getDisplayStatus(status) {
   return status;
 }
 
+function formatReturnStatus(value) {
+  const normalized = String(value || "").toLowerCase();
+  if (normalized === "requested") return "Requested";
+  if (normalized === "accepted") return "Accepted";
+  if (normalized === "received") return "Received";
+  if (normalized === "refunded") return "Refunded";
+  if (normalized === "rejected") return "Rejected";
+  return value || "";
+}
+
 function OrderHistory() {
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -89,6 +106,7 @@ function OrderHistory() {
   const [orders, setOrders] = useState([]);
   const [reviews, setReviews] = useState({});
   const [openOrderId, setOpenOrderId] = useState(null);
+  const [returnRequests, setReturnRequests] = useState([]);
   const palette = {
     pageBg: isDark ? "#0b0f14" : "#f5f7fb",
     panelBg: isDark ? "#0f172a" : "#ffffff",
@@ -112,6 +130,12 @@ function OrderHistory() {
           console.error("Order history load failed", err);
           setOrders([]);
         });
+      fetchUserReturnRequests(user.id)
+        .then((data) => setReturnRequests(Array.isArray(data) ? data : []))
+        .catch((err) => {
+          console.error("Return requests load failed", err);
+          setReturnRequests([]);
+        });
       fetchUserComments(user.id, controller.signal)
         .then((data) => {
           const map = {};
@@ -125,9 +149,18 @@ function OrderHistory() {
     } else {
       setOrders([]);
       setReviews({});
+      setReturnRequests([]);
     }
     return () => controller.abort();
   }, [user]);
+
+  const returnRequestMap = useMemo(() => {
+    const map = new Map();
+    returnRequests.forEach((req) => {
+      if (req.order_item_id) map.set(req.order_item_id, req);
+    });
+    return map;
+  }, [returnRequests]);
 
   const filteredOrders = useMemo(() => {
     if (filter === "All") return orders;
@@ -216,6 +249,29 @@ function OrderHistory() {
     );
     } catch (err) {
       alert(err?.message || "Refund failed.");
+    }
+  };
+
+  const handleReturnRequest = async (orderItemId) => {
+    if (!orderItemId || !user?.id) return;
+    const reason = window.prompt("Return reason (optional):", "");
+    if (reason === null) return;
+    try {
+      const data = await requestReturn({
+        userId: user.id,
+        orderItemId,
+        reason: reason || null,
+      });
+      setReturnRequests((prev) => [
+        {
+          return_id: data.return_id,
+          order_item_id: orderItemId,
+          status: "requested",
+        },
+        ...prev,
+      ]);
+    } catch (err) {
+      alert(err?.message || "Return request failed.");
     }
   };
 
@@ -468,6 +524,10 @@ function OrderHistory() {
                       <div style={{ display: "grid", gap: 10 }}>
                         {order.items.map((item) => {
                           const productId = item.productId ?? item.id;
+                          const returnInfo = item.orderItemId ? returnRequestMap.get(item.orderItemId) : null;
+                          const returnStatus = returnInfo?.status || "";
+                          const canRequestReturn =
+                            order.status === "Delivered" && isRefundWindowOpen(order) && item.orderItemId;
                           const userReviews = reviews[productId] ?? [];
                           const latestReview = userReviews[userReviews.length - 1];
                           const approvedReview = [...userReviews]
@@ -526,6 +586,34 @@ function OrderHistory() {
                                 <p style={{ margin: 0, color: palette.textFaint, fontSize: "0.9rem" }}>
                                   {formatPrice(item.price)} each
                                 </p>
+                                {returnStatus && (
+                                  <span style={{ display: "inline-block", marginTop: 6, color: palette.textFaint, fontWeight: 700 }}>
+                                    Return: {formatReturnStatus(returnStatus)}
+                                  </span>
+                                )}
+                                {canRequestReturn && !returnStatus && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleReturnRequest(item.orderItemId)}
+                                    style={{
+                                      marginTop: 8,
+                                      background: "#e0f2fe",
+                                      color: "#0369a1",
+                                      border: "1px solid #bae6fd",
+                                      padding: "6px 10px",
+                                      borderRadius: 8,
+                                      cursor: "pointer",
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    Request return
+                                  </button>
+                                )}
+                                {order.status === "Delivered" && item.orderItemId && !canRequestReturn && !returnStatus && (
+                                  <span style={{ display: "inline-block", marginTop: 6, color: palette.textFaint }}>
+                                    Return window expired
+                                  </span>
+                                )}
                               </div>
 
                               {order.status === "Delivered" && (

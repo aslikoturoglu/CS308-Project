@@ -362,23 +362,31 @@ export function getProfitReport(req, res) {
 export function getReturnRequests(req, res) {
   const sql = `
     SELECT
-      sm.message_id,
-      sm.message_text,
-      sm.created_at AS message_at,
-      sc.conversation_id,
-      sc.order_id,
-      sc.user_id,
+      rr.return_id,
+      rr.order_item_id,
+      rr.user_id,
+      rr.reason,
+      rr.status AS return_status,
+      rr.requested_at,
+      rr.processed_at,
+      oi.order_id,
+      oi.product_id,
+      oi.quantity,
+      oi.unit_price,
+      o.order_date,
+      o.status AS order_status,
+      d.delivery_status,
       u.full_name AS customer_name,
       u.email AS customer_email,
-      sa.attachment_id,
-      sa.file_name,
-      sa.url,
-      sa.uploaded_at
-    FROM support_attachments sa
-    JOIN support_messages sm ON sm.message_id = sa.message_id
-    JOIN support_conversations sc ON sc.conversation_id = sm.conversation_id
-    LEFT JOIN users u ON u.user_id = sc.user_id
-    ORDER BY sm.created_at DESC, sa.uploaded_at DESC
+      COALESCE(p.product_name, CONCAT('Product #', oi.product_id)) AS product_name,
+      p.product_image
+    FROM return_requests rr
+    JOIN order_items oi ON oi.order_item_id = rr.order_item_id
+    JOIN orders o ON o.order_id = oi.order_id
+    LEFT JOIN deliveries d ON d.order_item_id = rr.order_item_id
+    LEFT JOIN users u ON u.user_id = rr.user_id
+    LEFT JOIN products p ON p.product_id = oi.product_id
+    ORDER BY rr.requested_at DESC
   `;
 
   db.query(sql, (err, rows = []) => {
@@ -387,96 +395,177 @@ export function getReturnRequests(req, res) {
       return res.status(500).json({ error: "Return requests could not be loaded" });
     }
 
-    const parseOrderId = (value) => {
-      if (!value) return null;
-      const match = String(value).match(/ORD-(\d+)/i);
-      if (!match) return null;
-      return Number(match[1]);
-    };
-
-    const orderIds = new Set();
-    const normalized = rows.map((row) => {
-      const parsedId = parseOrderId(row.file_name) || parseOrderId(row.message_text);
-      const resolvedOrderId = Number(row.order_id) || parsedId || null;
-      if (resolvedOrderId) orderIds.add(resolvedOrderId);
+    const now = Date.now();
+    const payload = rows.map((row) => {
+      const status = String(row.delivery_status || row.order_status || "").toLowerCase();
+      const delivered = status === "delivered";
+      const orderDate = row.order_date ? new Date(row.order_date) : null;
+      const ageDays = orderDate ? (now - orderDate.getTime()) / (1000 * 60 * 60 * 24) : null;
+      const returnEligible = Boolean(delivered && ageDays !== null && ageDays <= 30);
 
       return {
-        ...row,
-        resolved_order_id: resolvedOrderId,
-      };
-    });
-
-    const ids = Array.from(orderIds);
-    if (!ids.length) {
-      const payload = normalized.map((row) => ({
-        message_id: row.message_id,
-        message_text: row.message_text,
-        message_at: row.message_at,
-        conversation_id: row.conversation_id,
-        order_id: row.resolved_order_id,
+        return_id: row.return_id,
+        order_item_id: row.order_item_id,
+        order_id: row.order_id,
         user_id: row.user_id,
         customer_name: row.customer_name || `User #${row.user_id}`,
         customer_email: row.customer_email || null,
-        order_date: null,
-        status: null,
-        return_eligible: false,
-        attachment: {
-          id: row.attachment_id,
-          file_name: row.file_name,
-          url: row.url,
-          uploaded_at: row.uploaded_at,
-        },
-      }));
-      return res.json(payload);
+        product_id: row.product_id,
+        product_name: row.product_name,
+        product_image: row.product_image,
+        quantity: Number(row.quantity || 0),
+        unit_price: Number(row.unit_price || 0),
+        reason: row.reason,
+        return_status: row.return_status,
+        order_date: row.order_date,
+        delivery_status: row.delivery_status,
+        return_eligible: returnEligible,
+        requested_at: row.requested_at,
+        processed_at: row.processed_at,
+      };
+    });
+
+    return res.json(payload);
+  });
+}
+
+export function updateReturnRequestStatus(req, res) {
+  const returnId = Number(req.params.return_id);
+  const nextStatus = String(req.body?.status || "").toLowerCase();
+
+  if (!Number.isFinite(returnId)) {
+    return res.status(400).json({ error: "return_id is required" });
+  }
+  if (!nextStatus) {
+    return res.status(400).json({ error: "status is required" });
+  }
+
+  const allowedStatuses = ["accepted", "rejected", "received", "refunded"];
+  if (!allowedStatuses.includes(nextStatus)) {
+    return res.status(400).json({ error: "Invalid status" });
+  }
+
+  const lookupSql = `
+    SELECT
+      rr.return_id,
+      rr.status AS return_status,
+      rr.order_item_id,
+      oi.order_id,
+      oi.product_id,
+      oi.quantity,
+      oi.unit_price
+    FROM return_requests rr
+    JOIN order_items oi ON oi.order_item_id = rr.order_item_id
+    WHERE rr.return_id = ?
+    LIMIT 1
+  `;
+
+  db.query(lookupSql, [returnId], (err, rows) => {
+    if (err) {
+      console.error("Return request lookup failed:", err);
+      return res.status(500).json({ error: "Return request lookup failed" });
+    }
+    if (!rows.length) {
+      return res.status(404).json({ error: "Return request not found" });
     }
 
-    const ordersSql = `
-      SELECT order_id, status, order_date
-      FROM orders
-      WHERE order_id IN (?)
-    `;
+    const row = rows[0];
+    const current = String(row.return_status || "").toLowerCase();
 
-    db.query(ordersSql, [ids], (ordersErr, orderRows = []) => {
-      if (ordersErr) {
-        console.error("Return request order lookup failed:", ordersErr);
-      }
+    const allowedTransition =
+      (nextStatus === "accepted" && current === "requested") ||
+      (nextStatus === "rejected" && ["requested", "accepted"].includes(current)) ||
+      (nextStatus === "received" && current === "accepted") ||
+      (nextStatus === "refunded" && current === "received");
 
-      const orderMap = new Map();
-      orderRows.forEach((row) => {
-        orderMap.set(Number(row.order_id), row);
+    if (!allowedTransition) {
+      return res.status(400).json({ error: "Invalid status transition" });
+    }
+
+    const updateReturn = () => {
+      db.query(
+        "UPDATE return_requests SET status = ?, processed_at = NOW() WHERE return_id = ?",
+        [nextStatus, returnId],
+        (updateErr) => {
+          if (updateErr) {
+            console.error("Return request update failed:", updateErr);
+            return res.status(500).json({ error: "Return request update failed" });
+          }
+          return res.json({ success: true, return_id: returnId, status: nextStatus });
+        }
+      );
+    };
+
+    const updateDeliveryStatus = (deliveryStatus, callback) => {
+      if (!deliveryStatus) return callback();
+      db.query(
+        "UPDATE deliveries SET delivery_status = ? WHERE order_item_id = ?",
+        [deliveryStatus, row.order_item_id],
+        () => callback()
+      );
+    };
+
+    if (nextStatus === "accepted") {
+      return updateDeliveryStatus("refund_waiting", updateReturn);
+    }
+
+    if (nextStatus === "rejected") {
+      return updateDeliveryStatus("refund_rejected", updateReturn);
+    }
+
+    if (nextStatus === "received") {
+      return updateDeliveryStatus("returned", updateReturn);
+    }
+
+    if (nextStatus === "refunded") {
+      const restockSql = `
+        UPDATE products
+        SET product_stock = product_stock + ?
+        WHERE product_id = ?
+      `;
+
+      db.query(restockSql, [row.quantity, row.product_id], (restockErr) => {
+        if (restockErr) {
+          console.error("Restock failed:", restockErr);
+          return res.status(500).json({ error: "Restock failed" });
+        }
+
+        const paymentSql = `
+          SELECT payment_id
+          FROM payments
+          WHERE order_id = ?
+          ORDER BY paid_at DESC, payment_id DESC
+          LIMIT 1
+        `;
+
+        db.query(paymentSql, [row.order_id], (paymentErr, paymentRows = []) => {
+          if (paymentErr) {
+            console.error("Payment lookup failed:", paymentErr);
+            return res.status(500).json({ error: "Payment lookup failed" });
+          }
+          if (!paymentRows.length) {
+            return res.status(400).json({ error: "Payment not found for order" });
+          }
+
+          const amount = Number(row.unit_price || 0) * Number(row.quantity || 0);
+          const refundSql = `
+            INSERT INTO refunds (payment_id, return_id, amount, status, processed_at)
+            VALUES (?, ?, ?, 'completed', NOW())
+          `;
+
+          db.query(refundSql, [paymentRows[0].payment_id, returnId, amount], (refundErr) => {
+            if (refundErr) {
+              console.error("Refund insert failed:", refundErr);
+              return res.status(500).json({ error: "Refund insert failed" });
+            }
+
+            updateDeliveryStatus("refunded", updateReturn);
+          });
+        });
       });
+      return;
+    }
 
-      const now = Date.now();
-      const payload = normalized.map((row) => {
-        const order = row.resolved_order_id ? orderMap.get(Number(row.resolved_order_id)) : null;
-        const status = String(order?.status || "").toLowerCase();
-        const delivered = status === "delivered";
-        const orderDate = order?.order_date ? new Date(order.order_date) : null;
-        const ageDays = orderDate ? (now - orderDate.getTime()) / (1000 * 60 * 60 * 24) : null;
-        const returnEligible = Boolean(delivered && ageDays !== null && ageDays <= 30);
-
-        return {
-          message_id: row.message_id,
-          message_text: row.message_text,
-          message_at: row.message_at,
-          conversation_id: row.conversation_id,
-          order_id: row.resolved_order_id,
-          user_id: row.user_id,
-          customer_name: row.customer_name || `User #${row.user_id}`,
-          customer_email: row.customer_email || null,
-          order_date: order?.order_date || null,
-          status: order?.status || null,
-          return_eligible: returnEligible,
-          attachment: {
-            id: row.attachment_id,
-            file_name: row.file_name,
-            url: row.url,
-            uploaded_at: row.uploaded_at,
-          },
-        };
-      });
-
-      return res.json(payload);
-    });
+    return updateReturn();
   });
 }

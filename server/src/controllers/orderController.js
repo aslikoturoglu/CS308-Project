@@ -310,6 +310,7 @@ export function getOrderHistory(req, res) {
       const itemSql = `
     SELECT 
       oi.order_id,
+      oi.order_item_id,
       oi.product_id,
       oi.quantity,
       oi.unit_price,
@@ -331,6 +332,7 @@ export function getOrderHistory(req, res) {
       itemRows.forEach((row) => {
         const list = itemMap.get(row.order_id) || [];
         list.push({
+          order_item_id: row.order_item_id,
           product_id: row.product_id,
           name: row.product_name,
           quantity: row.quantity,
@@ -362,7 +364,7 @@ export function getOrderHistory(req, res) {
       order_id: row.order_id,
       order_date: row.order_date,
       total_amount: Number(row.total_amount) || 0,
-      status: normalizeStatus(row.delivery_status || row.order_status),
+      status: normalizeStatus(row.order_status),
       delivery_status: row.delivery_status,
       shipping_address: row.shipping_address,
       billing_address: row.billing_address,
@@ -404,6 +406,7 @@ export function getAllOrders(req, res) {
   const itemSql = `
     SELECT 
       oi.order_id,
+      oi.order_item_id,
       oi.product_id,
       oi.quantity,
       oi.unit_price,
@@ -451,6 +454,7 @@ export function getAllOrders(req, res) {
       itemRows.forEach((row) => {
         const list = itemMap.get(row.order_id) || [];
         list.push({
+          order_item_id: row.order_item_id,
           product_id: row.product_id,
           name: row.product_name,
           quantity: row.quantity,
@@ -462,7 +466,7 @@ export function getAllOrders(req, res) {
       });
 
       const normalized = orderRows.map((row) => {
-        const status = normalizeStatus(row.delivery_status || row.order_status);
+        const status = normalizeStatus(row.order_status);
         return {
           order_id: row.order_id,
           user_id: row.user_id,
@@ -494,7 +498,7 @@ export function updateDeliveryStatus(req, res) {
   const nextDeliveryStatus = allowed.includes(normalized) ? normalized : "preparing";
 
   const orderStatusMap = {
-    preparing: "preparing",
+    preparing: "processing",
     shipped: "shipped",
     in_transit: "shipped",
     delivered: "delivered",
@@ -503,7 +507,7 @@ export function updateDeliveryStatus(req, res) {
     refund_waiting: "refund_waiting",
     refund_rejected: "refund_rejected",
   };
-  const nextOrderStatus = orderStatusMap[nextDeliveryStatus] || "preparing";
+  const nextOrderStatus = orderStatusMap[nextDeliveryStatus] || "placed";
 
   const sql = `
     UPDATE deliveries

@@ -1,6 +1,10 @@
 const ORDER_KEY = "orders";
 const timelineSteps = ["Processing", "In-transit", "Delivered"];
-const API_BASE = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) || "";
+const API_BASE =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
+  (typeof window !== "undefined" && window.location.hostname === "localhost"
+    ? "http://localhost:3000"
+    : "");
 
 export function formatOrderId(id) {
   if (!id && id !== 0) return "#ORD-00000";
@@ -56,8 +60,7 @@ export async function fetchUserOrders(userId, signal) {
   const primary = await tryFetch(primaryUrl);
   if (primary.ok && Array.isArray(primary.data)) {
     const mapped = mapOrderRows(primary.data);
-    const hasItems = mapped.some((o) => Array.isArray(o.items) && o.items.length > 0);
-    if (mapped.length && hasItems) return mapped;
+    if (mapped.length) return mapped;
   }
 
   const fallback = await tryFetch(fallbackUrl);
@@ -193,15 +196,51 @@ export async function refundOrder(orderId) {
   return data;
 }
 
+export async function requestReturn({ userId, orderItemId, reason }) {
+  const numericUserId = Number(userId);
+  const numericItemId = Number(orderItemId);
+  if (!Number.isFinite(numericUserId) || !Number.isFinite(numericItemId)) {
+    throw new Error("Invalid user or order item id");
+  }
+
+  const res = await fetch(`${API_BASE}/api/returns`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: numericUserId,
+      order_item_id: numericItemId,
+      reason: reason || null,
+    }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Return request failed");
+  return data;
+}
+
+export async function fetchUserReturnRequests(userId) {
+  const numericUserId = Number(userId);
+  if (!Number.isFinite(numericUserId)) return [];
+  const res = await fetch(`${API_BASE}/api/returns?user_id=${encodeURIComponent(numericUserId)}`);
+  const data = await res.json().catch(() => []);
+  if (!res.ok) {
+    const msg = data?.error || "Return requests could not be loaded";
+    throw new Error(msg);
+  }
+  return Array.isArray(data) ? data : [];
+}
+
 
 
 
 
 function mapOrderRows(data = []) {
   return (data || []).map((row) => {
-    const status = backendToFrontendStatus(row.delivery_status || row.status || row.order_status);
+    const rawStatus = row.status ?? row.order_status ?? row.delivery_status;
+    const status = row.status ? rawStatus : backendToFrontendStatus(rawStatus);
     const items = normalizeItems(row).map((it, idx) => ({
-      id: it.product_id ?? it.id ?? idx,
+      id: it.order_item_id ?? it.product_id ?? it.id ?? idx,
+      orderItemId: it.order_item_id ?? it.orderItemId ?? null,
       productId: it.product_id ?? it.id ?? idx,
       name: it.name ?? it.product_name ?? it.title ?? "Item",
       qty: it.quantity ?? it.qty ?? it.amount ?? 1,
@@ -389,7 +428,8 @@ export async function fetchAllOrders(signal) {
     const progressIndex = timelineSteps.indexOf(status);
     const items = Array.isArray(row.items)
       ? row.items.map((it, idx) => ({
-          id: it.product_id ?? idx,
+          id: it.order_item_id ?? it.product_id ?? idx,
+          orderItemId: it.order_item_id ?? it.orderItemId ?? null,
           productId: it.product_id ?? idx,
           name: it.name ?? it.product_name ?? it.title ?? "Item",
           variant: "",

@@ -42,6 +42,15 @@ const DELIVERY_FILTERS = [
 ];
 
 const DELIVERY_STATUSES = DELIVERY_FILTERS.filter((f) => f.id !== "All").map((f) => f.id);
+const DELIVERY_STATUS_STYLES = {
+  Processing: { bg: "#fef3c7", color: "#92400e", border: "#fcd34d" },
+  "In-transit": { bg: "#dbeafe", color: "#1d4ed8", border: "#93c5fd" },
+  Delivered: { bg: "#dcfce7", color: "#166534", border: "#86efac" },
+  Cancelled: { bg: "#fee2e2", color: "#b91c1c", border: "#fca5a5" },
+  "Refund Waiting": { bg: "#ffedd5", color: "#9a3412", border: "#fdba74" },
+  Refunded: { bg: "#e0f2fe", color: "#0369a1", border: "#7dd3fc" },
+  "Not Refunded": { bg: "#f1f5f9", color: "#64748b", border: "#cbd5e1" },
+};
 const PRODUCT_CATEGORIES = [
   "table",
   "utensils",
@@ -366,9 +375,9 @@ function AdminDashboard() {
   }, [refreshPendingReviews]);
 
   useEffect(() => {
-    if (activeSection !== "support") return;
+    if (activeSection !== "sales") return;
     setIsLoadingReturns(true);
-    fetch("/api/sales/return-requests")
+    fetch(`${API_BASE}/api/sales/return-requests`)
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -1105,6 +1114,29 @@ function AdminDashboard() {
     }
   };
 
+  const handleReturnStatusUpdate = async (returnId, status) => {
+    try {
+      const res = await fetch(`/api/sales/return-requests/${returnId}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Return status update failed");
+      }
+      setReturnRequests((prev) =>
+        prev.map((item) =>
+          item.return_id === returnId ? { ...item, return_status: status } : item
+        )
+      );
+      addToast("Return request updated", "info");
+    } catch (error) {
+      console.error("Return status update failed", error);
+      addToast(error.message || "Return status update failed", "error");
+    }
+  };
+
   const handleApproveReview = async (commentId) => {
     try {
       await approveCommentApi(commentId);
@@ -1700,6 +1732,7 @@ function AdminDashboard() {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(110px,1fr))", gap: 6, marginBottom: 6 }}>
                   {DELIVERY_FILTERS.map((tab) => {
                     const isActive = deliveryTab === tab.id;
+                    const tone = DELIVERY_STATUS_STYLES[tab.id];
                     return (
                       <button
                         key={tab.id}
@@ -1708,9 +1741,11 @@ function AdminDashboard() {
                         style={{
                           borderRadius: 999,
                           padding: "8px 10px",
-                          border: `1px solid ${isActive ? "#0f172a" : "#e5e7eb"}`,
-                          background: isActive ? "#0f172a" : "#f8fafc",
-                          color: isActive ? "#fff" : "#0f172a",
+                          border: `1px solid ${
+                            isActive ? tone?.border || "#0f172a" : tone?.border || "#e5e7eb"
+                          }`,
+                          background: isActive ? tone?.bg || "#0f172a" : "#f8fafc",
+                          color: isActive ? tone?.color || "#fff" : "#0f172a",
                           fontWeight: 700,
                           cursor: "pointer",
                           width: "100%",
@@ -1771,9 +1806,9 @@ function AdminDashboard() {
                                 type="button"
                                 onClick={() => handleInlineStatusClick(d)}
                                 style={{
-                                  border: "1px solid #e5e7eb",
-                                  background: "#f8fafc",
-                                  color: "#0f172a",
+                                  border: `1px solid ${DELIVERY_STATUS_STYLES[d.status]?.border || "#e5e7eb"}`,
+                                  background: DELIVERY_STATUS_STYLES[d.status]?.bg || "#f8fafc",
+                                  color: DELIVERY_STATUS_STYLES[d.status]?.color || "#0f172a",
                                   padding: "8px 12px",
                                   borderRadius: 10,
                                   fontWeight: 800,
@@ -2257,6 +2292,125 @@ function AdminDashboard() {
                     )}
                   </div>
                 )}
+              </div>
+
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <h3 style={{ margin: 0, color: "#0f172a" }}>Return requests</h3>
+                  <span style={{ color: "#94a3b8", fontWeight: 700 }}>{returnRequests.length} total</span>
+                </div>
+                {isLoadingReturns && <p style={{ margin: 0, color: "#64748b" }}>Loading return requests...</p>}
+                {!isLoadingReturns && returnRequests.length === 0 && (
+                  <p style={{ margin: 0, color: "#94a3b8" }}>No return requests yet.</p>
+                )}
+                <div style={{ display: "grid", gap: 12 }}>
+                  {returnRequests.map((item) => {
+                    const status = String(item.return_status || "").toLowerCase();
+                    const canAccept = status === "requested";
+                    const canReceive = status === "accepted";
+                    const canRefund = status === "received";
+                    const statusLabel =
+                      status === "requested"
+                        ? "Requested"
+                        : status === "accepted"
+                        ? "Accepted"
+                        : status === "received"
+                        ? "Received"
+                        : status === "rejected"
+                        ? "Rejected"
+                        : status === "refunded"
+                        ? "Refunded"
+                        : status || "Unknown";
+
+                    return (
+                      <div
+                        key={item.return_id}
+                        style={{
+                          border: "1px solid #e5e7eb",
+                          borderRadius: 12,
+                          padding: 12,
+                          background: "#f8fafc",
+                          display: "grid",
+                          gap: 8,
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                          <div>
+                            <strong>{item.product_name}</strong>
+                            <p style={{ margin: "2px 0 0", color: "#64748b" }}>
+                              {item.customer_name || `User #${item.user_id}`} · {formatOrderId(item.order_id)}
+                            </p>
+                            <p style={{ margin: "2px 0 0", color: "#64748b" }}>
+                              Qty: {item.quantity} · Unit: ₺{Number(item.unit_price || 0).toLocaleString("tr-TR")}
+                            </p>
+                          </div>
+                          <span
+                            style={{
+                              alignSelf: "flex-start",
+                              padding: "4px 10px",
+                              borderRadius: 999,
+                              background: item.return_eligible ? "#dcfce7" : "#fee2e2",
+                              color: item.return_eligible ? "#166534" : "#b91c1c",
+                              fontWeight: 700,
+                              fontSize: "0.85rem",
+                            }}
+                          >
+                            {item.return_eligible ? "Eligible" : "Not eligible"}
+                          </span>
+                        </div>
+                        {item.reason && <p style={{ margin: 0, color: "#0f172a" }}>{item.reason}</p>}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                          <small style={{ color: "#6b7280" }}>
+                            {item.requested_at
+                              ? new Date(item.requested_at).toLocaleString("tr-TR")
+                              : "Date unavailable"}
+                          </small>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            {canAccept && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleReturnStatusUpdate(item.return_id, "accepted")}
+                                  style={primaryBtn}
+                                >
+                                  Accept
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleReturnStatusUpdate(item.return_id, "rejected")}
+                                  style={{ ...primaryBtn, background: "#fee2e2", color: "#b91c1c" }}
+                                >
+                                  Reject
+                                </button>
+                              </>
+                            )}
+                            {canReceive && (
+                              <button
+                                type="button"
+                                onClick={() => handleReturnStatusUpdate(item.return_id, "received")}
+                                style={primaryBtn}
+                              >
+                                Mark received
+                              </button>
+                            )}
+                            {canRefund && (
+                              <button
+                                type="button"
+                                onClick={() => handleReturnStatusUpdate(item.return_id, "refunded")}
+                                style={primaryBtn}
+                              >
+                                Authorize refund
+                              </button>
+                            )}
+                            {!canAccept && !canReceive && !canRefund && (
+                              <span style={{ color: "#94a3b8", fontWeight: 700 }}>{statusLabel}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
@@ -2756,82 +2910,6 @@ function AdminDashboard() {
                   </div>
                 </div>
 
-                <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
-                  <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Return requests</h3>
-                  {isLoadingReturns && <p style={{ margin: 0, color: "#64748b" }}>Loading return requests...</p>}
-                  {!isLoadingReturns && returnRequests.length === 0 && (
-                    <p style={{ margin: 0, color: "#94a3b8" }}>No return requests yet.</p>
-                  )}
-                  <div style={{ display: "grid", gap: 12 }}>
-                    {returnRequests.map((item) => (
-                      <div
-                        key={`${item.attachment?.id || item.message_id}`}
-                        style={{
-                          border: "1px solid #e5e7eb",
-                          borderRadius: 12,
-                          padding: 12,
-                          background: "#f8fafc",
-                          display: "grid",
-                          gap: 6,
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                          <div>
-                            <strong>{item.customer_name}</strong>
-                            <p style={{ margin: "2px 0 0", color: "#64748b" }}>
-                              {item.customer_email || `User #${item.user_id}`}
-                            </p>
-                            <p style={{ margin: "4px 0 0", color: "#64748b" }}>
-                              {item.order_id ? formatOrderId(item.order_id) : "No order linked"}
-                            </p>
-                          </div>
-                          <span
-                            style={{
-                              alignSelf: "flex-start",
-                              padding: "4px 10px",
-                              borderRadius: 999,
-                              background: item.return_eligible ? "#dcfce7" : "#fee2e2",
-                              color: item.return_eligible ? "#166534" : "#b91c1c",
-                              fontWeight: 700,
-                              fontSize: "0.85rem",
-                            }}
-                          >
-                            {item.return_eligible ? "Return possible" : "Return not eligible"}
-                          </span>
-                        </div>
-                        <p style={{ margin: 0, color: "#0f172a" }}>{item.message_text || "Attachment uploaded"}</p>
-                        {item.attachment?.url && (
-                          <a
-                            href={resolveAttachmentUrl(item.attachment, item.order_id)}
-                            target="_blank"
-                            rel="noreferrer"
-                            download={item.attachment.file_name}
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 8,
-                              padding: "8px 10px",
-                              borderRadius: 10,
-                              background: "#e0f2fe",
-                              color: "#0f172a",
-                              textDecoration: "none",
-                              fontWeight: 700,
-                              border: "1px solid #bae6fd",
-                              width: "fit-content",
-                            }}
-                          >
-                            Attachment: {item.attachment.file_name}
-                          </a>
-                        )}
-                        <small style={{ color: "#6b7280" }}>
-                          {item.message_at
-                            ? new Date(item.message_at).toLocaleString("tr-TR")
-                            : "Date unavailable"}
-                        </small>
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </div>
 
               <div
