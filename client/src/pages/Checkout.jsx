@@ -124,6 +124,12 @@ function Checkout() {
         contact: shippingDetails,
       });
 
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("orders:created", { detail: { userId: user?.id || 1 } })
+        );
+      }
+
       clearCart();
 
       navigate("/payment-details", {

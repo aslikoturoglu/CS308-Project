@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
@@ -193,6 +193,31 @@ const handleRefundOrder = async (order) => {
 
 
 
+  const loadOrders = useCallback(
+    (signal) => {
+      if (!user) {
+        setOrders([]);
+        setReturnRequests([]);
+        return;
+      }
+      fetchUserOrders(user.id, signal)
+        .then((data) => setOrders(Array.isArray(data) ? data : []))
+        .catch((err) => {
+          if (err?.name === "AbortError") return;
+          console.error("Order history load failed", err);
+          setOrders([]);
+        });
+
+      fetchUserReturnRequests(user.id)
+        .then((data) => setReturnRequests(Array.isArray(data) ? data : []))
+        .catch((err) => {
+          console.error("Return requests load failed", err);
+          setReturnRequests([]);
+        });
+    },
+    [user]
+  );
+
   useEffect(() => {
     if (!user) {
       setOrders([]);
@@ -201,28 +226,7 @@ const handleRefundOrder = async (order) => {
     }
     const controller = new AbortController();
     let isActive = true;
-    fetchUserOrders(user.id, controller.signal)
-      .then((data) => {
-        if (!isActive) return;
-        setOrders(Array.isArray(data) ? data : []);
-      })
-      .catch((err) => {
-        if (!isActive) return;
-        if (err?.name === "AbortError") return;
-        console.error("Order history load failed", err);
-        setOrders([]);
-      });
-
-    fetchUserReturnRequests(user.id)
-      .then((data) => {
-        if (!isActive) return;
-        setReturnRequests(Array.isArray(data) ? data : []);
-      })
-      .catch((err) => {
-        if (!isActive) return;
-        console.error("Return requests load failed", err);
-        setReturnRequests([]);
-      });
+    loadOrders(controller.signal);
 
     fetchUserProfile(user.id)
       .then((data) => {
@@ -237,7 +241,13 @@ const handleRefundOrder = async (order) => {
         setProfile(merged);
         if (storageKey) saveProfile(storageKey, merged);
         if (!editing) setDraft(merged);
-        updateUser({ name: merged.name, address: merged.address, taxId: merged.taxId });
+        if (
+          merged.name !== user?.name ||
+          merged.address !== user?.address ||
+          merged.taxId !== user?.taxId
+        ) {
+          updateUser({ name: merged.name, address: merged.address, taxId: merged.taxId });
+        }
       })
       .catch((err) => {
         if (!isActive) return;
@@ -249,7 +259,18 @@ const handleRefundOrder = async (order) => {
       isActive = false;
       controller.abort();
     };
-  }, [user]);
+  }, [user, loadOrders]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const handleOrdersCreated = (event) => {
+      const incomingId = event?.detail?.userId;
+      if (incomingId && Number(incomingId) !== Number(user?.id)) return;
+      loadOrders();
+    };
+    window.addEventListener("orders:created", handleOrdersCreated);
+    return () => window.removeEventListener("orders:created", handleOrdersCreated);
+  }, [loadOrders, user?.id]);
 
   const completedOrders = useMemo(
     () => orders.filter((o) => o.status === "Delivered").length,
