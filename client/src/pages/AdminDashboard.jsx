@@ -889,7 +889,6 @@ function AdminDashboard() {
   const handlePrintInvoice = (orderId) => {
     const win = window.open(buildInvoiceUrl(orderId), "_blank", "noopener,noreferrer");
     if (!win) {
-      addToast("Popup blocked", "error");
       return;
     }
     win.addEventListener("load", () => {
@@ -1937,14 +1936,11 @@ function AdminDashboard() {
                         </p>
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <button type="button" style={linkBtn} onClick={() => handleViewInvoice(inv.order_id)}>
-                          View
-                        </button>
                         <button type="button" style={linkBtn} onClick={() => handlePrintInvoice(inv.order_id)}>
                           Print
                         </button>
                         <button type="button" style={linkBtn} onClick={() => handleDownloadInvoice(inv.order_id)}>
-                          Download
+                          Save as PDF
                         </button>
                       </div>
                     </div>
@@ -2323,14 +2319,11 @@ function AdminDashboard() {
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                         <span style={{ fontWeight: 700 }}>₺{Number(inv.amount || 0).toLocaleString("tr-TR")}</span>
-                        <button type="button" style={linkBtn} onClick={() => handleViewInvoice(inv.order_id)}>
-                          View PDF
-                        </button>
                         <button type="button" style={linkBtn} onClick={() => handlePrintInvoice(inv.order_id)}>
                           Print
                         </button>
                         <button type="button" style={linkBtn} onClick={() => handleDownloadInvoice(inv.order_id)}>
-                          Download
+                          Save as PDF
                         </button>
                       </div>
                     </div>
