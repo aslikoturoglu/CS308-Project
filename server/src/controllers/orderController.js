@@ -659,19 +659,16 @@ export function refundOrder(req, res) {
     }
 
     const isDelivered = orderStatus === "delivered" || deliveryStatus === "delivered";
-    const isInTransit = ["in_transit", "shipped"].includes(orderStatus) || ["in_transit", "shipped"].includes(deliveryStatus);
 
-    if (!isDelivered && !isInTransit) {
-      return res.status(400).json({ error: "Only in-transit or delivered orders can be refunded" });
+    if (!isDelivered) {
+      return res.status(400).json({ error: "Only delivered orders can be refunded" });
     }
 
-    if (isDelivered) {
-      const orderDate = rows[0].order_date ? new Date(rows[0].order_date) : null;
-      if (orderDate && !Number.isNaN(orderDate.getTime())) {
-        const diffDays = (Date.now() - orderDate.getTime()) / (24 * 60 * 60 * 1000);
-        if (diffDays > 30) {
-          return res.status(400).json({ error: "Refund window expired" });
-        }
+    const orderDate = rows[0].order_date ? new Date(rows[0].order_date) : null;
+    if (orderDate && !Number.isNaN(orderDate.getTime())) {
+      const diffDays = (Date.now() - orderDate.getTime()) / (24 * 60 * 60 * 1000);
+      if (diffDays > 30) {
+        return res.status(400).json({ error: "Refund window expired" });
       }
     }
 

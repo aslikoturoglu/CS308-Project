@@ -512,6 +512,83 @@ export function getCustomerWishlist(req, res) {
   });
 }
 
+export function getCustomerProfile(req, res) {
+  const userId = Number(req.params.user_id);
+  if (!userId) {
+    return res.status(400).json({ error: "user_id zorunlu" });
+  }
+
+  const sql = `
+    SELECT user_id, full_name, email, home_address, tax_id
+    FROM users
+    WHERE user_id = ?
+    LIMIT 1
+  `;
+
+  db.query(sql, [userId], (err, rows) => {
+    if (err) {
+      console.error("Customer profile fetch failed:", err);
+      return res.status(500).json({ error: "Profile could not be loaded" });
+    }
+    if (!rows.length) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const row = rows[0];
+    return res.json({
+      id: row.user_id,
+      name: row.full_name || "",
+      email: row.email || "",
+      address: row.home_address || "",
+      taxId: row.tax_id || "",
+    });
+  });
+}
+
+export function getCustomerCart(req, res) {
+  const userId = Number(req.params.user_id);
+  if (!userId) {
+    return res.status(400).json({ error: "user_id zorunlu" });
+  }
+
+  const sql = `
+    SELECT 
+      ci.cart_item_id,
+      ci.cart_id,
+      ci.product_id,
+      ci.quantity,
+      ci.unit_price,
+      p.product_name,
+      p.product_image,
+      p.product_price
+    FROM carts c
+    JOIN cart_items ci ON ci.cart_id = c.cart_id
+    LEFT JOIN products p ON p.product_id = ci.product_id
+    WHERE c.user_id = ?
+    ORDER BY ci.cart_item_id ASC
+  `;
+
+  db.query(sql, [userId], (err, rows) => {
+    if (err) {
+      console.error("Customer cart fetch failed:", err);
+      return res.status(500).json({ error: "Cart could not be loaded" });
+    }
+    const items = (rows || []).map((row) => {
+      const price = Number(row.unit_price ?? row.product_price ?? 0);
+      return {
+        id: row.cart_item_id,
+        product_id: row.product_id,
+        name: row.product_name || `Product #${row.product_id}`,
+        image: row.product_image || null,
+        quantity: Number(row.quantity || 0),
+        price,
+        line_total: price * Number(row.quantity || 0),
+      };
+    });
+    const total = items.reduce((sum, item) => sum + item.line_total, 0);
+    return res.json({ items, total });
+  });
+}
+
 export function claimConversation(req, res) {
   const conversationId = Number(req.params.conversation_id);
   if (!conversationId) {

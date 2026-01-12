@@ -55,9 +55,6 @@ function getRefundState(order) {
   if (order.status === "Processing") {
     return { allowed: false, label: "Cannot be refunded", reason: "Processing orders cannot be refunded" };
   }
-  if (order.status === "In-transit") {
-    return { allowed: true, label: "Refund", reason: "Request refund" };
-  }
   if (order.status !== "Delivered") {
     return { allowed: false, label: "Cannot be refunded", reason: "Only delivered orders can be refunded" };
   }

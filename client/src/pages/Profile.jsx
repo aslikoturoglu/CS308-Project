@@ -87,9 +87,6 @@ const getRefundState = (order) => {
   if (order?.status === "Processing") {
     return { allowed: false, label: "Cannot be refunded", reason: "Processing orders cannot be refunded" };
   }
-  if (order?.status === "In-transit") {
-    return { allowed: true, label: "Refund", reason: "Request refund" };
-  }
   if (order?.status !== "Delivered") {
     return { allowed: false, label: "Cannot be refunded", reason: "Only delivered orders can be refunded" };
   }
@@ -110,7 +107,7 @@ const getCancelState = (order) => {
 };
 
 const getDisplayStatus = (status) => {
-  if (status === "Cancelled") return "Cancel";
+  if (["Cancelled", "Canceled"].includes(status)) return "Cancelled";
   if (["Refund Waiting", "Refunded", "Not Refunded"].includes(status)) return "Refund";
   return status;
 };
@@ -379,13 +376,12 @@ const handleRefundOrder = async (orderId) => {
             </h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {orders.slice(0, 3).map((order) => {
-                console.log("RAW STATUS >>>", order.status);
                 const formattedId = order.formattedId;
                 const statusStyle = {
-                  Cancel: {
-                    bg: "rgba(248,113,113,0.18)",
-                    color: "#b91c1c",
-                    border: "#f87171",
+                  Cancelled: {
+                    bg: "rgba(148,163,184,0.18)",
+                    color: "#64748b",
+                    border: "#cbd5e1",
                   },
                   Delivered: {
                     bg: "rgba(34,197,94,0.15)",
@@ -456,7 +452,7 @@ const handleRefundOrder = async (orderId) => {
   {displayStatus}
 </span>
 
-    {(() => {
+    {order?.status === "Processing" && (() => {
       const cancelState = getCancelState(order);
       return (
         <button
@@ -477,7 +473,7 @@ const handleRefundOrder = async (orderId) => {
         </button>
       );
     })()}
-    {(() => {
+    {["Delivered", "Refund Waiting", "Refunded", "Not Refunded", "Cancelled", "Canceled"].includes(order?.status) && (() => {
       const refundState = getRefundState(order);
       return (
         <button

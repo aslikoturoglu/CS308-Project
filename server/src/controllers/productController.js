@@ -51,6 +51,8 @@ export function getAllProducts(req, res) {
       return {
         id: p.product_id,
         name: p.product_name,
+        model: p.product_model ?? p.model ?? null,
+        serialNumber: p.product_serial_number ?? p.serial_number ?? null,
         description: p.product_features,
         price: discountedPrice,
         originalPrice: basePrice,
@@ -64,7 +66,7 @@ export function getAllProducts(req, res) {
       averageRating: p.avg_rating ?? p.product_rating ?? 0,
       ratingCount: Number(p.rating_count ?? 0),
       warranty: p.product_warranty ?? p.warranty ?? null,
-        distributor: p.product_distributor ?? p.distributor ?? null,
+      distributor: p.product_distributor ?? p.distributor ?? null,
       };
     });
 
@@ -75,6 +77,8 @@ export function getAllProducts(req, res) {
 export function createProduct(req, res) {
   const payload = req.body || {};
   const name = typeof payload.name === "string" ? payload.name.trim() : "";
+  const rawModel = typeof payload.model === "string" ? payload.model.trim() : "";
+  const rawSerialNumber = typeof payload.serialNumber === "string" ? payload.serialNumber.trim() : "";
   const rawCategory = typeof payload.category === "string" ? payload.category.trim() : "";
   const rawMainCategory = typeof payload.mainCategory === "string" ? payload.mainCategory.trim() : "";
   const rawDescription = typeof payload.features === "string"
@@ -111,14 +115,17 @@ export function createProduct(req, res) {
     const nextId = Number(rows?.[0]?.maxId || 0) + 1;
     const sql = `
       INSERT INTO products
-        (product_id, product_name, product_main_category, product_category, product_material, product_color,
-         product_warranty, product_distributor, product_features, product_stock, product_price, product_image)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (product_id, product_name, product_model, product_serial_number, product_main_category, product_category,
+         product_material, product_color, product_warranty, product_distributor, product_features,
+         product_stock, product_price, product_image)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
       nextId,
       name,
+      rawModel || null,
+      rawSerialNumber || null,
       rawMainCategory || null,
       rawCategory || null,
       rawMaterial || null,
@@ -140,6 +147,8 @@ export function createProduct(req, res) {
       const created = {
         id: nextId,
         name,
+        model: rawModel || null,
+        serialNumber: rawSerialNumber || null,
         description: rawDescription || null,
         price,
         originalPrice: price,
@@ -216,6 +225,8 @@ export function updateProduct(req, res) {
   const { id } = req.params;
   const payload = req.body || {};
   const name = typeof payload.name === "string" ? payload.name.trim() : "";
+  const rawModel = typeof payload.model === "string" ? payload.model.trim() : "";
+  const rawSerialNumber = typeof payload.serialNumber === "string" ? payload.serialNumber.trim() : "";
   const rawCategory = typeof payload.category === "string" ? payload.category.trim() : "";
   const rawMainCategory = typeof payload.mainCategory === "string" ? payload.mainCategory.trim() : "";
   const rawDescription = typeof payload.features === "string" ? payload.features.trim() : "";
@@ -242,6 +253,8 @@ export function updateProduct(req, res) {
     UPDATE products
     SET
       product_name = ?,
+      product_model = ?,
+      product_serial_number = ?,
       product_main_category = ?,
       product_category = ?,
       product_material = ?,
@@ -257,6 +270,8 @@ export function updateProduct(req, res) {
 
   const values = [
     name,
+    rawModel || null,
+    rawSerialNumber || null,
     rawMainCategory || null,
     rawCategory || null,
     rawMaterial || null,
@@ -355,6 +370,8 @@ export function getProductById(req, res) {
     const normalized = {
       id: p.product_id,
       name: p.product_name,
+      model: p.product_model ?? p.model ?? null,
+      serialNumber: p.product_serial_number ?? p.serial_number ?? null,
       description: p.product_features,
       price: discountedPrice,
       originalPrice: basePrice,

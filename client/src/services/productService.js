@@ -49,6 +49,8 @@ export async function fetchProductsWithMeta(signal) {
       {
         id: p.id,
         name: p.name,
+        model: p.model,
+        serialNumber: p.serialNumber,
         description: p.description,
         price: p.price,
         originalPrice: p.originalPrice,
@@ -78,6 +80,8 @@ export async function fetchProductById(id, signal) {
     {
       id: p.id,
       name: p.name,
+      model: p.model,
+      serialNumber: p.serialNumber,
       description: p.description,
       price: p.price,
       originalPrice: p.originalPrice,

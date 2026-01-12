@@ -34,6 +34,8 @@ CREATE TABLE user_roles (
 CREATE TABLE Products (
   product_id INT PRIMARY KEY AUTO_INCREMENT,
   product_name VARCHAR(150) NOT NULL,
+  product_model VARCHAR(150),
+  product_serial_number VARCHAR(150),
   product_main_category VARCHAR(150),
   product_category VARCHAR(100),
   product_material VARCHAR(100),

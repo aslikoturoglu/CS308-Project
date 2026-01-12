@@ -24,6 +24,8 @@ INSERT INTO categories (name) VALUES
 CREATE TABLE products (
     product_id INT PRIMARY KEY,
     product_name VARCHAR(255),
+    product_model VARCHAR(255),
+    product_serial_number VARCHAR(255),
     product_main_category VARCHAR(255),
     product_category VARCHAR(255),
     product_material VARCHAR(255),

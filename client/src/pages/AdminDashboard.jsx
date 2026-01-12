@@ -10,6 +10,8 @@ import {
   claimSupportConversation,
   unclaimSupportConversation,
   fetchCustomerWishlist,
+  fetchCustomerProfile,
+  fetchCustomerCart,
   sendSupportMessage,
   deleteConversation as deleteConversationApi,
 } from "../services/supportService";
@@ -167,6 +169,8 @@ function AdminDashboard() {
   const [showUnclaimedOnly, setShowUnclaimedOnly] = useState(true);
   const [customerOrders, setCustomerOrders] = useState([]);
   const [customerWishlist, setCustomerWishlist] = useState([]);
+  const [customerProfile, setCustomerProfile] = useState(null);
+  const [customerCart, setCustomerCart] = useState({ items: [], total: 0 });
   const [isLoadingCustomerInfo, setIsLoadingCustomerInfo] = useState(false);
   const [replyDraft, setReplyDraft] = useState("");
   const [replyFiles, setReplyFiles] = useState([]);
@@ -189,6 +193,8 @@ function AdminDashboard() {
   const [isSavingCategory, setIsSavingCategory] = useState(false);
   const [newProduct, setNewProduct] = useState({
     name: "",
+    model: "",
+    serialNumber: "",
     price: "",
     stock: "",
     category: "",
@@ -419,6 +425,8 @@ function AdminDashboard() {
     if (!activeChat?.user_id) {
       setCustomerOrders([]);
       setCustomerWishlist([]);
+      setCustomerProfile(null);
+      setCustomerCart({ items: [], total: 0 });
       return undefined;
     }
 
@@ -429,8 +437,10 @@ function AdminDashboard() {
     Promise.allSettled([
       fetchUserOrders(activeChat.user_id, controller.signal),
       fetchCustomerWishlist(activeChat.user_id),
+      fetchCustomerProfile(activeChat.user_id),
+      fetchCustomerCart(activeChat.user_id),
     ])
-      .then(([ordersResult, wishlistResult]) => {
+      .then(([ordersResult, wishlistResult, profileResult, cartResult]) => {
         if (!isMounted) return;
         if (ordersResult.status === "fulfilled") {
           setCustomerOrders(ordersResult.value);
@@ -446,6 +456,20 @@ function AdminDashboard() {
           console.error("Customer wishlist fetch failed", wishlistResult.reason);
           setCustomerWishlist([]);
           addToast("Customer wishlist could not be loaded", "error");
+        }
+
+        if (profileResult.status === "fulfilled") {
+          setCustomerProfile(profileResult.value);
+        } else {
+          console.error("Customer profile fetch failed", profileResult.reason);
+          setCustomerProfile(null);
+        }
+
+        if (cartResult.status === "fulfilled") {
+          setCustomerCart(cartResult.value || { items: [], total: 0 });
+        } else {
+          console.error("Customer cart fetch failed", cartResult.reason);
+          setCustomerCart({ items: [], total: 0 });
         }
       })
       .finally(() => {
@@ -628,6 +652,8 @@ function AdminDashboard() {
     try {
       const payload = {
         name: newProduct.name,
+        model: newProduct.model,
+        serialNumber: newProduct.serialNumber,
         price: Number(newProduct.price),
         stock: Number(newProduct.stock),
         category: newProduct.category || "General",
@@ -659,6 +685,8 @@ function AdminDashboard() {
       setProducts(refreshed);
       setNewProduct({
         name: "",
+        model: "",
+        serialNumber: "",
         price: "",
         stock: "",
         category: "",
@@ -687,6 +715,8 @@ function AdminDashboard() {
     setEditingProductId(product.id);
     setNewProduct({
       name: product.name || "",
+      model: product.model || "",
+      serialNumber: product.serialNumber || "",
       price: product.price || "",
       stock: Number(product.stock ?? product.availableStock ?? 0),
       category: product.category || "",
@@ -710,6 +740,8 @@ function AdminDashboard() {
     setEditingProductId(null);
     setNewProduct({
       name: "",
+      model: "",
+      serialNumber: "",
       price: "",
       stock: "",
       category: "",
@@ -1300,6 +1332,18 @@ function AdminDashboard() {
                     placeholder="Name"
                     value={newProduct.name}
                     onChange={(e) => setNewProduct((p) => ({ ...p, name: e.target.value }))}
+                    style={inputStyle}
+                  />
+                  <input
+                    placeholder="Model"
+                    value={newProduct.model}
+                    onChange={(e) => setNewProduct((p) => ({ ...p, model: e.target.value }))}
+                    style={inputStyle}
+                  />
+                  <input
+                    placeholder="Serial number"
+                    value={newProduct.serialNumber}
+                    onChange={(e) => setNewProduct((p) => ({ ...p, serialNumber: e.target.value }))}
                     style={inputStyle}
                   />
                   <input
@@ -2821,6 +2865,11 @@ function AdminDashboard() {
                         <p style={{ margin: "4px 0 0", color: "#475569" }}>
                           {activeChat.customer_email || `User #${activeChat.user_id}`}
                         </p>
+                        {customerProfile?.address && (
+                          <p style={{ margin: "4px 0 0", color: "#64748b" }}>
+                            {customerProfile.address}
+                          </p>
+                        )}
                       </div>
                       <div style={{ display: "flex", gap: 12 }}>
                         <div style={{ textAlign: "right" }}>
@@ -2850,6 +2899,20 @@ function AdminDashboard() {
                             Wishlist
                           </p>
                           <strong>{customerWishlist.length}</strong>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <p
+                            style={{
+                              margin: 0,
+                              color: "#94a3b8",
+                              fontSize: "0.75rem",
+                              textTransform: "uppercase",
+                              letterSpacing: 1,
+                            }}
+                          >
+                            Cart
+                          </p>
+                          <strong>{customerCart.items?.length || 0}</strong>
                         </div>
                       </div>
                     </div>
@@ -2904,6 +2967,31 @@ function AdminDashboard() {
                             </div>
                           )}
                         </div>
+                        <div>
+                          <p style={{ margin: "0 0 6px", color: "#475569", fontWeight: 700 }}>Cart items</p>
+                          {customerCart.items?.length ? (
+                            <div style={{ display: "grid", gap: 6 }}>
+                              {customerCart.items.slice(0, 4).map((item) => (
+                                <div key={item.id} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                                  <span style={{ color: "#0f172a" }}>
+                                    {item.name} × {item.quantity}
+                                  </span>
+                                  <span style={{ color: "#0f172a", fontWeight: 700 }}>
+                                    ₺{Number(item.line_total || 0).toLocaleString("tr-TR")}
+                                  </span>
+                                </div>
+                              ))}
+                              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                                <span style={{ color: "#64748b" }}>Cart total</span>
+                                <span style={{ color: "#0f172a", fontWeight: 800 }}>
+                                  ₺{Number(customerCart.total || 0).toLocaleString("tr-TR")}
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <p style={{ margin: 0, color: "#94a3b8" }}>Cart is empty.</p>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -2912,10 +3000,8 @@ function AdminDashboard() {
                   <>
                     <div
                       style={{
-                        border: "1px solid #e5e7eb",
-                        borderRadius: 12,
-                        padding: 12,
-                        minHeight: 220,
+                        padding: 0,
+                        minHeight: 0,
                         maxHeight: "calc(100vh - 520px)",
                         overflow: "auto",
                         display: "grid",
@@ -2967,7 +3053,7 @@ function AdminDashboard() {
                         </div>
                       ))}
                       {chatMessages.length === 0 && !isLoadingThread && (
-                        <p style={{ margin: 0, color: "#6b7280" }}>No messages yet. Say hi to the customer.</p>
+                        <p style={{ margin: 0, color: "#6b7280" }}>No messages yet.</p>
                       )}
                       {isLoadingThread && (
                         <p style={{ margin: 0, color: "#6b7280", fontSize: "0.9rem" }}>Refreshing…</p>

@@ -7,6 +7,8 @@ import {
   getConversation,
   getConversationMessages,
   getCustomerWishlist,
+  getCustomerProfile,
+  getCustomerCart,
   claimConversation,
   unclaimConversation,
   identifyConversation,
@@ -48,6 +50,8 @@ router.post("/message", withAttachments, postCustomerMessage);
 router.get("/inbox", listConversations);
 router.get("/conversations/:conversation_id/messages", getConversationMessages);
 router.get("/customers/:user_id/wishlist", getCustomerWishlist);
+router.get("/customers/:user_id/profile", getCustomerProfile);
+router.get("/customers/:user_id/cart", getCustomerCart);
 router.post("/conversations/:conversation_id/claim", claimConversation);
 router.post("/conversations/:conversation_id/unclaim", unclaimConversation);
 router.post("/conversations/:conversation_id/identify", identifyConversation);

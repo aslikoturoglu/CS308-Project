@@ -70,6 +70,16 @@ export async function fetchCustomerWishlist(userId) {
   return handleResponse(res);
 }
 
+export async function fetchCustomerProfile(userId) {
+  const res = await fetch(`${SUPPORT_BASE}/customers/${userId}/profile`);
+  return handleResponse(res);
+}
+
+export async function fetchCustomerCart(userId) {
+  const res = await fetch(`${SUPPORT_BASE}/customers/${userId}/cart`);
+  return handleResponse(res);
+}
+
 export async function linkConversationToUser({ conversationId, userId, email, name }) {
   const res = await fetch(`${SUPPORT_BASE}/conversations/${conversationId}/identify`, {
     method: "POST",
