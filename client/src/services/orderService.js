@@ -404,7 +404,7 @@ function backendToFrontendStatus(value) {
   if (normalized.includes("refund_waiting") || normalized.includes("refund waiting") || normalized.includes("refund pending")) {
     return "Refund Waiting";
   }
-  if (normalized.includes("refund_rejected") || normalized.includes("refund rejected")) {
+  if (normalized.includes("refund_rejected") || normalized.includes("refund rejected") || normalized.includes("not refunded")) {
     return "Refund Rejected";
   }
   if (normalized === "refunded") return "Refunded";
