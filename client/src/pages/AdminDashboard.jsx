@@ -507,10 +507,13 @@ function AdminDashboard() {
 
   const deliveryFilters = useMemo(() => DELIVERY_FILTERS, []);
 
-  const deliveryStatuses = useMemo(
-    () => deliveryFilters.filter((filter) => filter.id !== "All").map((filter) => filter.id),
-    [deliveryFilters]
-  );
+  const deliveryStatuses = useMemo(() => {
+    const base = deliveryFilters.filter((filter) => filter.id !== "All").map((filter) => filter.id);
+    if (user?.role === "product_manager") {
+      return base.filter((status) => !REFUND_DELIVERY_STATUSES.includes(status));
+    }
+    return base;
+  }, [deliveryFilters, user?.role]);
 
   useEffect(() => {
     const allowed = deliveryFilters.some((filter) => filter.id === deliveryTab);
@@ -2318,9 +2321,7 @@ function AdminDashboard() {
                 <div style={{ display: "grid", gap: 12 }}>
                   {returnRequests.map((item) => {
                     const status = String(item.return_status || "").toLowerCase();
-                    const canAccept = status === "requested";
-                    const canReceive = status === "accepted";
-                    const canRefund = status === "received";
+                    const canApprove = ["requested", "accepted", "received"].includes(status);
                     const statusLabel =
                       status === "requested"
                         ? "Requested"
@@ -2378,11 +2379,11 @@ function AdminDashboard() {
                               : "Date unavailable"}
                           </small>
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            {canAccept && (
+                            {canApprove && (
                               <>
                                 <button
                                   type="button"
-                                  onClick={() => handleReturnStatusUpdate(item.return_id, "accepted")}
+                                  onClick={() => handleReturnStatusUpdate(item.return_id, "refunded")}
                                   style={primaryBtn}
                                 >
                                   Accept
@@ -2396,25 +2397,7 @@ function AdminDashboard() {
                                 </button>
                               </>
                             )}
-                            {canReceive && (
-                              <button
-                                type="button"
-                                onClick={() => handleReturnStatusUpdate(item.return_id, "received")}
-                                style={primaryBtn}
-                              >
-                                Mark received
-                              </button>
-                            )}
-                            {canRefund && (
-                              <button
-                                type="button"
-                                onClick={() => handleReturnStatusUpdate(item.return_id, "refunded")}
-                                style={primaryBtn}
-                              >
-                                Authorize refund
-                              </button>
-                            )}
-                            {!canAccept && !canReceive && !canRefund && (
+                            {!canApprove && (
                               <span style={{ color: "#94a3b8", fontWeight: 700 }}>{statusLabel}</span>
                             )}
                           </div>

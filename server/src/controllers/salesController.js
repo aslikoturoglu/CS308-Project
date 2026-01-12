@@ -476,7 +476,7 @@ export function updateReturnRequestStatus(req, res) {
       (nextStatus === "accepted" && current === "requested") ||
       (nextStatus === "rejected" && ["requested", "accepted"].includes(current)) ||
       (nextStatus === "received" && current === "accepted") ||
-      (nextStatus === "refunded" && current === "received");
+      (nextStatus === "refunded" && ["requested", "accepted", "received"].includes(current));
 
     if (!allowedTransition) {
       return res.status(400).json({ error: "Invalid status transition" });
