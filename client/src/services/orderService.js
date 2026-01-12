@@ -261,6 +261,14 @@ function mapOrderRows(data = []) {
       date: row.order_date || row.date,
       status,
       deliveryStatus,
+      deliveredAt:
+        row.delivered_at ??
+        row.deliveredAt ??
+        row.delivery_updated_at ??
+        row.updated_at ??
+        row.status_updated_at ??
+        row.statusUpdatedAt,
+      statusUpdatedAt: row.status_updated_at ?? row.statusUpdatedAt ?? row.updated_at,
       total: Number(row.total_amount ?? row.total ?? 0),
       shippingFee: Number(
         row.shipping_fee ?? row.shippingFee ?? row.shipping_cost ?? row.shippingCost ?? 0

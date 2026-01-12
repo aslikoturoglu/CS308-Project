@@ -40,19 +40,28 @@ const statusPills = {
 const REFUND_WINDOW_DAYS = 30;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-function getOrderDate(order) {
+function getDeliveredDate(order) {
   if (!order) return null;
   const candidates = [
-    order.date,
-    order.orderDate,
-    order.order_date,
-    order.createdAt,
-    order.created_at,
     order.deliveredAt,
+    order.delivered_at,
+    order.deliveryUpdatedAt,
+    order.delivery_updated_at,
     order.statusUpdatedAt,
+    order.status_updated_at,
   ].filter(Boolean);
 
-  for (const candidate of candidates) {
+  if (order.status === "Delivered") {
+    candidates.push(
+      order.date,
+      order.orderDate,
+      order.order_date,
+      order.createdAt,
+      order.created_at
+    );
+  }
+
+  for (const candidate of candidates.filter(Boolean)) {
     const parsed = new Date(candidate);
     if (!Number.isNaN(parsed.getTime())) return parsed;
   }
@@ -61,19 +70,14 @@ function getOrderDate(order) {
 }
 
 function isRefundWindowOpen(order) {
-  const orderDate = getOrderDate(order);
-  if (!orderDate) return true;
-  const diffDays = (Date.now() - orderDate.getTime()) / MS_PER_DAY;
+  const deliveredDate = getDeliveredDate(order);
+  if (!deliveredDate) return true;
+  const diffDays = (Date.now() - deliveredDate.getTime()) / MS_PER_DAY;
   return diffDays <= REFUND_WINDOW_DAYS;
 }
 
 function canDownloadInvoice(order) {
-  if (!order) return false;
-  if (order.status !== "Delivered") return false;
-  const orderDate = getOrderDate(order);
-  if (!orderDate) return false;
-  const diffDays = (Date.now() - orderDate.getTime()) / MS_PER_DAY;
-  return diffDays <= REFUND_WINDOW_DAYS;
+  return Boolean(order);
 }
 
 function getRefundState(order) {
@@ -98,8 +102,8 @@ function getRefundState(order) {
   if (!isRefundWindowOpen(order)) {
     return {
       allowed: false,
-      label: "Cannot be refunded",
-      reason: "Refunds are only available within 30 days of the order date.",
+      label: "Refund expired",
+      reason: "Refunds are only available within 30 days of delivery.",
     };
   }
   return { allowed: true, label: "Refund", reason: "Request refund" };
@@ -312,6 +316,36 @@ function OrderHistory() {
     }
   };
 
+  const handleDownloadInvoice = async (order) => {
+    const rawOrderId = order?.order_id ?? order?.id ?? order?.formattedId;
+    const numericMatch = String(rawOrderId ?? "").match(/\\d+/);
+    const cleanOrderId = numericMatch ? numericMatch[0] : rawOrderId;
+    if (!cleanOrderId) {
+      alert("Invoice could not be downloaded.");
+      return;
+    }
+
+    try {
+      const invoiceUrl = `${API_BASE_URL}/api/orders/${encodeURIComponent(cleanOrderId)}/invoice`;
+      const res = await fetch(invoiceUrl);
+      if (!res.ok) {
+        throw new Error("Invoice download failed");
+      }
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = `invoice_${cleanOrderId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      console.error("Invoice download failed", err);
+      alert("Invoice could not be downloaded.");
+    }
+  };
+
   return (
     <main
       style={{
@@ -425,9 +459,7 @@ function OrderHistory() {
             const rawOrderId = order.order_id ?? order.id ?? formattedId;
             const numericOrderMatch = String(rawOrderId).match(/\d+/);
             const cleanOrderId = numericOrderMatch ? numericOrderMatch[0] : rawOrderId;
-            const invoiceUrl = `${API_BASE_URL}/api/orders/${encodeURIComponent(cleanOrderId)}/invoice`;
             const canDownload = canDownloadInvoice(order);
-            const invoiceFileName = `invoice_${cleanOrderId}.pdf`;
 
             return (
               <article
@@ -739,21 +771,21 @@ function OrderHistory() {
                         )}
                       </div>
                       {canDownload ? (
-                        <a
-                          href={invoiceUrl}
-                          download={invoiceFileName}
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadInvoice(order)}
                           style={{
                             border: `1px solid ${isDark ? "#38bdf8" : "#0058a3"}`,
                             color: palette.link,
                             background: palette.inputBg,
                             padding: "8px 12px",
                             borderRadius: 10,
-                            textDecoration: "none",
                             fontWeight: 700,
+                            cursor: "pointer",
                           }}
                         >
                           Download PDF
-                        </a>
+                        </button>
                       ) : (
                         <span style={{ color: palette.textFaint, fontWeight: 700 }}>
                           Invoice available for delivered orders within 30 days

@@ -55,7 +55,7 @@ export function createReturnRequest(req, res) {
     if (orderDate && !Number.isNaN(orderDate.getTime())) {
       const diffDays = (Date.now() - orderDate.getTime()) / MS_PER_DAY;
       if (diffDays > 30) {
-        return res.status(400).json({ error: "Return window expired" });
+        return res.status(400).json({ error: "Return window expired (30 days after delivery)" });
       }
     }
 

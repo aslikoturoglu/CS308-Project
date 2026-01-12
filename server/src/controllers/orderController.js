@@ -672,7 +672,7 @@ export function refundOrder(req, res) {
     if (orderDate && !Number.isNaN(orderDate.getTime())) {
       const diffDays = (Date.now() - orderDate.getTime()) / (24 * 60 * 60 * 1000);
       if (diffDays > 30) {
-        return res.status(400).json({ error: "Refund window expired" });
+        return res.status(400).json({ error: "Refunds are only available within 30 days of delivery." });
       }
     }
 

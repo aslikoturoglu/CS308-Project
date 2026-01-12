@@ -140,13 +140,31 @@ function Invoice() {
       })
     : order.date;
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     const rawId = realOrderId ?? order.id;
     if (!rawId) return;
     const numeric = String(rawId).match(/\d+/);
     const cleanId = numeric ? numeric[0] : rawId;
     const url = `${API_BASE_URL}/api/orders/${encodeURIComponent(cleanId)}/invoice`;
-    window.open(url, "_blank", "noopener,noreferrer");
+
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error("Invoice download failed");
+      }
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = `invoice_${cleanId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      console.error("Invoice download failed", err);
+      alert("Invoice could not be downloaded.");
+    }
   };
 
   const formatAddress = (raw) => {
