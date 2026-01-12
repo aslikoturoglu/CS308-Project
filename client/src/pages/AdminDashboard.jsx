@@ -526,6 +526,34 @@ function AdminDashboard() {
     return { revenue, cost, profit, netProfit, loss, total, safeTotal };
   }, [reportData.totals]);
 
+  const donutBreakdown = useMemo(() => {
+    const hasLoss = reportBreakdown.loss > 0;
+    const total = hasLoss ? reportBreakdown.cost : reportBreakdown.revenue;
+    const safeTotal = total > 0 ? total : 1;
+    if (hasLoss) {
+      return {
+        title: "Cost",
+        total,
+        primaryLabel: "Revenue",
+        primaryValue: reportBreakdown.revenue,
+        primaryColor: "#0ea5e9",
+        secondaryLabel: "Loss",
+        secondaryValue: reportBreakdown.loss,
+        secondaryColor: "#ef4444",
+      };
+    }
+    return {
+      title: "Revenue",
+      total,
+      primaryLabel: "Cost",
+      primaryValue: reportBreakdown.cost,
+      primaryColor: "#64748b",
+      secondaryLabel: "Profit",
+      secondaryValue: reportBreakdown.netProfit,
+      secondaryColor: "#16a34a",
+    };
+  }, [reportBreakdown]);
+
   const filteredDeliveries = useMemo(() => {
     const sorted = [...deliveries].sort((a, b) => {
       const tsA = Date.parse(a.date || "") || 0;
@@ -2336,7 +2364,7 @@ function AdminDashboard() {
 
               <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 16 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                  <h3 style={{ margin: 0, color: "#0f172a" }}>Sales breakdown</h3>
+                  <h3 style={{ margin: 0, color: "#0f172a" }}>Revenue & profit/loss</h3>
                   <button type="button" style={linkBtn} onClick={handleLoadReport} disabled={isLoadingReport}>
                     {isLoadingReport ? "Loading..." : "Refresh report"}
                   </button>
@@ -2349,18 +2377,28 @@ function AdminDashboard() {
                         width: 220,
                         height: 220,
                         borderRadius: "50%",
-                        background: `conic-gradient(#22c55e 0 ${((reportBreakdown.netProfit / reportBreakdown.safeTotal) * 100).toFixed(2)}%, #f97316 ${((reportBreakdown.netProfit / reportBreakdown.safeTotal) * 100).toFixed(2)}% ${(((reportBreakdown.netProfit + reportBreakdown.loss) / reportBreakdown.safeTotal) * 100).toFixed(2)}%, #6366f1 ${(((reportBreakdown.netProfit + reportBreakdown.loss) / reportBreakdown.safeTotal) * 100).toFixed(2)}% 100%)`,
+                        background: `conic-gradient(${donutBreakdown.primaryColor} 0 ${((donutBreakdown.primaryValue / (donutBreakdown.total || 1)) * 100).toFixed(2)}%, ${donutBreakdown.secondaryColor} ${((donutBreakdown.primaryValue / (donutBreakdown.total || 1)) * 100).toFixed(2)}% 100%)`,
                         display: "grid",
                         placeItems: "center",
                       }}
                     >
                       <div style={{ width: 150, height: 150, borderRadius: "50%", background: "white", display: "grid", placeItems: "center", textAlign: "center", padding: 12 }}>
-                        <p style={{ margin: 0, color: "#64748b", fontWeight: 700 }}>Total sales</p>
+                        <p style={{ margin: 0, color: "#64748b", fontWeight: 700 }}>{donutBreakdown.title}</p>
                         <strong style={{ fontSize: "1.3rem", color: "#0f172a" }}>
-                          ₺{reportBreakdown.revenue.toLocaleString("tr-TR")}
+                          ₺{donutBreakdown.total.toLocaleString("tr-TR")}
                         </strong>
                         <small style={{ color: "#94a3b8" }}>100%</small>
                       </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 16, color: "#64748b", fontSize: "0.85rem" }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ width: 10, height: 10, borderRadius: "50%", background: donutBreakdown.primaryColor }} />
+                        {donutBreakdown.primaryLabel}
+                      </span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ width: 10, height: 10, borderRadius: "50%", background: donutBreakdown.secondaryColor }} />
+                        {donutBreakdown.secondaryLabel}
+                      </span>
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <input
@@ -2382,68 +2420,68 @@ function AdminDashboard() {
                   </div>
 
                   <div style={{ display: "grid", gap: 10 }}>
-                    <div style={{ display: "grid", gap: 10 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#22c55e" }} />
-                          Net profit
-                        </span>
-                        <strong>₺{reportBreakdown.netProfit.toLocaleString("tr-TR")}</strong>
-                        <span style={{ color: "#64748b" }}>{((reportBreakdown.netProfit / reportBreakdown.safeTotal) * 100).toFixed(1)}%</span>
-                      </div>
-                      {reportBreakdown.loss > 0 && (
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                            <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#f97316" }} />
-                            Loss
-                          </span>
-                          <strong>₺{reportBreakdown.loss.toLocaleString("tr-TR")}</strong>
-                          <span style={{ color: "#64748b" }}>{((reportBreakdown.loss / reportBreakdown.safeTotal) * 100).toFixed(1)}%</span>
-                        </div>
-                      )}
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#6366f1" }} />
-                          Cost
-                        </span>
-                        <strong>₺{reportBreakdown.cost.toLocaleString("tr-TR")}</strong>
-                        <span style={{ color: "#64748b" }}>{((reportBreakdown.cost / reportBreakdown.safeTotal) * 100).toFixed(1)}%</span>
-                      </div>
-                    </div>
-
                     <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, background: "#f8fafc" }}>
                       {reportData.series.length === 0 ? (
                         <p style={{ margin: 0, color: "#94a3b8" }}>No report data yet.</p>
                       ) : (
                         <div style={{ display: "grid", gap: 10 }}>
-                          <div style={{ display: "flex", gap: 8, alignItems: "flex-end", minHeight: 160 }}>
-                            {reportData.series.map((bar) => {
-                              const maxRevenue =
-                                reportData.series.reduce((max, item) => Math.max(max, Number(item.revenue) || 0), 1) || 1;
-                              const revenueHeight = Math.max(((Number(bar.revenue) || 0) / maxRevenue) * 140, 6);
-                              const costHeight = Math.max(((Number(bar.cost) || 0) / (Number(bar.revenue) || 1)) * revenueHeight, 3);
-                              const profitHeight = Math.max(revenueHeight - costHeight, 3);
+                          <div style={{ display: "flex", gap: 16, alignItems: "flex-end", justifyContent: "center", minHeight: 160 }}>
+                            {(() => {
+                              const revenueValue = Number(reportBreakdown.revenue) || 0;
+                              const profitValue = Number(reportBreakdown.profit) || 0;
+                              const maxValue = Math.max(revenueValue, Math.abs(profitValue), 1);
+                              const revenueHeight = Math.max((revenueValue / maxValue) * 140, 6);
+                              const profitHeight = Math.max((Math.abs(profitValue) / maxValue) * 140, profitValue === 0 ? 0 : 4);
                               return (
-                                <div key={bar.date} style={{ textAlign: "center", flex: 1, minWidth: 12 }}>
-                                  <div style={{ height: 140, display: "flex", alignItems: "flex-end" }}>
-                                    <div style={{ width: "100%", borderRadius: 8, overflow: "hidden", background: "#e2e8f0", height: revenueHeight }}>
-                                      <div style={{ height: costHeight, background: "#6366f1" }} />
-                                      <div style={{ height: profitHeight, background: "#22c55e" }} />
+                                <>
+                                  <div style={{ textAlign: "center", minWidth: 120 }}>
+                                    <div style={{ height: 140, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+                                      <div
+                                        style={{
+                                          width: 60,
+                                          height: revenueHeight,
+                                          background: "#3b82f6",
+                                          borderRadius: 10,
+                                        }}
+                                        title={`Revenue: ₺${revenueValue.toLocaleString("tr-TR")}`}
+                                      />
                                     </div>
+                                    <small style={{ color: "#475569", display: "block", marginTop: 6 }}>
+                                      Revenue: ₺{revenueValue.toLocaleString("tr-TR")}
+                                    </small>
                                   </div>
-                                  <small style={{ color: "#475569", display: "block", marginTop: 6 }}>{bar.date}</small>
-                                </div>
+                                  <div style={{ textAlign: "center", minWidth: 120 }}>
+                                    <div style={{ height: 140, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+                                      <div
+                                        style={{
+                                          width: 60,
+                                          height: profitHeight,
+                                          background: profitValue >= 0 ? "#a855f7" : "#f59e0b",
+                                          borderRadius: 10,
+                                        }}
+                                        title={`${profitValue >= 0 ? "Profit" : "Loss"}: ₺${Math.abs(profitValue).toLocaleString("tr-TR")}`}
+                                      />
+                                    </div>
+                                    <small style={{ color: "#475569", display: "block", marginTop: 6 }}>
+                                      {profitValue >= 0 ? "Profit" : "Loss"}: ₺{Math.abs(profitValue).toLocaleString("tr-TR")}
+                                    </small>
+                                  </div>
+                                </>
                               );
-                            })}
+                            })()}
                           </div>
-                          <div style={{ display: "flex", gap: 16, color: "#64748b", fontSize: "0.85rem" }}>
+                          <div style={{ display: "flex", gap: 16, color: "#64748b", fontSize: "0.85rem", justifyContent: "center" }}>
                             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                              <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#22c55e" }} />
+                              <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#3b82f6" }} />
+                              Revenue
+                            </span>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#a855f7" }} />
                               Profit
                             </span>
                             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                              <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#6366f1" }} />
-                              Cost
+                              <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#f59e0b" }} />
+                              Loss
                             </span>
                           </div>
                         </div>
