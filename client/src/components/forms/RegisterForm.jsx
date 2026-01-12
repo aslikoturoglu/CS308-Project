@@ -16,6 +16,16 @@ function RegisterForm({ onSuccess }) {
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const isDark = typeof document !== "undefined" && document.body.classList.contains("theme-dark");
+  const hasPendingWishlist = () => {
+    if (typeof window === "undefined") return false;
+    try {
+      const raw = window.localStorage.getItem("pending-wishlist");
+      const pending = raw ? JSON.parse(raw) : [];
+      return Array.isArray(pending) && pending.length > 0;
+    } catch (error) {
+      return false;
+    }
+  };
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -64,7 +74,7 @@ function RegisterForm({ onSuccess }) {
           if (typeof onSuccess === "function") {
             onSuccess();
           } else {
-            navigate("/");
+            navigate(hasPendingWishlist() ? "/wishlist" : "/");
           }
         }, 1200);
       })

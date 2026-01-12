@@ -12,6 +12,16 @@ function LoginForm({ onSuccess }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const isDark = typeof document !== "undefined" && document.body.classList.contains("theme-dark");
+  const hasPendingWishlist = () => {
+    if (typeof window === "undefined") return false;
+    try {
+      const raw = window.localStorage.getItem("pending-wishlist");
+      const pending = raw ? JSON.parse(raw) : [];
+      return Array.isArray(pending) && pending.length > 0;
+    } catch (error) {
+      return false;
+    }
+  };
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -39,13 +49,18 @@ function LoginForm({ onSuccess }) {
         addToast("Logged in", "info");
         if (typeof onSuccess === "function") {
           onSuccess();
+          return;
+        }
+        const role = userPayload.role;
+        const isStaff = role === "admin" || role === "product_manager" || role === "sales_manager" || role === "support";
+        if (!isStaff && hasPendingWishlist()) {
+          navigate("/wishlist");
+          return;
+        }
+        if (isStaff) {
+          navigate("/admin");
         } else {
-          const role = userPayload.role;
-          if (role === "admin" || role === "product_manager" || role === "sales_manager" || role === "support") {
-            navigate("/admin");
-          } else {
-            navigate("/");
-          }
+          navigate("/");
         }
       })
       .catch((apiError) => {
