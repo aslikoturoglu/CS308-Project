@@ -237,16 +237,18 @@ export function updateProduct(req, res) {
   const rawDistributor = typeof payload.distributor === "string" ? payload.distributor.trim() : "";
   const rawImage = typeof payload.image === "string" ? payload.image.trim() : "";
 
-  const price = Number(payload.price);
-  const stock = payload.stock === "" || payload.stock == null ? 0 : Number(payload.stock);
+  const priceProvided = payload.price !== undefined && payload.price !== null && payload.price !== "";
+  const price = priceProvided ? Number(payload.price) : null;
+  const stockProvided = payload.stock !== undefined && payload.stock !== null && payload.stock !== "";
+  const stock = stockProvided ? Number(payload.stock) : null;
 
   if (!name) {
     return res.status(400).json({ error: "Product name is required" });
   }
-  if (!Number.isFinite(price) || price < 0) {
+  if (priceProvided && (!Number.isFinite(price) || price < 0)) {
     return res.status(400).json({ error: "Valid product price is required" });
   }
-  if (!Number.isFinite(stock) || stock < 1) {
+  if (stockProvided && (!Number.isFinite(stock) || stock < 1)) {
     return res.status(400).json({ error: "Valid product stock (>=1) is required" });
   }
 
@@ -263,8 +265,8 @@ export function updateProduct(req, res) {
       product_warranty = ?,
       product_distributor = ?,
       product_features = ?,
-      product_stock = ?,
-      product_price = ?,
+      product_stock = COALESCE(?, product_stock),
+      product_price = COALESCE(?, product_price),
       product_image = ?
     WHERE product_id = ?
   `;
@@ -280,8 +282,8 @@ export function updateProduct(req, res) {
     rawWarranty || null,
     rawDistributor || null,
     rawDescription || null,
-    stock,
-    price,
+    stockProvided ? stock : null,
+    priceProvided ? price : null,
     rawImage || null,
     id,
   ];

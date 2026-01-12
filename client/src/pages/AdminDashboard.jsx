@@ -224,6 +224,9 @@ function AdminDashboard() {
   const [useSuhomeLogistics, setUseSuhomeLogistics] = useState(false);
   const [managerProductRequests, setManagerProductRequests] = useState([]);
   const [isLoadingManagerRequests, setIsLoadingManagerRequests] = useState(false);
+  const [pmEditProductId, setPmEditProductId] = useState("");
+  const [pmEditProduct, setPmEditProduct] = useState(null);
+  const [pmUseSuhomeLogistics, setPmUseSuhomeLogistics] = useState(false);
   const [filters, setFilters] = useState({ invoiceFrom: "", invoiceTo: "" });
   const [invoices, setInvoices] = useState([]);
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
@@ -1036,6 +1039,88 @@ function AdminDashboard() {
       addToast(error.message || "Category create failed", "error");
     } finally {
       setIsSavingCategory(false);
+    }
+  };
+
+  const handleSelectPmEditProduct = (productId) => {
+    setPmEditProductId(productId);
+    const target = products.find((p) => String(p.id) === String(productId));
+    if (!target) {
+      setPmEditProduct(null);
+      setPmUseSuhomeLogistics(false);
+      return;
+    }
+    setPmEditProduct({
+      id: target.id,
+      name: target.name || "",
+      model: target.model || "",
+      stock: Number(target.stock ?? target.availableStock ?? 0),
+      category: target.category || "",
+      mainCategory: target.mainCategory || "",
+      material: target.material || "",
+      color: target.color || "",
+      warranty: target.warranty || "",
+      distributor: target.distributor || "",
+      features: target.description || "",
+      image: target.image || "",
+    });
+    setPmUseSuhomeLogistics(target.distributor === "SUHome Logistics");
+  };
+
+  const handleSavePmEdit = async () => {
+    if (!pmEditProduct?.id) return;
+    const required = [
+      pmEditProduct.name,
+      pmEditProduct.model,
+      pmEditProduct.stock,
+      pmEditProduct.mainCategory,
+      pmEditProduct.category,
+      pmEditProduct.material,
+      pmEditProduct.color,
+      pmEditProduct.warranty,
+      pmEditProduct.distributor,
+      pmEditProduct.features,
+      pmEditProduct.image,
+    ];
+    if (required.some((value) => !String(value || "").trim())) {
+      addToast("Fill all the textfields.", "error");
+      return;
+    }
+    if (!Number.isFinite(Number(pmEditProduct.stock)) || Number(pmEditProduct.stock) < 1) {
+      addToast("Stock must be at least 1", "error");
+      return;
+    }
+
+    try {
+      const payload = {
+        name: pmEditProduct.name,
+        model: pmEditProduct.model,
+        stock: Number(pmEditProduct.stock),
+        category: pmEditProduct.category || "General",
+        mainCategory: pmEditProduct.mainCategory,
+        material: pmEditProduct.material,
+        color: pmEditProduct.color,
+        warranty: pmEditProduct.warranty,
+        distributor: pmEditProduct.distributor,
+        features: pmEditProduct.features,
+        image: pmEditProduct.image,
+      };
+      const res = await fetch(`/api/products/${pmEditProduct.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Product update failed");
+      }
+      const controller = new AbortController();
+      const refreshed = await fetchProductsWithMeta(controller.signal);
+      setProducts(refreshed);
+      addToast("Product details updated", "info");
+    } catch (error) {
+      console.error("Product update failed:", error);
+      addToast(error.message || "Product update failed", "error");
     }
   };
 
@@ -1940,6 +2025,174 @@ function AdminDashboard() {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {user?.role === "product_manager" && (
+                <div
+                  style={{
+                    background: "white",
+                    borderRadius: 14,
+                    padding: 18,
+                    boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
+                    display: "grid",
+                    gap: 12,
+                  }}
+                >
+                  <div>
+                    <h3 style={{ margin: "0 0 6px", color: "#0f172a" }}>Update product details</h3>
+                    <p style={{ margin: 0, color: "#64748b" }}>
+                      Price is managed by sales manager. Update the remaining product fields below.
+                    </p>
+                  </div>
+                  <select
+                    value={pmEditProductId}
+                    onChange={(e) => handleSelectPmEditProduct(e.target.value)}
+                    style={inputStyle}
+                  >
+                    <option value="">Select product</option>
+                    {products.map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.name}
+                      </option>
+                    ))}
+                  </select>
+                  {pmEditProduct && (
+                    <div style={{ display: "grid", gap: 12 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
+                        <input
+                          placeholder="Name"
+                          value={pmEditProduct.name}
+                          onChange={(e) => setPmEditProduct((prev) => ({ ...prev, name: e.target.value }))}
+                          style={inputStyle}
+                        />
+                        <input
+                          placeholder="Model"
+                          value={pmEditProduct.model}
+                          onChange={(e) => setPmEditProduct((prev) => ({ ...prev, model: e.target.value }))}
+                          style={inputStyle}
+                        />
+                        <input
+                          placeholder="Stock"
+                          type="number"
+                          min={1}
+                          value={pmEditProduct.stock}
+                          onChange={(e) => setPmEditProduct((prev) => ({ ...prev, stock: e.target.value }))}
+                          style={inputStyle}
+                        />
+                        <select
+                          value={pmEditProduct.mainCategory}
+                          onChange={(e) => setPmEditProduct((prev) => ({ ...prev, mainCategory: e.target.value }))}
+                          style={inputStyle}
+                        >
+                          <option value="">Main category</option>
+                          {MAIN_CATEGORIES.map((category) => (
+                            <option key={category} value={category}>
+                              {category}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={pmEditProduct.category}
+                          onChange={(e) => setPmEditProduct((prev) => ({ ...prev, category: e.target.value }))}
+                          style={inputStyle}
+                        >
+                          <option value="">Category</option>
+                          {(categories.length ? categories.map((c) => c.name) : PRODUCT_CATEGORIES).map((category) => (
+                            <option key={category} value={category}>
+                              {category}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          placeholder="Material"
+                          value={pmEditProduct.material}
+                          onChange={(e) => setPmEditProduct((prev) => ({ ...prev, material: e.target.value }))}
+                          style={inputStyle}
+                        />
+                        <div style={{ display: "grid", gap: 8 }}>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                            {COLOR_PALETTE.map((swatch) => (
+                              <button
+                                key={swatch.name}
+                                type="button"
+                                onClick={() =>
+                                  setPmEditProduct((prev) => ({
+                                    ...prev,
+                                    color: swatch.name,
+                                  }))
+                                }
+                                style={{
+                                  width: 26,
+                                  height: 26,
+                                  borderRadius: "50%",
+                                  border: swatch.name === pmEditProduct.color ? "2px solid #0f172a" : "1px solid #e5e7eb",
+                                  background: swatch.hex,
+                                  cursor: "pointer",
+                                }}
+                                aria-label={`Select ${swatch.name}`}
+                                title={swatch.name}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <select
+                          value={pmEditProduct.warranty}
+                          onChange={(e) => setPmEditProduct((prev) => ({ ...prev, warranty: e.target.value }))}
+                          style={inputStyle}
+                        >
+                          <option value="">Warranty (years)</option>
+                          {WARRANTY_OPTIONS.map((years) => (
+                            <option key={years} value={years}>
+                              {years}
+                            </option>
+                          ))}
+                        </select>
+                        <div style={{ display: "grid", gap: 6 }}>
+                          <input
+                            placeholder="Distributor"
+                            value={pmEditProduct.distributor}
+                            onChange={(e) => setPmEditProduct((prev) => ({ ...prev, distributor: e.target.value }))}
+                            style={{ ...inputStyle, background: pmUseSuhomeLogistics ? "#f8fafc" : inputStyle.background }}
+                            readOnly={pmUseSuhomeLogistics}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPmUseSuhomeLogistics((prev) => {
+                                const next = !prev;
+                                setPmEditProduct((p) => ({
+                                  ...p,
+                                  distributor: next ? "SUHome Logistics" : "",
+                                }));
+                                return next;
+                              });
+                            }}
+                            style={{ ...secondaryBtn, padding: "6px 10px", fontSize: "0.85rem" }}
+                          >
+                            {pmUseSuhomeLogistics ? "Deselect SUHome Logistics" : "Use SUHome Logistics"}
+                          </button>
+                        </div>
+                        <input
+                          placeholder="Features"
+                          value={pmEditProduct.features}
+                          onChange={(e) => setPmEditProduct((prev) => ({ ...prev, features: e.target.value }))}
+                          style={inputStyle}
+                        />
+                        <input
+                          placeholder="Image URL"
+                          value={pmEditProduct.image}
+                          onChange={(e) => setPmEditProduct((prev) => ({ ...prev, image: e.target.value }))}
+                          style={inputStyle}
+                        />
+                      </div>
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        <button type="button" onClick={handleSavePmEdit} style={primaryBtn}>
+                          Save updates
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
