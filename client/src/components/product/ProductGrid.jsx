@@ -10,7 +10,7 @@ import { fetchProductsWithMeta } from "../../services/productService";
 function ProductGrid({openMiniCart}) {
   const [products, setProducts] = useState([]);
   const [error, setError] = useState("");
-  const { toggleItem, inWishlist } = useWishlist();
+  const { toggleItem, inWishlist, queuePendingWishlist } = useWishlist();
   const { addItem, items: cartItems } = useCart();
   const { isAuthenticated, user } = useAuth();
   const isStaff = user?.role && user.role !== "customer";
@@ -81,19 +81,20 @@ function ProductGrid({openMiniCart}) {
               </div>
               <button
                 type="button"
-                className={`wishlist-btn ${inWishlist(p.id) ? "active" : ""}`}
+                className={`wishlist-btn ${isAuthenticated && inWishlist(p.id) ? "active" : ""}`}
                 aria-label="Toggle wishlist"
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
                   if (!isAuthenticated) {
+                    queuePendingWishlist(p);
                     navigate("/login", { state: { from: location } });
                     return;
                   }
                   toggleItem(p);
                 }}
               >
-                {inWishlist(p.id) ? "\u2665" : "\u2661"}
+                {isAuthenticated && inWishlist(p.id) ? "\u2665" : "\u2661"}
               </button>
             </>
           )}

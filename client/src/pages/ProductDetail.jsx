@@ -14,7 +14,7 @@ function ProductDetail({ openMiniCart }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { addItem, items: cartItems } = useCart();
-  const { toggleItem, inWishlist } = useWishlist();
+  const { toggleItem, inWishlist, queuePendingWishlist } = useWishlist();
   const { user, isAuthenticated } = useAuth();
   const { isDark } = useTheme();
   const isStaff = user?.role && user.role !== "customer";
@@ -353,15 +353,16 @@ function ProductDetail({ openMiniCart }) {
                 <button
                   onClick={() => {
                     if (!isAuthenticated) {
+                      queuePendingWishlist(product);
                       navigate("/login", { state: { from: location } });
                       return;
                     }
                     toggleItem(product);
                   }}
-                  style={wishlistBtn(inWishlist(product.id), isDark)}
+                  style={wishlistBtn(isAuthenticated && inWishlist(product.id), isDark)}
                 >
                   <span style={{ color: inWishlist(product.id) ? "#e11d48" : (isDark ? "#7dd3fc" : "#1e293b") }}>
-                    {inWishlist(product.id) ? "♥" : "♡"}
+                    {isAuthenticated && inWishlist(product.id) ? "\u2665" : "\u2661"}
                   </span>
                 </button>
 

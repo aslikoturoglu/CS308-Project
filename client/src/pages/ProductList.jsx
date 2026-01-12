@@ -37,7 +37,7 @@ function ProductList({openMiniCart}) {
   const [mainCategoryOptions, setMainCategoryOptions] = useState([]);
 
   const { addItem, items: cartItems, increment, decrement, removeItem } = useCart();
-  const { toggleItem, inWishlist } = useWishlist();
+  const { toggleItem, inWishlist, queuePendingWishlist } = useWishlist();
   const { user, isAuthenticated } = useAuth();
   const isStaff = user?.role && user.role !== "customer";
 
@@ -110,6 +110,7 @@ const handleDecrease = (p) => {
   const handleWishlist = (product) => {
     if (isStaff) return;
     if (!isAuthenticated) {
+      queuePendingWishlist(product);
       navigate("/login", { state: { from: location } });
       return;
     }
@@ -523,14 +524,13 @@ const handleDecrease = (p) => {
                             >
                               {p.availableStock<=0 ? "Out of stock" : "Add to cart"}
                             </button>
-                            {isAuthenticated && (
                               <button
                                 onClick={() => handleWishlist(p)}
                                 style={{
                                   width:48,
                                   borderRadius:10,
                                   border: isDark ? "1px solid #3a4250" : "1px solid #cbd5e1",
-                                  background: inWishlist(p.id)
+                                  background: isAuthenticated && inWishlist(p.id)
                                     ? (isDark ? "#3b1f26" : "#fee2e2")
                                     : (isDark ? "#2b2f36" : "#fff"),
                                   cursor:"pointer",
@@ -539,9 +539,8 @@ const handleDecrease = (p) => {
                                   color: isDark ? "#cbd5e1" : "#0f172a"
                                 }}
                               >
-                                {inWishlist(p.id) ? "♥" : "♡"}
+                                {isAuthenticated && inWishlist(p.id) ? "\u2665" : "\u2661"}
                               </button>
-                            )}
                           </>
                         ) : (
 
@@ -610,7 +609,7 @@ const handleDecrease = (p) => {
                               width: 48,
                               borderRadius: 10,
                               border: isDark ? "1px solid #3a4250" : "1px solid #cbd5e1",
-                              background: inWishlist(p.id)
+                              background: isAuthenticated && inWishlist(p.id)
                                 ? (isDark ? "#3b1f26" : "#fee2e2")
                                 : (isDark ? "#2b2f36" : "#fff"),
                               cursor: "pointer",
@@ -619,7 +618,7 @@ const handleDecrease = (p) => {
                               color: isDark ? "#cbd5e1" : "#0f172a",
                             }}
                           >
-                            {inWishlist(p.id) ? "♥" : "♡"}
+                            {isAuthenticated && inWishlist(p.id) ? "\u2665" : "\u2661"}
                           </button>
                           </>
                         )}

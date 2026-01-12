@@ -8,6 +8,7 @@ import {
 
 const WishlistContext = createContext(undefined);
 const STORAGE_KEY = "wishlist";
+const PENDING_KEY = "pending-wishlist";
 
 export function WishlistProvider({ children }) {
   const { user } = useAuth();
@@ -33,6 +34,25 @@ export function WishlistProvider({ children }) {
   const numericUserId = Number(user?.id);
   const userEmail = user?.email ? String(user.email).trim() : "";
   const canSync = Number.isFinite(numericUserId) || Boolean(userEmail);
+
+  const queuePendingWishlist = (product) => {
+    if (!product?.id || typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(PENDING_KEY);
+      const pending = raw ? JSON.parse(raw) : [];
+      const exists = pending.some((item) => String(item.id) === String(product.id));
+      if (exists) return;
+      pending.push({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image,
+      });
+      window.localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+    } catch (error) {
+      console.error("Pending wishlist storage failed", error);
+    }
+  };
 
   useEffect(() => {
     if (!canSync) return undefined;
@@ -89,6 +109,36 @@ export function WishlistProvider({ children }) {
     });
   };
 
+  useEffect(() => {
+    if (!canSync) return;
+    if (typeof window === "undefined") return;
+    let pending = [];
+    try {
+      const raw = window.localStorage.getItem(PENDING_KEY);
+      pending = raw ? JSON.parse(raw) : [];
+    } catch (error) {
+      console.error("Pending wishlist read failed", error);
+    }
+    if (!Array.isArray(pending) || pending.length === 0) return;
+    window.localStorage.removeItem(PENDING_KEY);
+
+    setItems((prev) => {
+      const existing = new Set(prev.map((item) => String(item.id)));
+      const toAdd = pending.filter((item) => !existing.has(String(item.id)));
+      if (!toAdd.length) return prev;
+      toAdd.forEach((item) => {
+        addWishlistItemApi({
+          userId: Number.isFinite(numericUserId) ? numericUserId : null,
+          email: userEmail,
+          productId: item.id,
+        }).catch(() => {
+          setItems((current) => current.filter((entry) => entry.id !== item.id));
+        });
+      });
+      return [...prev, ...toAdd];
+    });
+  }, [canSync, numericUserId, userEmail]);
+
   const removeItem = (id) => {
     setItems((prev) => prev.filter((item) => item.id !== id));
     if (canSync) {
@@ -141,6 +191,7 @@ export function WishlistProvider({ children }) {
       removeItem,
       toggleItem,
       inWishlist,
+      queuePendingWishlist,
     }),
     [items]
   );
