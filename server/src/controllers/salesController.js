@@ -461,9 +461,11 @@ export function updateReturnRequestStatus(req, res) {
       oi.order_id,
       oi.product_id,
       oi.quantity,
-      oi.unit_price
+      oi.unit_price,
+      o.status AS order_status
     FROM return_requests rr
     JOIN order_items oi ON oi.order_item_id = rr.order_item_id
+    JOIN orders o ON o.order_id = oi.order_id
     WHERE rr.return_id = ?
     LIMIT 1
   `;
@@ -479,12 +481,19 @@ export function updateReturnRequestStatus(req, res) {
 
     const row = rows[0];
     const current = String(row.return_status || "").toLowerCase();
+    const orderStatus = String(row.order_status || "")
+      .toLowerCase()
+      .replace(/-/g, "_")
+      .replace(/\s+/g, "_");
+    const isOrderRefundWaiting =
+      orderStatus === "refund_waiting" || orderStatus === "refundwaiting";
+    const isPendingReturn = ["requested", "accepted", "received"].includes(current);
 
     const allowedTransition =
       (nextStatus === "accepted" && current === "requested") ||
-      (nextStatus === "rejected" && ["requested", "accepted"].includes(current)) ||
+      (nextStatus === "rejected" && (isPendingReturn || isOrderRefundWaiting)) ||
       (nextStatus === "received" && current === "accepted") ||
-      (nextStatus === "refunded" && ["requested", "accepted", "received"].includes(current));
+      (nextStatus === "refunded" && (isPendingReturn || isOrderRefundWaiting));
 
     if (!allowedTransition) {
       return res.status(400).json({ error: "Invalid status transition" });
