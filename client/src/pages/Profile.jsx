@@ -115,8 +115,9 @@ const getCancelState = (order) => {
 };
 
 const getDisplayStatus = (status) => {
-  if (["Cancelled", "Canceled"].includes(status)) return "Cancel";
-  if (["Refund Waiting", "Refunded", "Not Refunded"].includes(status)) return "Refund";
+  if (["Cancelled", "Canceled"].includes(status)) return "Cancelled";
+  if (["Refund Waiting", "Not Refunded"].includes(status)) return "Refund";
+  if (status === "Refunded") return "Refunded";
   return status;
 };
 
@@ -493,10 +494,10 @@ const handleRefundOrder = async (order) => {
               {recentOrders.map((order) => {
                 const formattedId = order.formattedId || formatOrderId(order.id);
                 const statusStyle = {
-                  Cancel: {
-                    bg: "rgba(148,163,184,0.18)",
-                    color: "#64748b",
-                    border: "#cbd5e1",
+                  Cancelled: {
+                    bg: "rgba(248,113,113,0.18)",
+                    color: "#b91c1c",
+                    border: "#f87171",
                   },
                   Delivered: {
                     bg: "rgba(34,197,94,0.15)",
@@ -507,6 +508,11 @@ const handleRefundOrder = async (order) => {
                     bg: "rgba(15,118,110,0.15)",
                     color: "#0f766e",
                     border: "#5eead4",
+                  },
+                  Refunded: {
+                    bg: "#e0f2fe",
+                    color: "#1d4ed8",
+                    border: "#93c5fd",
                   },
                   "In-transit": {
                     bg: "rgba(59,130,246,0.15)",
@@ -600,7 +606,8 @@ const handleRefundOrder = async (order) => {
                           </button>
                         );
                       })()}
-                      {["Delivered", "Refund Waiting", "Refunded", "Not Refunded", "Cancelled", "Canceled"].includes(order?.status) && (() => {
+                      {["Delivered", "Refund Waiting", "Refunded", "Not Refunded", "Cancelled", "Canceled"].includes(order?.status) &&
+                        order?.status !== "Refunded" && (() => {
                         const refundState = getRefundState(order);
                         const label = hasActiveReturn ? formatReturnStatus(orderReturnStatus) : refundState.label;
                         const disabled = hasActiveReturn ? true : !refundState.allowed;

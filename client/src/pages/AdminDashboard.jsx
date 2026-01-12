@@ -34,13 +34,13 @@ const DELIVERY_FILTERS = [
   { id: "Processing", label: "Processing" },
   { id: "In-transit", label: "In-transit" },
   { id: "Delivered", label: "Delivered" },
-  { id: "Cancelled", label: "Canceled" },
+  { id: "Cancelled", label: "Cancelled" },
   { id: "Refund Waiting", label: "Refund Waiting" },
   { id: "Refunded", label: "Refunded" },
   { id: "Not Refunded", label: "Not Refunded" },
 ];
 
-const DELIVERY_STATUSES = DELIVERY_FILTERS.filter((f) => f.id !== "All").map((f) => f.id);
+const REFUND_DELIVERY_STATUSES = ["Refund Waiting", "Refunded", "Not Refunded"];
 const DELIVERY_STATUS_STYLES = {
   Processing: { bg: "#fef3c7", color: "#92400e", border: "#fcd34d" },
   "In-transit": { bg: "#dbeafe", color: "#1d4ed8", border: "#93c5fd" },
@@ -504,6 +504,20 @@ function AdminDashboard() {
       setActiveSection(permittedSections[0] || "dashboard");
     }
   }, [activeSection, permittedSections]);
+
+  const deliveryFilters = useMemo(() => DELIVERY_FILTERS, []);
+
+  const deliveryStatuses = useMemo(
+    () => deliveryFilters.filter((filter) => filter.id !== "All").map((filter) => filter.id),
+    [deliveryFilters]
+  );
+
+  useEffect(() => {
+    const allowed = deliveryFilters.some((filter) => filter.id === deliveryTab);
+    if (!allowed) {
+      setDeliveryTab("All");
+    }
+  }, [deliveryFilters, deliveryTab]);
 
   const totals = useMemo(() => {
     const todayUtc = new Date().toISOString().slice(0, 10);
@@ -970,7 +984,12 @@ function AdminDashboard() {
       return;
     }
     const normalizedStatus = normalizeDeliveryStatus(nextStatus);
-    if (!DELIVERY_STATUSES.includes(normalizedStatus)) {
+    const current = deliveries.find((delivery) => String(delivery.id) === String(deliveryId));
+    if (current && REFUND_DELIVERY_STATUSES.includes(current.status)) {
+      addToast("Refund statuses cannot be updated from delivery list", "error");
+      return;
+    }
+    if (!deliveryStatuses.includes(normalizedStatus)) {
       addToast("Select a valid status", "error");
       return;
     }
@@ -1002,9 +1021,13 @@ function AdminDashboard() {
     await applyDeliveryStatus(deliveryUpdate.id, deliveryUpdate.status);
   };
 
-  const handleInlineStatusClick = (delivery) => {
-    setDeliveryStatusPicker((prev) => (prev === delivery.id ? null : delivery.id));
-  };
+    const handleInlineStatusClick = (delivery) => {
+      if (REFUND_DELIVERY_STATUSES.includes(delivery.status)) {
+        addToast("Refund statuses cannot be updated", "error");
+        return;
+      }
+      setDeliveryStatusPicker((prev) => (prev === delivery.id ? null : delivery.id));
+    };
 
   const handleSelectStatusOption = async (delivery, status) => {
     await applyDeliveryStatus(delivery.id, status);
@@ -1719,7 +1742,7 @@ function AdminDashboard() {
               >
                 <h4 style={{ margin: "0 0 10px", color: "#0f172a" }}>Delivery list</h4>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(110px,1fr))", gap: 6, marginBottom: 6 }}>
-                  {DELIVERY_FILTERS.map((tab) => {
+                  {deliveryFilters.map((tab) => {
                     const isActive = deliveryTab === tab.id;
                     const tone = DELIVERY_STATUS_STYLES[tab.id];
                     return (
@@ -1809,8 +1832,8 @@ function AdminDashboard() {
                               </button>
                               {deliveryStatusPicker === d.id && (
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                                  {DELIVERY_STATUSES.map((status) => {
-                                    const label = DELIVERY_FILTERS.find((f) => f.id === status)?.label || status;
+                                  {deliveryStatuses.map((status) => {
+                                    const label = deliveryFilters.find((f) => f.id === status)?.label || status;
                                     return (
                                       <button
                                         key={status}
@@ -1965,8 +1988,8 @@ function AdminDashboard() {
                     style={inputStyle}
                   >
                     <option value="">Status</option>
-                    {DELIVERY_STATUSES.map((status) => {
-                      const tab = DELIVERY_FILTERS.find((f) => f.id === status);
+                    {deliveryStatuses.map((status) => {
+                      const tab = deliveryFilters.find((f) => f.id === status);
                       return (
                         <option key={status} value={status}>
                           {tab?.label || status}
