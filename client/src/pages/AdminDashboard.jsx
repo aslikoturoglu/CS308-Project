@@ -869,6 +869,12 @@ function AdminDashboard() {
     return value || "General";
   };
 
+  const normalizeCategoryValue = (value) => {
+    if (value === "__none__") return null;
+    if (!String(value || "").trim()) return null;
+    return value;
+  };
+
   const handleAddProduct = async () => {
     try {
       const basePayload = {
@@ -876,7 +882,7 @@ function AdminDashboard() {
         model: newProduct.model,
         serialNumber: newProduct.serialNumber,
         stock: Number(newProduct.stock),
-        category: newProduct.category || "General",
+        category: normalizeCategoryValue(newProduct.category),
         mainCategory: newProduct.mainCategory,
         material: newProduct.material,
         color: newProduct.color,
@@ -892,7 +898,6 @@ function AdminDashboard() {
           { key: "model", label: "Model", value: newProduct.model },
           { key: "stock", label: "Stock", value: newProduct.stock },
           { key: "mainCategory", label: "Main category", value: newProduct.mainCategory },
-          { key: "category", label: "Category", value: newProduct.category },
           { key: "material", label: "Material", value: newProduct.material },
           { key: "color", label: "Color", value: newProduct.color },
           { key: "warranty", label: "Warranty", value: newProduct.warranty },
@@ -900,6 +905,9 @@ function AdminDashboard() {
           { key: "features", label: "Features", value: newProduct.features },
           { key: "image", label: "Image URL", value: newProduct.image },
         ];
+        if (newProduct.category !== "__none__") {
+          required.push({ key: "category", label: "Category", value: newProduct.category });
+        }
         if (!useDefaultProductCost) {
           required.push({ key: "cost", label: "Cost", value: newProduct.cost });
         }
@@ -1023,7 +1031,7 @@ function AdminDashboard() {
       serialNumber: product.serialNumber || "",
       price: product.price || "",
       stock: Number(product.stock ?? product.availableStock ?? 0),
-      category: product.category || "",
+      category: product.category || "__none__",
       mainCategory: Array.isArray(product.mainCategory)
         ? product.mainCategory
         : String(product.mainCategory || "")
@@ -1131,7 +1139,7 @@ function AdminDashboard() {
       name: target.name || "",
       model: target.model || "",
       stock: Number(target.stock ?? target.availableStock ?? 0),
-      category: target.category || "",
+      category: target.category || "__none__",
       mainCategory: Array.isArray(target.mainCategory)
         ? target.mainCategory
         : String(target.mainCategory || "")
@@ -1155,7 +1163,6 @@ function AdminDashboard() {
       pmEditProduct.model,
       pmEditProduct.stock,
       pmEditProduct.mainCategory,
-      pmEditProduct.category,
       pmEditProduct.material,
       pmEditProduct.color,
       pmEditProduct.warranty,
@@ -1163,6 +1170,9 @@ function AdminDashboard() {
       pmEditProduct.features,
       pmEditProduct.image,
     ];
+    if (pmEditProduct.category !== "__none__") {
+      required.push(pmEditProduct.category);
+    }
     if (required.some((value) => isEmptyField(value))) {
       addToast("Fill all the textfields.", "error");
       return;
@@ -1177,7 +1187,7 @@ function AdminDashboard() {
         name: pmEditProduct.name,
         model: pmEditProduct.model,
         stock: Number(pmEditProduct.stock),
-        category: pmEditProduct.category || "General",
+        category: normalizeCategoryValue(pmEditProduct.category),
         mainCategory: pmEditProduct.mainCategory,
         material: pmEditProduct.material,
         color: pmEditProduct.color,
@@ -2082,7 +2092,7 @@ function AdminDashboard() {
                     onChange={(e) => setNewProduct((p) => ({ ...p, category: e.target.value }))}
                     style={inputStyle}
                   >
-                    <option value="">Category</option>
+                    <option value="__none__">No category</option>
                     {(categories.length ? categories.map((c) => c.name) : PRODUCT_CATEGORIES).map((category) => (
                       <option key={category} value={category}>
                         {category}
@@ -2357,7 +2367,7 @@ function AdminDashboard() {
                           onChange={(e) => setPmEditProduct((prev) => ({ ...prev, category: e.target.value }))}
                           style={inputStyle}
                         >
-                          <option value="">Category</option>
+                          <option value="__none__">No category</option>
                           {(categories.length ? categories.map((c) => c.name) : PRODUCT_CATEGORIES).map((category) => (
                             <option key={category} value={category}>
                               {category}
