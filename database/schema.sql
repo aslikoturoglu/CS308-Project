@@ -47,10 +47,8 @@ CREATE TABLE Products (
 
 CREATE TABLE product_requests (
   request_id INT PRIMARY KEY AUTO_INCREMENT,
-  requested_by INT NULL,
   product_name VARCHAR(150) NOT NULL,
   product_model VARCHAR(150),
-  product_serial_number VARCHAR(150),
   product_main_category VARCHAR(150),
   product_category VARCHAR(100),
   product_material VARCHAR(100),
@@ -61,16 +59,11 @@ CREATE TABLE product_requests (
   product_stock INT NOT NULL DEFAULT 0,
   product_image VARCHAR(255),
   product_price DECIMAL(10,2) NULL,
-  product_id INT NULL,
   status ENUM('pending','published') NOT NULL DEFAULT 'pending',
   requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   published_at DATETIME NULL,
-  FOREIGN KEY (requested_by) REFERENCES users(user_id)
-    ON UPDATE CASCADE ON DELETE SET NULL,
-  FOREIGN KEY (product_id) REFERENCES Products(product_id)
-    ON UPDATE CASCADE ON DELETE SET NULL,
   INDEX idx_product_requests_status (status),
-  INDEX idx_product_requests_requested (requested_by)
+  INDEX idx_product_requests_requested (requested_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE product_stock (

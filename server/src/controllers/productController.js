@@ -78,7 +78,6 @@ export function createProduct(req, res) {
   const payload = req.body || {};
   const name = typeof payload.name === "string" ? payload.name.trim() : "";
   const rawModel = typeof payload.model === "string" ? payload.model.trim() : "";
-  const rawSerialNumber = typeof payload.serialNumber === "string" ? payload.serialNumber.trim() : "";
   const rawCategory = typeof payload.category === "string" ? payload.category.trim() : "";
   const rawMainCategory = typeof payload.mainCategory === "string" ? payload.mainCategory.trim() : "";
   const rawDescription = typeof payload.features === "string"
@@ -113,6 +112,7 @@ export function createProduct(req, res) {
     }
 
     const nextId = Number(rows?.[0]?.maxId || 0) + 1;
+    const serialNumber = `SN-${nextId}-2026`;
     const sql = `
       INSERT INTO products
         (product_id, product_name, product_model, product_serial_number, product_main_category, product_category,
@@ -125,7 +125,7 @@ export function createProduct(req, res) {
       nextId,
       name,
       rawModel || null,
-      rawSerialNumber || null,
+      serialNumber,
       rawMainCategory || null,
       rawCategory || null,
       rawMaterial || null,
@@ -148,7 +148,7 @@ export function createProduct(req, res) {
         id: nextId,
         name,
         model: rawModel || null,
-        serialNumber: rawSerialNumber || null,
+        serialNumber,
         description: rawDescription || null,
         price,
         originalPrice: price,
@@ -226,7 +226,8 @@ export function updateProduct(req, res) {
   const payload = req.body || {};
   const name = typeof payload.name === "string" ? payload.name.trim() : "";
   const rawModel = typeof payload.model === "string" ? payload.model.trim() : "";
-  const rawSerialNumber = typeof payload.serialNumber === "string" ? payload.serialNumber.trim() : "";
+  const serialProvided = typeof payload.serialNumber === "string";
+  const rawSerialNumber = serialProvided ? payload.serialNumber.trim() : null;
   const rawCategory = typeof payload.category === "string" ? payload.category.trim() : "";
   const rawMainCategory = typeof payload.mainCategory === "string" ? payload.mainCategory.trim() : "";
   const rawDescription = typeof payload.features === "string" ? payload.features.trim() : "";
@@ -254,7 +255,7 @@ export function updateProduct(req, res) {
     SET
       product_name = ?,
       product_model = ?,
-      product_serial_number = ?,
+      product_serial_number = COALESCE(?, product_serial_number),
       product_main_category = ?,
       product_category = ?,
       product_material = ?,
@@ -271,7 +272,7 @@ export function updateProduct(req, res) {
   const values = [
     name,
     rawModel || null,
-    rawSerialNumber || null,
+    serialProvided ? (rawSerialNumber || null) : null,
     rawMainCategory || null,
     rawCategory || null,
     rawMaterial || null,

@@ -340,7 +340,10 @@ function ProductDetail({ openMiniCart }) {
             }}
             >
             <Info label="Model" value={`SU-${String(product.id).padStart(4, "0")}`} />
-            <Info label="Serial" value={`SN-${product.id * 9876}`} />
+            <Info
+              label="Serial"
+              value={product.serialNumber || product.serial_number || `SN-${product.id}-2026`}
+            />
             <Info label="Distributor" value={product.distributor ?? "SUHome Logistics"} />
             </div>
 

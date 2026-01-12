@@ -217,8 +217,13 @@ function AdminDashboard() {
   const [isLoadingReturns, setIsLoadingReturns] = useState(false);
   const [productRequests, setProductRequests] = useState([]);
   const [isLoadingProductRequests, setIsLoadingProductRequests] = useState(false);
+  const [publishedProductRequests, setPublishedProductRequests] = useState([]);
+  const [isLoadingPublishedRequests, setIsLoadingPublishedRequests] = useState(false);
   const [publishPrices, setPublishPrices] = useState({});
   const [publishingRequestId, setPublishingRequestId] = useState(null);
+  const [useSuhomeLogistics, setUseSuhomeLogistics] = useState(false);
+  const [managerProductRequests, setManagerProductRequests] = useState([]);
+  const [isLoadingManagerRequests, setIsLoadingManagerRequests] = useState(false);
   const [filters, setFilters] = useState({ invoiceFrom: "", invoiceTo: "" });
   const [invoices, setInvoices] = useState([]);
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
@@ -452,7 +457,7 @@ function AdminDashboard() {
   useEffect(() => {
     if (activeSection !== "sales") return;
     setIsLoadingProductRequests(true);
-    fetch(`${API_BASE}/api/product-requests`)
+    fetch(`${API_BASE}/api/product-requests?status=pending`)
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -468,6 +473,47 @@ function AdminDashboard() {
       })
       .finally(() => setIsLoadingProductRequests(false));
   }, [activeSection, addToast]);
+
+  useEffect(() => {
+    if (activeSection !== "sales") return;
+    setIsLoadingPublishedRequests(true);
+    fetch(`${API_BASE}/api/product-requests?status=published`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setPublishedProductRequests(data);
+        } else {
+          setPublishedProductRequests([]);
+        }
+      })
+      .catch((error) => {
+        console.error("Published requests fetch failed", error);
+        addToast("Published product requests could not be loaded", "error");
+        setPublishedProductRequests([]);
+      })
+      .finally(() => setIsLoadingPublishedRequests(false));
+  }, [activeSection, addToast]);
+
+  useEffect(() => {
+    if (activeSection !== "product") return;
+    if (user?.role !== "product_manager") return;
+    setIsLoadingManagerRequests(true);
+    fetch(`${API_BASE}/api/product-requests`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setManagerProductRequests(data);
+        } else {
+          setManagerProductRequests([]);
+        }
+      })
+      .catch((error) => {
+        console.error("Product requests fetch failed", error);
+        addToast("Product requests could not be loaded", "error");
+        setManagerProductRequests([]);
+      })
+      .finally(() => setIsLoadingManagerRequests(false));
+  }, [activeSection, addToast, user?.role]);
 
   const handleViewLowStock = () => {
     setShowLowStockOnly(true);
@@ -793,10 +839,29 @@ function AdminDashboard() {
       };
 
       if (user?.role === "product_manager") {
+        const required = [
+          { key: "name", label: "Name", value: newProduct.name },
+          { key: "model", label: "Model", value: newProduct.model },
+          { key: "stock", label: "Stock", value: newProduct.stock },
+          { key: "mainCategory", label: "Main category", value: newProduct.mainCategory },
+          { key: "category", label: "Category", value: newProduct.category },
+          { key: "material", label: "Material", value: newProduct.material },
+          { key: "color", label: "Color", value: newProduct.color },
+          { key: "warranty", label: "Warranty", value: newProduct.warranty },
+          { key: "distributor", label: "Distributor", value: newProduct.distributor },
+          { key: "features", label: "Features", value: newProduct.features },
+          { key: "image", label: "Image URL", value: newProduct.image },
+        ];
+        const missing = required.filter((field) => !String(field.value || "").trim()).map((field) => field.label);
+        if (missing.length) {
+          addToast(`Fill all fields: ${missing.join(", ")}`, "error");
+          return;
+        }
+
         const res = await fetch("/api/product-requests", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...basePayload, requestedBy: user?.id }),
+          body: JSON.stringify(basePayload),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -818,6 +883,7 @@ function AdminDashboard() {
           features: "",
           image: "",
         });
+        setUseSuhomeLogistics(false);
         addToast("Product request sent to sales manager", "info");
         return;
       }
@@ -921,6 +987,7 @@ function AdminDashboard() {
       features: "",
       image: "",
     });
+    setUseSuhomeLogistics(false);
   };
 
   const handleDeleteProduct = async (productId) => {
@@ -1007,8 +1074,14 @@ function AdminDashboard() {
       if (!res.ok) {
         throw new Error(data?.error || "Publish failed");
       }
-      const refreshed = await fetch(`${API_BASE}/api/product-requests`).then((r) => r.json());
+      const refreshed = await fetch(`${API_BASE}/api/product-requests?status=pending`).then((r) => r.json());
       setProductRequests(Array.isArray(refreshed) ? refreshed : []);
+      const published = await fetch(`${API_BASE}/api/product-requests?status=published`).then((r) => r.json());
+      setPublishedProductRequests(Array.isArray(published) ? published : []);
+      if (user?.role === "product_manager") {
+        const all = await fetch(`${API_BASE}/api/product-requests`).then((r) => r.json());
+        setManagerProductRequests(Array.isArray(all) ? all : []);
+      }
       const controller = new AbortController();
       const productsRefreshed = await fetchProductsWithMeta(controller.signal);
       setProducts(productsRefreshed);
@@ -1637,12 +1710,6 @@ function AdminDashboard() {
                     onChange={(e) => setNewProduct((p) => ({ ...p, model: e.target.value }))}
                     style={inputStyle}
                   />
-                  <input
-                    placeholder="Serial number"
-                    value={newProduct.serialNumber}
-                    onChange={(e) => setNewProduct((p) => ({ ...p, serialNumber: e.target.value }))}
-                    style={inputStyle}
-                  />
                   {user?.role !== "product_manager" && (
                     <input
                       placeholder="Price"
@@ -1716,12 +1783,6 @@ function AdminDashboard() {
                         />
                       ))}
                     </div>
-                    <input
-                      placeholder="Color"
-                      value={newProduct.color}
-                      readOnly
-                      style={{ ...inputStyle, background: "#f8fafc" }}
-                    />
                   </div>
                   <select
                     value={newProduct.warranty}
@@ -1740,14 +1801,24 @@ function AdminDashboard() {
                       placeholder="Distributor"
                       value={newProduct.distributor}
                       onChange={(e) => setNewProduct((p) => ({ ...p, distributor: e.target.value }))}
-                      style={inputStyle}
+                      style={{ ...inputStyle, background: useSuhomeLogistics ? "#f8fafc" : inputStyle.background }}
+                      readOnly={useSuhomeLogistics}
                     />
                     <button
                       type="button"
-                      onClick={() => setNewProduct((p) => ({ ...p, distributor: "SUHome Logistics" }))}
+                      onClick={() => {
+                        setUseSuhomeLogistics((prev) => {
+                          const next = !prev;
+                          setNewProduct((p) => ({
+                            ...p,
+                            distributor: next ? "SUHome Logistics" : "",
+                          }));
+                          return next;
+                        });
+                      }}
                       style={{ ...secondaryBtn, padding: "6px 10px", fontSize: "0.85rem" }}
                     >
-                      Use SUHome Logistics
+                      {useSuhomeLogistics ? "Deselect SUHome Logistics" : "Use SUHome Logistics"}
                     </button>
                   </div>
                   <input
@@ -1784,6 +1855,79 @@ function AdminDashboard() {
                   </button>
                 </div>
               </div>
+
+              {user?.role === "product_manager" && (
+                <div
+                  style={{
+                    background: "white",
+                    borderRadius: 14,
+                    padding: 18,
+                    boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
+                    display: "grid",
+                    gap: 12,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <h3 style={{ margin: 0, color: "#0f172a" }}>My product requests</h3>
+                    <span style={{ color: "#94a3b8", fontWeight: 700 }}>
+                      {managerProductRequests.length} total
+                    </span>
+                  </div>
+                  {isLoadingManagerRequests && <p style={{ margin: 0, color: "#64748b" }}>Loading requests...</p>}
+                  {!isLoadingManagerRequests && managerProductRequests.length === 0 && (
+                    <p style={{ margin: 0, color: "#94a3b8" }}>No requests yet.</p>
+                  )}
+                  <div style={{ display: "grid", gap: 12 }}>
+                    {managerProductRequests.map((req) => (
+                      <div
+                        key={req.request_id}
+                        style={{
+                          border: "1px solid #e5e7eb",
+                          borderRadius: 12,
+                          padding: 12,
+                          background: "#f8fafc",
+                          display: "grid",
+                          gap: 6,
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                          <div>
+                            <strong>{req.name}</strong>
+                            <p style={{ margin: "2px 0 0", color: "#64748b" }}>
+                              {req.mainCategory || "General"} • {req.category || "General"}
+                            </p>
+                          </div>
+                          <span
+                            style={{
+                              padding: "3px 10px",
+                              borderRadius: 999,
+                              background: req.status === "published" ? "#dcfce7" : "#fef3c7",
+                              color: req.status === "published" ? "#166534" : "#92400e",
+                              fontWeight: 700,
+                              fontSize: "0.8rem",
+                              lineHeight: 1.2,
+                              textTransform: "capitalize",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            {req.status === "published" ? "Published" : "Pending"}
+                          </span>
+                        </div>
+                        <small style={{ color: "#94a3b8" }}>
+                          Requested: {req.requested_at ? new Date(req.requested_at).toLocaleString("tr-TR") : "N/A"}
+                        </small>
+                        {req.status === "published" && (
+                          <small style={{ color: "#64748b" }}>
+                            Price set: ₺{Number(req.price || 0).toLocaleString("tr-TR")}
+                          </small>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div
                 style={{
@@ -2420,6 +2564,47 @@ function AdminDashboard() {
                           {publishingRequestId === req.request_id ? "Publishing..." : "Publish product"}
                         </button>
                       </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)", display: "grid", gap: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <h3 style={{ margin: 0, color: "#0f172a" }}>Published product requests</h3>
+                  <span style={{ color: "#94a3b8", fontWeight: 700 }}>{publishedProductRequests.length} total</span>
+                </div>
+                {isLoadingPublishedRequests && <p style={{ margin: 0, color: "#64748b" }}>Loading published requests...</p>}
+                {!isLoadingPublishedRequests && publishedProductRequests.length === 0 && (
+                  <p style={{ margin: 0, color: "#94a3b8" }}>No published product requests yet.</p>
+                )}
+                <div style={{ display: "grid", gap: 12 }}>
+                  {publishedProductRequests.map((req) => (
+                    <div
+                      key={req.request_id}
+                      style={{
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 12,
+                        padding: 12,
+                        background: "#f8fafc",
+                        display: "grid",
+                        gap: 6,
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                        <div>
+                          <strong>{req.name}</strong>
+                          <p style={{ margin: "2px 0 0", color: "#64748b" }}>
+                            {req.mainCategory || "General"} • {req.category || "General"}
+                          </p>
+                        </div>
+                        <span style={{ color: "#0f172a", fontWeight: 700 }}>
+                          ₺{Number(req.price || 0).toLocaleString("tr-TR")}
+                        </span>
+                      </div>
+                      <small style={{ color: "#94a3b8" }}>
+                        Published: {req.published_at ? new Date(req.published_at).toLocaleString("tr-TR") : "N/A"}
+                      </small>
                     </div>
                   ))}
                 </div>

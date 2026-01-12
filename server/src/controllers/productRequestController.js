@@ -8,7 +8,6 @@ export function createProductRequest(req, res) {
   const payload = req.body || {};
   const name = normalizeValue(payload.name);
   const rawModel = normalizeValue(payload.model);
-  const rawSerialNumber = normalizeValue(payload.serialNumber);
   const rawCategory = normalizeValue(payload.category);
   const rawMainCategory = normalizeValue(payload.mainCategory);
   const rawDescription = normalizeValue(payload.features || payload.description);
@@ -17,7 +16,6 @@ export function createProductRequest(req, res) {
   const rawWarranty = normalizeValue(payload.warranty);
   const rawDistributor = normalizeValue(payload.distributor);
   const rawImage = normalizeValue(payload.image);
-  const requestedBy = Number(payload.requestedBy);
   const stock = payload.stock === "" || payload.stock == null ? 0 : Number(payload.stock);
 
   if (!name) {
@@ -29,17 +27,15 @@ export function createProductRequest(req, res) {
 
   const sql = `
     INSERT INTO product_requests
-      (requested_by, product_name, product_model, product_serial_number, product_main_category, product_category,
+      (product_name, product_model, product_main_category, product_category,
        product_material, product_color, product_warranty, product_distributor, product_features,
        product_stock, product_image, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
   `;
 
   const values = [
-    Number.isFinite(requestedBy) ? requestedBy : null,
     name,
     rawModel || null,
-    rawSerialNumber || null,
     rawMainCategory || null,
     rawCategory || null,
     rawMaterial || null,
@@ -61,7 +57,6 @@ export function createProductRequest(req, res) {
       request_id: result.insertId,
       name,
       model: rawModel || null,
-      serialNumber: rawSerialNumber || null,
       mainCategory: rawMainCategory || null,
       category: rawCategory || null,
       material: rawMaterial || null,
@@ -76,14 +71,14 @@ export function createProductRequest(req, res) {
   });
 }
 
-export function getPendingProductRequests(req, res) {
+export function getProductRequests(req, res) {
+  const statusFilter = String(req.query?.status || "").toLowerCase();
+  const status = ["pending", "published"].includes(statusFilter) ? statusFilter : null;
   const sql = `
     SELECT
       request_id,
-      requested_by,
       product_name,
       product_model,
-      product_serial_number,
       product_main_category,
       product_category,
       product_material,
@@ -93,13 +88,16 @@ export function getPendingProductRequests(req, res) {
       product_features,
       product_stock,
       product_image,
-      requested_at
+      product_price,
+      requested_at,
+      published_at,
+      status
     FROM product_requests
-    WHERE status = 'pending'
+    ${status ? "WHERE status = ?" : ""}
     ORDER BY requested_at DESC
   `;
 
-  db.query(sql, (err, rows = []) => {
+  db.query(sql, status ? [status] : [], (err, rows = []) => {
     if (err) {
       console.error("Product requests fetch failed:", err);
       return res.status(500).json({ error: "Product requests could not be loaded" });
@@ -107,10 +105,8 @@ export function getPendingProductRequests(req, res) {
 
     const payload = rows.map((row) => ({
       request_id: row.request_id,
-      requested_by: row.requested_by,
       name: row.product_name,
       model: row.product_model,
-      serialNumber: row.product_serial_number,
       mainCategory: row.product_main_category,
       category: row.product_category,
       material: row.product_material,
@@ -120,7 +116,10 @@ export function getPendingProductRequests(req, res) {
       features: row.product_features,
       stock: Number(row.product_stock || 0),
       image: row.product_image,
+      price: row.product_price != null ? Number(row.product_price) : null,
       requested_at: row.requested_at,
+      published_at: row.published_at,
+      status: row.status,
     }));
 
     return res.json(payload);
@@ -163,6 +162,7 @@ export function publishProductRequest(req, res) {
       }
 
       const nextId = Number(idRows?.[0]?.maxId || 0) + 1;
+      const serialNumber = `SN-${nextId}-2026`;
       const insertSql = `
         INSERT INTO products
           (product_id, product_name, product_model, product_serial_number, product_main_category, product_category,
@@ -175,7 +175,7 @@ export function publishProductRequest(req, res) {
         nextId,
         requestRow.product_name,
         requestRow.product_model || null,
-        requestRow.product_serial_number || null,
+        serialNumber,
         requestRow.product_main_category || null,
         requestRow.product_category || null,
         requestRow.product_material || null,
@@ -197,10 +197,10 @@ export function publishProductRequest(req, res) {
         db.query(
           `
           UPDATE product_requests
-          SET status = 'published', product_id = ?, product_price = ?, published_at = NOW()
+          SET status = 'published', product_price = ?, published_at = NOW()
           WHERE request_id = ?
           `,
-          [nextId, price, requestId],
+          [price, requestId],
           (updateErr) => {
             if (updateErr) {
               console.error("Product request update failed:", updateErr);

@@ -2,13 +2,13 @@ import { Router } from "express";
 
 import {
   createProductRequest,
-  getPendingProductRequests,
+  getProductRequests,
   publishProductRequest,
 } from "../controllers/productRequestController.js";
 
 const router = Router();
 
-router.get("/", getPendingProductRequests);
+router.get("/", getProductRequests);
 router.post("/", createProductRequest);
 router.put("/:id/publish", publishProductRequest);
 
