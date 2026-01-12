@@ -22,6 +22,7 @@ const timelineSteps = [
   "Delivered",
   "Refund Waiting",
   "Refunded",
+  "Not Refunded",
   "Cancelled",
 ];
 const filterOptions = ["All", ...timelineSteps];

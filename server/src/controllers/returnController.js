@@ -29,7 +29,7 @@ export function createReturnRequest(req, res) {
       d.delivery_status
     FROM order_items oi
     JOIN orders o ON o.order_id = oi.order_id
-    LEFT JOIN deliveries d ON d.order_item_id = oi.order_item_id
+    LEFT JOIN deliveries d ON d.order_id = oi.order_id
     WHERE oi.order_item_id = ? AND o.user_id = ?
     LIMIT 1
   `;
