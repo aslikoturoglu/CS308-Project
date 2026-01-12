@@ -46,6 +46,15 @@ function isRefundWindowOpen(order) {
   return diffDays <= REFUND_WINDOW_DAYS;
 }
 
+function canDownloadInvoice(order) {
+  if (!order) return false;
+  if (order.status !== "Delivered") return false;
+  const orderDate = getOrderDate(order);
+  if (!orderDate) return false;
+  const diffDays = (Date.now() - orderDate.getTime()) / MS_PER_DAY;
+  return diffDays <= REFUND_WINDOW_DAYS;
+}
+
 function getRefundState(order) {
   if (order.status === "Refund Waiting") {
     return { allowed: false, label: "Refund Waiting", reason: "Waiting for sales manager approval" };
@@ -389,6 +398,8 @@ function OrderHistory() {
             const numericOrderMatch = String(rawOrderId).match(/\d+/);
             const cleanOrderId = numericOrderMatch ? numericOrderMatch[0] : rawOrderId;
             const invoiceUrl = `${API_BASE_URL}/api/orders/${encodeURIComponent(cleanOrderId)}/invoice`;
+            const canDownload = canDownloadInvoice(order);
+            const invoiceFileName = `invoice_${cleanOrderId}.pdf`;
 
             return (
               <article
@@ -694,22 +705,27 @@ function OrderHistory() {
                           </span>
                         )}
                       </div>
-                      <a
-                        href={invoiceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          border: `1px solid ${isDark ? "#38bdf8" : "#0058a3"}`,
-                          color: palette.link,
-                          background: palette.inputBg,
-                          padding: "8px 12px",
-                          borderRadius: 10,
-                          textDecoration: "none",
-                          fontWeight: 700,
-                        }}
-                      >
-                        View invoice
-                      </a>
+                      {canDownload ? (
+                        <a
+                          href={invoiceUrl}
+                          download={invoiceFileName}
+                          style={{
+                            border: `1px solid ${isDark ? "#38bdf8" : "#0058a3"}`,
+                            color: palette.link,
+                            background: palette.inputBg,
+                            padding: "8px 12px",
+                            borderRadius: 10,
+                            textDecoration: "none",
+                            fontWeight: 700,
+                          }}
+                        >
+                          Download PDF
+                        </a>
+                      ) : (
+                        <span style={{ color: palette.textFaint, fontWeight: 700 }}>
+                          Invoice available for delivered orders within 30 days
+                        </span>
+                      )}
                     </div>
                   </>
                 )}

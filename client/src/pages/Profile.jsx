@@ -20,6 +20,7 @@ function Profile() {
   const { isDark, toggleTheme } = useTheme();
   const { addToast } = useToast();
   const canUseDarkMode = user?.role === "customer";
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
   // Product managers should stay on the admin dashboard
   if (user?.role === "product_manager") {
@@ -75,6 +76,15 @@ const getOrderDate = (order) => {
 const isRefundWindowOpen = (order) => {
   const orderDate = getOrderDate(order);
   if (!orderDate) return true;
+  const diffDays = (Date.now() - orderDate.getTime()) / MS_PER_DAY;
+  return diffDays <= REFUND_WINDOW_DAYS;
+};
+
+const canDownloadInvoice = (order) => {
+  if (!order) return false;
+  if (order.status !== "Delivered") return false;
+  const orderDate = getOrderDate(order);
+  if (!orderDate) return false;
   const diffDays = (Date.now() - orderDate.getTime()) / MS_PER_DAY;
   return diffDays <= REFUND_WINDOW_DAYS;
 };
@@ -530,6 +540,12 @@ const handleRefundOrder = async (order) => {
                   order?.items?.map((item) => returnRequestMap.get(item.orderItemId)?.status).find(Boolean) || "";
                 const hasActiveReturn = Boolean(orderReturnStatus && orderReturnStatus !== "rejected");
                 const pill = statusStyle[displayStatus] || statusStyle.Processing;
+                const rawOrderId = order.order_id ?? order.id ?? formattedId;
+                const numericOrderMatch = String(rawOrderId).match(/\d+/);
+                const cleanOrderId = numericOrderMatch ? numericOrderMatch[0] : rawOrderId;
+                const invoiceUrl = `${API_BASE_URL}/api/orders/${encodeURIComponent(cleanOrderId)}/invoice`;
+                const canDownload = canDownloadInvoice(order);
+                const invoiceFileName = `invoice_${cleanOrderId}.pdf`;
 
 
                 return (
@@ -630,6 +646,23 @@ const handleRefundOrder = async (order) => {
                           </button>
                         );
                       })()}
+                      {canDownload && (
+                        <a
+                          href={invoiceUrl}
+                          download={invoiceFileName}
+                          style={{
+                            border: `1px solid ${isDark ? "#38bdf8" : "#0058a3"}`,
+                            color: isDark ? "#7dd3fc" : "#0058a3",
+                            background: isDark ? "#0b1220" : "#f8fafc",
+                            padding: "6px 12px",
+                            borderRadius: 999,
+                            textDecoration: "none",
+                            fontWeight: 700,
+                          }}
+                        >
+                          Download PDF
+                        </a>
+                      )}
                       <span style={{ fontWeight: 800, color: isDark ? "#e2e8f0" : "#0f172a" }}>
                         {formatPrice(order.total)}
                       </span>
