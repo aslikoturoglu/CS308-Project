@@ -90,12 +90,32 @@ export function createReturnRequest(req, res) {
           console.error("Return request insert failed:", insertErr);
           return res.status(500).json({ error: "Return request could not be created" });
         }
-        return res.json({
-          success: true,
-          return_id: result.insertId,
-          order_item_id: orderItemId,
-          status: "requested",
-        });
+        db.query(
+          "UPDATE deliveries SET delivery_status = 'refund_waiting' WHERE order_item_id = ?",
+          [orderItemId],
+          (deliveryErr) => {
+            if (deliveryErr) {
+              console.error("Delivery status update failed:", deliveryErr);
+              return res.status(500).json({ error: "Delivery status update failed" });
+            }
+            db.query(
+              "UPDATE orders SET status = 'refund_waiting' WHERE order_id = ?",
+              [row.order_id],
+              (orderErr) => {
+                if (orderErr) {
+                  console.error("Order status update failed:", orderErr);
+                  return res.status(500).json({ error: "Order status update failed" });
+                }
+                return res.json({
+                  success: true,
+                  return_id: result.insertId,
+                  order_item_id: orderItemId,
+                  status: "requested",
+                });
+              }
+            );
+          }
+        );
       });
     });
   });

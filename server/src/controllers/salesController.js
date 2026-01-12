@@ -505,12 +505,19 @@ export function updateReturnRequestStatus(req, res) {
       );
     };
 
+    const updateOrderStatus = (orderStatus, callback) => {
+      if (!orderStatus) return callback();
+      db.query("UPDATE orders SET status = ? WHERE order_id = ?", [orderStatus, row.order_id], () => callback());
+    };
+
     if (nextStatus === "accepted") {
       return updateDeliveryStatus("refund_waiting", updateReturn);
     }
 
     if (nextStatus === "rejected") {
-      return updateDeliveryStatus("refund_rejected", updateReturn);
+      return updateDeliveryStatus("refund_rejected", () =>
+        updateOrderStatus("refund_rejected", updateReturn)
+      );
     }
 
     if (nextStatus === "received") {
@@ -559,7 +566,9 @@ export function updateReturnRequestStatus(req, res) {
               return res.status(500).json({ error: "Refund insert failed" });
             }
 
-            updateDeliveryStatus("refunded", updateReturn);
+            updateDeliveryStatus("refunded", () =>
+              updateOrderStatus("refunded", updateReturn)
+            );
           });
         });
       });
