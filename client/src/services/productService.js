@@ -59,7 +59,12 @@ export async function fetchProductsWithMeta(signal) {
         category: p.category,
         material: p.material,
         color: p.color,
-        mainCategory: p.mainCategory,
+        mainCategory: Array.isArray(p.mainCategory)
+          ? p.mainCategory
+          : String(p.mainCategory || "")
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean),
         warranty: p.warranty,
         distributor: p.distributor,
         rating: p.rating,
@@ -90,7 +95,12 @@ export async function fetchProductById(id, signal) {
       category: p.category,
       material: p.material,
       color: p.color,
-      mainCategory: p.mainCategory,
+      mainCategory: Array.isArray(p.mainCategory)
+        ? p.mainCategory
+        : String(p.mainCategory || "")
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
       warranty: p.warranty,
       distributor: p.distributor,
       rating: p.rating,

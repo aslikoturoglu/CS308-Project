@@ -159,7 +159,10 @@ const handleDecrease = (p) => {
       
       list = list.filter((p) =>
         searchableFields.some((field) =>
-          (p[field] || "").toString().toLowerCase().includes(term)
+          (Array.isArray(p[field]) ? p[field].join(" ") : p[field] || "")
+            .toString()
+            .toLowerCase()
+            .includes(term)
         )
       );
   
@@ -186,7 +189,7 @@ const handleDecrease = (p) => {
             p.name,
             p.category,
             p.description,
-            p.mainCategory,
+            Array.isArray(p.mainCategory) ? p.mainCategory.join(" ") : p.mainCategory,
           ]
             .filter(Boolean)
             .join(" ")
@@ -215,7 +218,7 @@ const handleDecrease = (p) => {
             p.name,
             p.category,
             p.description,
-            p.mainCategory,
+            Array.isArray(p.mainCategory) ? p.mainCategory.join(" ") : p.mainCategory,
           ]
             .filter(Boolean)
             .join(" ")
@@ -225,6 +228,9 @@ const handleDecrease = (p) => {
           }
           if (exclusions.some((kw) => haystack.includes(kw))) {
             return false;
+          }
+          if (Array.isArray(p.mainCategory)) {
+            return p.mainCategory.some((entry) => String(entry).toLowerCase().includes(normalizedRoom));
           }
           return (p.mainCategory || "").toLowerCase().includes(normalizedRoom);
         });

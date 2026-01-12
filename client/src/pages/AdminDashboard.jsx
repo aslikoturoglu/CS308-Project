@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { fetchProductsWithMeta } from "../services/productService";
 import { createCategory, getCategories, deleteCategory } from "../services/categoryService";
+import { createMainCategory, getMainCategories, deleteMainCategory } from "../services/mainCategoryService";
 import {
   fetchSupportInbox,
   fetchSupportMessages,
@@ -228,6 +229,12 @@ function AdminDashboard() {
   const [pmEditProduct, setPmEditProduct] = useState(null);
   const [pmUseSuhomeLogistics, setPmUseSuhomeLogistics] = useState(false);
   const [removeCategoryId, setRemoveCategoryId] = useState("");
+  const [useDefaultProductCost, setUseDefaultProductCost] = useState(false);
+  const [pmCostProductId, setPmCostProductId] = useState("");
+  const [pmCostCurrent, setPmCostCurrent] = useState(null);
+  const [pmCostCurrentLabel, setPmCostCurrentLabel] = useState("");
+  const [pmCostInput, setPmCostInput] = useState("");
+  const [isLoadingPmCost, setIsLoadingPmCost] = useState(false);
   const [filters, setFilters] = useState({ invoiceFrom: "", invoiceTo: "" });
   const [invoices, setInvoices] = useState([]);
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
@@ -237,6 +244,10 @@ function AdminDashboard() {
     series: [],
   });
   const [isLoadingReport, setIsLoadingReport] = useState(false);
+  const [mainCategories, setMainCategories] = useState([]);
+  const [mainCategoryDraft, setMainCategoryDraft] = useState("");
+  const [isSavingMainCategory, setIsSavingMainCategory] = useState(false);
+  const [removeMainCategoryId, setRemoveMainCategoryId] = useState("");
   const [categories, setCategories] = useState([]);
   const [categoryDraft, setCategoryDraft] = useState("");
   const [isSavingCategory, setIsSavingCategory] = useState(false);
@@ -247,7 +258,7 @@ function AdminDashboard() {
     price: "",
     stock: "",
     category: "",
-    mainCategory: "",
+    mainCategory: [],
     material: "",
     color: "",
     colorHex: "",
@@ -255,6 +266,7 @@ function AdminDashboard() {
     distributor: "",
     features: "",
     image: "",
+    cost: "",
   });
   const [discountForm, setDiscountForm] = useState({
     productId: "",
@@ -297,6 +309,24 @@ function AdminDashboard() {
       })
       .catch((error) => {
         console.error("Categories load failed:", error);
+      });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getMainCategories(controller.signal)
+      .then((data) => {
+        const normalized = (data || [])
+          .map((item) => ({
+            id: item.id ?? item.main_category_id ?? item.name,
+            name: String(item.name ?? "").toLowerCase(),
+          }))
+          .filter((item) => item.name);
+        setMainCategories(normalized.sort((a, b) => a.name.localeCompare(b.name)));
+      })
+      .catch((error) => {
+        console.error("Main categories load failed:", error);
       });
     return () => controller.abort();
   }, []);
@@ -816,17 +846,31 @@ function AdminDashboard() {
     setOrderVisibleCount(10);
   }, [orderTab, orders.length]);
 
+  const availableMainCategories = useMemo(
+    () => (mainCategories.length ? mainCategories.map((c) => c.name) : MAIN_CATEGORIES),
+    [mainCategories]
+  );
+
+  const toggleCategorySelection = (list, value) => {
+    const current = Array.isArray(list) ? list : [];
+    if (current.includes(value)) {
+      return current.filter((item) => item !== value);
+    }
+    return [...current, value];
+  };
+
+  const isEmptyField = (value) => {
+    if (Array.isArray(value)) return value.length === 0;
+    return !String(value || "").trim();
+  };
+
+  const formatMainCategoryLabel = (value) => {
+    if (Array.isArray(value)) return value.join(", ");
+    return value || "General";
+  };
+
   const handleAddProduct = async () => {
     try {
-      if (!newProduct.name) {
-        addToast("Name required", "error");
-        return;
-      }
-      if (!newProduct.stock || Number(newProduct.stock) < 1) {
-        addToast("Stock must be at least 1", "error");
-        return;
-      }
-
       const basePayload = {
         name: newProduct.name,
         model: newProduct.model,
@@ -856,16 +900,28 @@ function AdminDashboard() {
           { key: "features", label: "Features", value: newProduct.features },
           { key: "image", label: "Image URL", value: newProduct.image },
         ];
-        const missing = required.filter((field) => !String(field.value || "").trim()).map((field) => field.label);
+        if (!useDefaultProductCost) {
+          required.push({ key: "cost", label: "Cost", value: newProduct.cost });
+        }
+        const missing = required.filter((field) => isEmptyField(field.value)).map((field) => field.label);
         if (missing.length) {
-          addToast(`Fill all fields: ${missing.join(", ")}`, "error");
+          addToast("Fill all the textfields.", "error");
+          return;
+        }
+        if (!Number.isFinite(Number(newProduct.stock)) || Number(newProduct.stock) < 1) {
+          addToast("Stock must be at least 1", "error");
+          return;
+        }
+        const costValue = useDefaultProductCost ? null : Number(newProduct.cost);
+        if (!useDefaultProductCost && (!Number.isFinite(costValue) || costValue < 0)) {
+          addToast("Enter a valid cost", "error");
           return;
         }
 
         const res = await fetch("/api/product-requests", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(basePayload),
+          body: JSON.stringify({ ...basePayload, cost: costValue }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -878,7 +934,7 @@ function AdminDashboard() {
           price: "",
           stock: "",
           category: "",
-          mainCategory: "",
+          mainCategory: [],
           material: "",
           color: "",
           colorHex: "",
@@ -886,12 +942,22 @@ function AdminDashboard() {
           distributor: "",
           features: "",
           image: "",
+          cost: "",
         });
         setUseSuhomeLogistics(false);
+        setUseDefaultProductCost(false);
         addToast("Product request sent to sales manager", "info");
         return;
       }
 
+      if (!newProduct.name) {
+        addToast("Name required", "error");
+        return;
+      }
+      if (!newProduct.stock || Number(newProduct.stock) < 1) {
+        addToast("Stock must be at least 1", "error");
+        return;
+      }
       if (!newProduct.price) {
         addToast("Name and price required", "error");
         return;
@@ -923,7 +989,7 @@ function AdminDashboard() {
         price: "",
         stock: "",
         category: "",
-        mainCategory: "",
+        mainCategory: [],
         material: "",
         color: "",
         colorHex: "",
@@ -931,6 +997,7 @@ function AdminDashboard() {
         distributor: "",
         features: "",
         image: "",
+        cost: "",
       });
       if (editingProductId) {
         setHighlightedProductId(editingProductId);
@@ -957,7 +1024,12 @@ function AdminDashboard() {
       price: product.price || "",
       stock: Number(product.stock ?? product.availableStock ?? 0),
       category: product.category || "",
-      mainCategory: product.mainCategory || "",
+      mainCategory: Array.isArray(product.mainCategory)
+        ? product.mainCategory
+        : String(product.mainCategory || "")
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
       material: product.material || "",
       color: product.color || "",
       colorHex: product.colorHex || "",
@@ -965,6 +1037,7 @@ function AdminDashboard() {
       distributor: product.distributor || "",
       features: product.description || "",
       image: product.image || "",
+      cost: "",
     });
     requestAnimationFrame(() => {
       const offset = 80;
@@ -982,7 +1055,7 @@ function AdminDashboard() {
       price: "",
       stock: "",
       category: "",
-      mainCategory: "",
+      mainCategory: [],
       material: "",
       color: "",
       colorHex: "",
@@ -990,8 +1063,10 @@ function AdminDashboard() {
       distributor: "",
       features: "",
       image: "",
+      cost: "",
     });
     setUseSuhomeLogistics(false);
+    setUseDefaultProductCost(false);
   };
 
   const handleDeleteProduct = async (productId) => {
@@ -1057,7 +1132,12 @@ function AdminDashboard() {
       model: target.model || "",
       stock: Number(target.stock ?? target.availableStock ?? 0),
       category: target.category || "",
-      mainCategory: target.mainCategory || "",
+      mainCategory: Array.isArray(target.mainCategory)
+        ? target.mainCategory
+        : String(target.mainCategory || "")
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
       material: target.material || "",
       color: target.color || "",
       warranty: target.warranty || "",
@@ -1083,7 +1163,7 @@ function AdminDashboard() {
       pmEditProduct.features,
       pmEditProduct.image,
     ];
-    if (required.some((value) => !String(value || "").trim())) {
+    if (required.some((value) => isEmptyField(value))) {
       addToast("Fill all the textfields.", "error");
       return;
     }
@@ -1125,6 +1205,101 @@ function AdminDashboard() {
     }
   };
 
+  const handleAddMainCategory = async () => {
+    const trimmed = mainCategoryDraft.trim().toLowerCase();
+    if (!trimmed) {
+      addToast("Main category name required", "error");
+      return;
+    }
+    if (mainCategories.some((c) => c.name === trimmed)) {
+      addToast("Main category already exists", "error");
+      return;
+    }
+    try {
+      setIsSavingMainCategory(true);
+      const created = await createMainCategory(trimmed);
+      setMainCategories((prev) =>
+        [...prev, { id: created?.id ?? trimmed, name: trimmed }].sort((a, b) =>
+          a.name.localeCompare(b.name)
+        )
+      );
+      setMainCategoryDraft("");
+      addToast("Main category added", "info");
+    } catch (error) {
+      console.error("Main category create failed:", error);
+      addToast(error.message || "Main category create failed", "error");
+    } finally {
+      setIsSavingMainCategory(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!pmCostProductId) {
+      setPmCostCurrent(null);
+      setPmCostCurrentLabel("");
+      return;
+    }
+
+    const product = products.find((p) => String(p.id) === String(pmCostProductId));
+    const fallbackCost = product ? Number(product.price || 0) * 0.5 : null;
+    setIsLoadingPmCost(true);
+    fetch(`/api/sales/products/${encodeURIComponent(pmCostProductId)}/cost`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.cost != null) {
+          setPmCostCurrent(Number(data.cost));
+          setPmCostCurrentLabel(
+            data.effective_from
+              ? `Current cost: ₺${Number(data.cost).toLocaleString("tr-TR")} (since ${new Date(data.effective_from).toLocaleDateString("tr-TR")})`
+              : `Current cost: ₺${Number(data.cost).toLocaleString("tr-TR")}`
+          );
+          return;
+        }
+        if (fallbackCost != null) {
+          setPmCostCurrent(fallbackCost);
+          setPmCostCurrentLabel(`Default (50% of price): ₺${fallbackCost.toLocaleString("tr-TR")}`);
+        } else {
+          setPmCostCurrent(null);
+          setPmCostCurrentLabel("No cost set yet.");
+        }
+      })
+      .catch((error) => {
+        console.error("Product cost fetch failed", error);
+        setPmCostCurrent(null);
+        setPmCostCurrentLabel("Cost could not be loaded.");
+      })
+      .finally(() => setIsLoadingPmCost(false));
+  }, [pmCostProductId, products]);
+
+  const handlePmCostUpdate = async () => {
+    if (!pmCostProductId || pmCostInput === "") {
+      addToast("Select product and cost", "error");
+      return;
+    }
+    if (!window.confirm("Are you sure you want to update the product cost?")) return;
+    try {
+      const body = new URLSearchParams();
+      body.set("cost", pmCostInput);
+      const res = await fetch(`/api/sales/products/${pmCostProductId}/cost`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Cost update failed");
+      }
+      addToast("Cost updated", "info");
+      setPmCostInput("");
+      setPmCostProductId("");
+      setPmCostCurrent(null);
+      setPmCostCurrentLabel("");
+    } catch (error) {
+      console.error("Cost update failed:", error);
+      addToast(error.message || "Cost update failed", "error");
+    }
+  };
+
   const handleDeleteCategory = async (category, options = {}) => {
     if (!category?.id) return;
     const confirmMessage = options.confirmMessage || `Delete category "${category.name}"?`;
@@ -1136,6 +1311,20 @@ function AdminDashboard() {
     } catch (error) {
       console.error("Category delete failed:", error);
       addToast(error.message || "Category delete failed", "error");
+    }
+  };
+
+  const handleDeleteMainCategory = async (category, options = {}) => {
+    if (!category?.id) return;
+    const confirmMessage = options.confirmMessage || `Delete main category "${category.name}"?`;
+    if (!window.confirm(confirmMessage)) return;
+    try {
+      await deleteMainCategory(category.id);
+      setMainCategories((prev) => prev.filter((item) => item.id !== category.id));
+      addToast("Main category deleted", "info");
+    } catch (error) {
+      console.error("Main category delete failed:", error);
+      addToast(error.message || "Main category delete failed", "error");
     }
   };
 
@@ -1820,6 +2009,33 @@ function AdminDashboard() {
                       style={inputStyle}
                     />
                   )}
+                  {user?.role === "product_manager" && (
+                    <div style={{ display: "grid", gap: 6 }}>
+                      <input
+                        placeholder="Cost"
+                        type="number"
+                        value={newProduct.cost}
+                        onChange={(e) => setNewProduct((p) => ({ ...p, cost: e.target.value }))}
+                        style={{ ...inputStyle, background: useDefaultProductCost ? "#f8fafc" : inputStyle.background }}
+                        readOnly={useDefaultProductCost}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUseDefaultProductCost((prev) => {
+                            const next = !prev;
+                            if (next) {
+                              setNewProduct((p) => ({ ...p, cost: "" }));
+                            }
+                            return next;
+                          });
+                        }}
+                        style={{ ...secondaryBtn, padding: "6px 10px", fontSize: "0.85rem" }}
+                      >
+                        {useDefaultProductCost ? "Use custom cost" : "Set default (50%)"}
+                      </button>
+                    </div>
+                  )}
                   <input
                     placeholder="Stock"
                     type="number"
@@ -1828,18 +2044,39 @@ function AdminDashboard() {
                     onChange={(e) => setNewProduct((p) => ({ ...p, stock: e.target.value }))}
                     style={inputStyle}
                   />
-                  <select
-                    value={newProduct.mainCategory}
-                    onChange={(e) => setNewProduct((p) => ({ ...p, mainCategory: e.target.value }))}
-                    style={inputStyle}
-                  >
-                    <option value="">Main category</option>
-                    {MAIN_CATEGORIES.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <p style={{ margin: 0, color: "#64748b", fontSize: "0.85rem", fontWeight: 700 }}>
+                      Main categories
+                    </p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {availableMainCategories.map((category) => {
+                        const isActive = newProduct.mainCategory.includes(category);
+                        return (
+                          <button
+                            key={category}
+                            type="button"
+                            onClick={() =>
+                              setNewProduct((p) => ({
+                                ...p,
+                                mainCategory: toggleCategorySelection(p.mainCategory, category),
+                              }))
+                            }
+                            style={{
+                              borderRadius: 999,
+                              padding: "6px 12px",
+                              border: `1px solid ${isActive ? "#0f172a" : "#e5e7eb"}`,
+                              background: isActive ? "#0f172a" : "#f8fafc",
+                              color: isActive ? "#ffffff" : "#0f172a",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                            }}
+                          >
+                            {category}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                   <select
                     value={newProduct.category}
                     onChange={(e) => setNewProduct((p) => ({ ...p, category: e.target.value }))}
@@ -1995,7 +2232,7 @@ function AdminDashboard() {
                           <div>
                             <strong>{req.name}</strong>
                             <p style={{ margin: "2px 0 0", color: "#64748b" }}>
-                              {req.mainCategory || "General"} • {req.category || "General"}
+                              {formatMainCategoryLabel(req.mainCategory)} • {req.category || "General"}
                             </p>
                           </div>
                           <span
@@ -2082,18 +2319,39 @@ function AdminDashboard() {
                           onChange={(e) => setPmEditProduct((prev) => ({ ...prev, stock: e.target.value }))}
                           style={inputStyle}
                         />
-                        <select
-                          value={pmEditProduct.mainCategory}
-                          onChange={(e) => setPmEditProduct((prev) => ({ ...prev, mainCategory: e.target.value }))}
-                          style={inputStyle}
-                        >
-                          <option value="">Main category</option>
-                          {MAIN_CATEGORIES.map((category) => (
-                            <option key={category} value={category}>
-                              {category}
-                            </option>
-                          ))}
-                        </select>
+                        <div style={{ display: "grid", gap: 8 }}>
+                          <p style={{ margin: 0, color: "#64748b", fontSize: "0.85rem", fontWeight: 700 }}>
+                            Main categories
+                          </p>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                            {availableMainCategories.map((category) => {
+                              const isActive = pmEditProduct.mainCategory.includes(category);
+                              return (
+                                <button
+                                  key={category}
+                                  type="button"
+                                  onClick={() =>
+                                    setPmEditProduct((prev) => ({
+                                      ...prev,
+                                      mainCategory: toggleCategorySelection(prev.mainCategory, category),
+                                    }))
+                                  }
+                                  style={{
+                                    borderRadius: 999,
+                                    padding: "6px 12px",
+                                    border: `1px solid ${isActive ? "#0f172a" : "#e5e7eb"}`,
+                                    background: isActive ? "#0f172a" : "#f8fafc",
+                                    color: isActive ? "#ffffff" : "#0f172a",
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  {category}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                         <select
                           value={pmEditProduct.category}
                           onChange={(e) => setPmEditProduct((prev) => ({ ...prev, category: e.target.value }))}
@@ -2197,6 +2455,149 @@ function AdminDashboard() {
                   )}
                 </div>
               )}
+
+              {user?.role === "product_manager" && (
+                <div
+                  style={{
+                    background: "white",
+                    borderRadius: 14,
+                    padding: 18,
+                    boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
+                    display: "grid",
+                    gap: 12,
+                  }}
+                >
+                  <div>
+                    <h3 style={{ margin: "0 0 6px", color: "#0f172a" }}>Update product cost</h3>
+                    <p style={{ margin: 0, color: "#64748b" }}>
+                      Default cost is 50% of sale price when no cost is set.
+                    </p>
+                  </div>
+                  <select
+                    value={pmCostProductId}
+                    onChange={(e) => {
+                      setPmCostProductId(e.target.value);
+                      setPmCostInput("");
+                    }}
+                    style={inputStyle}
+                  >
+                    <option value="">Select product</option>
+                    {products.map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.name}
+                      </option>
+                    ))}
+                  </select>
+                  {pmCostProductId && (
+                    <div style={{ display: "grid", gap: 10 }}>
+                      {isLoadingPmCost ? (
+                        <p style={{ margin: 0, color: "#64748b" }}>Loading cost...</p>
+                      ) : (
+                        <p style={{ margin: 0, color: "#0f172a", fontWeight: 700 }}>{pmCostCurrentLabel}</p>
+                      )}
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
+                        <input
+                          type="number"
+                          placeholder="New cost"
+                          value={pmCostInput}
+                          onChange={(e) => setPmCostInput(e.target.value)}
+                          style={inputStyle}
+                        />
+                        <button type="button" onClick={handlePmCostUpdate} style={primaryBtn}>
+                          Submit cost update
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div
+                style={{
+                  background: "white",
+                  borderRadius: 14,
+                  padding: 18,
+                  boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
+                  display: "grid",
+                  gap: 12,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <strong style={{ color: "#0f172a" }}>Main categories</strong>
+                  <span style={{ color: "#64748b", fontSize: "0.9rem" }}>
+                    {mainCategories.length ? mainCategories.length : MAIN_CATEGORIES.length} available
+                  </span>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {(mainCategories.length
+                    ? mainCategories
+                    : MAIN_CATEGORIES.map((name, idx) => ({ id: `default-main-${idx}`, name }))
+                  ).map((category) => (
+                    <span
+                      key={category.id}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: 999,
+                        border: "1px solid #e5e7eb",
+                        background: "#f8fafc",
+                        fontSize: "0.85rem",
+                        fontWeight: 600,
+                        color: "#0f172a",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      {category.name}
+                    </span>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <input
+                    placeholder="Add new main category"
+                    value={mainCategoryDraft}
+                    onChange={(e) => setMainCategoryDraft(e.target.value)}
+                    style={{ ...inputStyle, flex: "1 1 240px" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddMainCategory}
+                    disabled={isSavingMainCategory}
+                    style={{ ...secondaryBtn, minWidth: 160 }}
+                  >
+                    {isSavingMainCategory ? "Adding..." : "Add main category"}
+                  </button>
+                </div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <select
+                    value={removeMainCategoryId}
+                    onChange={(e) => setRemoveMainCategoryId(e.target.value)}
+                    style={{ ...inputStyle, flex: "1 1 240px" }}
+                  >
+                    <option value="">Remove main category</option>
+                    {mainCategories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const selected = mainCategories.find((c) => String(c.id) === String(removeMainCategoryId));
+                      if (!selected) return;
+                      handleDeleteMainCategory(selected, {
+                        confirmMessage: `Are you sure you want to remove "${selected.name}"?`,
+                      });
+                      setRemoveMainCategoryId("");
+                    }}
+                    disabled={!removeMainCategoryId}
+                    style={{ ...secondaryBtn, minWidth: 160 }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
 
               <div
                 style={{
@@ -2815,7 +3216,7 @@ function AdminDashboard() {
                         <div>
                           <strong>{req.name}</strong>
                           <p style={{ margin: "2px 0 0", color: "#64748b" }}>
-                            {req.mainCategory || "General"} • {req.category || "General"}
+                            {formatMainCategoryLabel(req.mainCategory)} • {req.category || "General"}
                           </p>
                           <p style={{ margin: "2px 0 0", color: "#64748b" }}>
                             Stock: {req.stock} • Material: {req.material || "N/A"} • Color: {req.color || "N/A"}
@@ -2875,7 +3276,7 @@ function AdminDashboard() {
                         <div>
                           <strong>{req.name}</strong>
                           <p style={{ margin: "2px 0 0", color: "#64748b" }}>
-                            {req.mainCategory || "General"} • {req.category || "General"}
+                            {formatMainCategoryLabel(req.mainCategory)} • {req.category || "General"}
                           </p>
                         </div>
                         <span style={{ color: "#0f172a", fontWeight: 700 }}>
@@ -3047,31 +3448,6 @@ function AdminDashboard() {
                   />
                   <button type="button" onClick={handlePriceUpdate} style={primaryBtn}>
                     Update price
-                  </button>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12, marginTop: 12 }}>
-                  <select
-                    value={costUpdate.productId}
-                    onChange={(e) => setCostUpdate((p) => ({ ...p, productId: e.target.value }))}
-                    style={inputStyle}
-                  >
-                    <option value="">Select product</option>
-                    {products.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    placeholder="Cost"
-                    value={costUpdate.cost}
-                    onChange={(e) => setCostUpdate((p) => ({ ...p, cost: e.target.value }))}
-                    style={inputStyle}
-                  />
-                  <button type="button" onClick={handleCostUpdate} style={primaryBtn}>
-                    Update cost
                   </button>
                 </div>
 

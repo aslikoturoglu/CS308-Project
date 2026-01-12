@@ -24,6 +24,7 @@ const paymentRoutes = (await import("./routes/paymentRoutes.js")).default;
 const userRoutes = (await import("./routes/userRoutes.js")).default;
 const wishlistRoutes = (await import("./routes/wishlistRoutes.js")).default;
 const categoryRoutes = (await import("./routes/categoryRoutes.js")).default;
+const mainCategoryRoutes = (await import("./routes/mainCategoryRoutes.js")).default;
 const returnRoutes = (await import("./routes/returnRoutes.js")).default;
 const productRequestRoutes = (await import("./routes/productRequestRoutes.js")).default;
 const dbModule = await import("./db.js");
@@ -52,6 +53,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/main-categories", mainCategoryRoutes);
 app.use("/api/returns", returnRoutes);
 app.use("/api/product-requests", productRequestRoutes);
 

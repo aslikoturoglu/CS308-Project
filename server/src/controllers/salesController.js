@@ -281,6 +281,37 @@ export function updateProductCost(req, res) {
   });
 }
 
+export function getProductCost(req, res) {
+  const { id } = req.params;
+  const productId = Number(id);
+  if (!Number.isFinite(productId)) {
+    return res.status(400).json({ error: "product id is required" });
+  }
+
+  const sql = `
+    SELECT cost, effective_from
+    FROM product_costs
+    WHERE product_id = ?
+    ORDER BY effective_from DESC
+    LIMIT 1
+  `;
+
+  db.query(sql, [productId], (err, rows = []) => {
+    if (err) {
+      console.error("Product cost fetch failed:", err);
+      return res.status(500).json({ error: "Cost could not be loaded" });
+    }
+    if (!rows.length) {
+      return res.json({ product_id: productId, cost: null, effective_from: null });
+    }
+    return res.json({
+      product_id: productId,
+      cost: Number(rows[0].cost || 0),
+      effective_from: rows[0].effective_from,
+    });
+  });
+}
+
 export function getInvoicesByDate(req, res) {
   const { from, to } = resolveDateRange(req);
 

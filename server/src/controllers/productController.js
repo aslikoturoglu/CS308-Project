@@ -1,15 +1,47 @@
 // server/src/controllers/productController.js
 import db from "../db.js";
 
+function normalizeMainCategories(input) {
+  if (Array.isArray(input)) {
+    return input
+      .map((value) => String(value || "").trim().toLowerCase())
+      .filter(Boolean);
+  }
+  if (typeof input === "string") {
+    return input
+      .split(",")
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function parseMainCategoryList(value) {
+  if (!value) return [];
+  return String(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export function getAllProducts(req, res) {
   const sql = `
     SELECT 
       p.*,
+      mcats.main_categories,
       COALESCE(stats.avg_rating, 0)   AS avg_rating,
       COALESCE(stats.rating_count, 0) AS rating_count,
       COALESCE(disc.discount_amount, 0) AS discount_amount,
       GREATEST(p.product_price - COALESCE(disc.discount_amount, 0), 0) AS discounted_price
     FROM products p
+    LEFT JOIN (
+      SELECT
+        pmc.product_id,
+        GROUP_CONCAT(DISTINCT mc.name ORDER BY mc.name SEPARATOR ',') AS main_categories
+      FROM product_main_categories pmc
+      JOIN main_categories mc ON mc.main_category_id = pmc.main_category_id
+      GROUP BY pmc.product_id
+    ) mcats ON mcats.product_id = p.product_id
     LEFT JOIN (
       SELECT 
         product_id,
@@ -56,17 +88,17 @@ export function getAllProducts(req, res) {
         description: p.product_features,
         price: discountedPrice,
         originalPrice: basePrice,
-      stock: Number(p.product_stock),
-      category: p.product_category,
-      mainCategory: p.product_main_category,
-      material: p.product_material,
-      color: p.product_color,
-      image: p.product_image,
-      rating: p.avg_rating ?? p.product_rating ?? 0,
-      averageRating: p.avg_rating ?? p.product_rating ?? 0,
-      ratingCount: Number(p.rating_count ?? 0),
-      warranty: p.product_warranty ?? p.warranty ?? null,
-      distributor: p.product_distributor ?? p.distributor ?? null,
+        stock: Number(p.product_stock),
+        category: p.product_category,
+        mainCategory: parseMainCategoryList(p.main_categories || p.product_main_category),
+        material: p.product_material,
+        color: p.product_color,
+        image: p.product_image,
+        rating: p.avg_rating ?? p.product_rating ?? 0,
+        averageRating: p.avg_rating ?? p.product_rating ?? 0,
+        ratingCount: Number(p.rating_count ?? 0),
+        warranty: p.product_warranty ?? p.warranty ?? null,
+        distributor: p.product_distributor ?? p.distributor ?? null,
       };
     });
 
@@ -79,7 +111,7 @@ export function createProduct(req, res) {
   const name = typeof payload.name === "string" ? payload.name.trim() : "";
   const rawModel = typeof payload.model === "string" ? payload.model.trim() : "";
   const rawCategory = typeof payload.category === "string" ? payload.category.trim() : "";
-  const rawMainCategory = typeof payload.mainCategory === "string" ? payload.mainCategory.trim() : "";
+  const mainCategories = normalizeMainCategories(payload.mainCategory);
   const rawDescription = typeof payload.features === "string"
     ? payload.features.trim()
     : typeof payload.description === "string"
@@ -113,6 +145,7 @@ export function createProduct(req, res) {
 
     const nextId = Number(rows?.[0]?.maxId || 0) + 1;
     const serialNumber = `SN-${nextId}-2026`;
+    const mainCategoryValue = mainCategories.join(", ");
     const sql = `
       INSERT INTO products
         (product_id, product_name, product_model, product_serial_number, product_main_category, product_category,
@@ -126,7 +159,7 @@ export function createProduct(req, res) {
       name,
       rawModel || null,
       serialNumber,
-      rawMainCategory || null,
+      mainCategoryValue || null,
       rawCategory || null,
       rawMaterial || null,
       rawColor || null,
@@ -144,28 +177,97 @@ export function createProduct(req, res) {
         return res.status(500).json({ error: "Product could not be created" });
       }
 
-      const created = {
-        id: nextId,
-        name,
-        model: rawModel || null,
-        serialNumber,
-        description: rawDescription || null,
-        price,
-        originalPrice: price,
-        stock,
-        category: rawCategory || null,
-        mainCategory: rawMainCategory || null,
-        material: rawMaterial || null,
-        color: rawColor || null,
-        warranty: rawWarranty || null,
-        distributor: rawDistributor || null,
-        image: rawImage || null,
-        rating: 0,
-        averageRating: 0,
-        ratingCount: 0,
-      };
+      if (!mainCategories.length) {
+        const created = {
+          id: nextId,
+          name,
+          model: rawModel || null,
+          serialNumber,
+          description: rawDescription || null,
+          price,
+          originalPrice: price,
+          stock,
+          category: rawCategory || null,
+          mainCategory: [],
+          material: rawMaterial || null,
+          color: rawColor || null,
+          warranty: rawWarranty || null,
+          distributor: rawDistributor || null,
+          image: rawImage || null,
+          rating: 0,
+          averageRating: 0,
+          ratingCount: 0,
+        };
+        return res.status(201).json(created);
+      }
 
-      return res.status(201).json(created);
+      const placeholders = mainCategories.map(() => "?").join(",");
+      const lookupSql = `SELECT main_category_id, name FROM main_categories WHERE name IN (${placeholders})`;
+      db.query(lookupSql, mainCategories, (lookupErr, rows = []) => {
+        if (lookupErr) {
+          console.error("Main categories lookup failed:", lookupErr);
+          return res.status(500).json({ error: "Product could not be created" });
+        }
+        const idMap = new Map(rows.map((row) => [String(row.name), row.main_category_id]));
+        const inserts = mainCategories
+          .map((nameValue) => [nextId, idMap.get(String(nameValue))])
+          .filter((pair) => pair[1]);
+        if (!inserts.length) {
+          const created = {
+            id: nextId,
+            name,
+            model: rawModel || null,
+            serialNumber,
+            description: rawDescription || null,
+            price,
+            originalPrice: price,
+            stock,
+            category: rawCategory || null,
+            mainCategory: [],
+            material: rawMaterial || null,
+            color: rawColor || null,
+            warranty: rawWarranty || null,
+            distributor: rawDistributor || null,
+            image: rawImage || null,
+            rating: 0,
+            averageRating: 0,
+            ratingCount: 0,
+          };
+          return res.status(201).json(created);
+        }
+        db.query(
+          "INSERT INTO product_main_categories (product_id, main_category_id) VALUES ?",
+          [inserts],
+          (insertErr) => {
+            if (insertErr) {
+              console.error("Product main categories insert failed:", insertErr);
+              return res.status(500).json({ error: "Product could not be created" });
+            }
+            const created = {
+              id: nextId,
+              name,
+              model: rawModel || null,
+              serialNumber,
+              description: rawDescription || null,
+              price,
+              originalPrice: price,
+              stock,
+              category: rawCategory || null,
+              mainCategory: mainCategories,
+              material: rawMaterial || null,
+              color: rawColor || null,
+              warranty: rawWarranty || null,
+              distributor: rawDistributor || null,
+              image: rawImage || null,
+              rating: 0,
+              averageRating: 0,
+              ratingCount: 0,
+            };
+
+            return res.status(201).json(created);
+          }
+        );
+      });
     });
   });
 }
@@ -229,7 +331,8 @@ export function updateProduct(req, res) {
   const serialProvided = typeof payload.serialNumber === "string";
   const rawSerialNumber = serialProvided ? payload.serialNumber.trim() : null;
   const rawCategory = typeof payload.category === "string" ? payload.category.trim() : "";
-  const rawMainCategory = typeof payload.mainCategory === "string" ? payload.mainCategory.trim() : "";
+  const mainCategoryProvided = payload.mainCategory !== undefined;
+  const mainCategories = normalizeMainCategories(payload.mainCategory);
   const rawDescription = typeof payload.features === "string" ? payload.features.trim() : "";
   const rawMaterial = typeof payload.material === "string" ? payload.material.trim() : "";
   const rawColor = typeof payload.color === "string" ? payload.color.trim() : "";
@@ -258,7 +361,7 @@ export function updateProduct(req, res) {
       product_name = ?,
       product_model = ?,
       product_serial_number = COALESCE(?, product_serial_number),
-      product_main_category = ?,
+      product_main_category = COALESCE(?, product_main_category),
       product_category = ?,
       product_material = ?,
       product_color = ?,
@@ -275,7 +378,7 @@ export function updateProduct(req, res) {
     name,
     rawModel || null,
     serialProvided ? (rawSerialNumber || null) : null,
-    rawMainCategory || null,
+    mainCategoryProvided ? mainCategories.join(", ") || null : null,
     rawCategory || null,
     rawMaterial || null,
     rawColor || null,
@@ -296,7 +399,45 @@ export function updateProduct(req, res) {
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: "Product not found" });
     }
-    return res.json({ success: true });
+    if (!mainCategoryProvided) {
+      return res.json({ success: true });
+    }
+
+    db.query("DELETE FROM product_main_categories WHERE product_id = ?", [id], (deleteErr) => {
+      if (deleteErr) {
+        console.error("Product main categories delete failed:", deleteErr);
+        return res.status(500).json({ error: "Product could not be updated" });
+      }
+      if (!mainCategories.length) {
+        return res.json({ success: true });
+      }
+      const placeholders = mainCategories.map(() => "?").join(",");
+      const lookupSql = `SELECT main_category_id, name FROM main_categories WHERE name IN (${placeholders})`;
+      db.query(lookupSql, mainCategories, (lookupErr, rows = []) => {
+        if (lookupErr) {
+          console.error("Main categories lookup failed:", lookupErr);
+          return res.status(500).json({ error: "Product could not be updated" });
+        }
+        const idMap = new Map(rows.map((row) => [String(row.name), row.main_category_id]));
+        const inserts = mainCategories
+          .map((nameValue) => [Number(id), idMap.get(String(nameValue))])
+          .filter((pair) => pair[1]);
+        if (!inserts.length) {
+          return res.json({ success: true });
+        }
+        db.query(
+          "INSERT INTO product_main_categories (product_id, main_category_id) VALUES ?",
+          [inserts],
+          (insertErr) => {
+            if (insertErr) {
+              console.error("Product main categories insert failed:", insertErr);
+              return res.status(500).json({ error: "Product could not be updated" });
+            }
+            return res.json({ success: true });
+          }
+        );
+      });
+    });
   });
 }
 
@@ -321,11 +462,20 @@ export function getProductById(req, res) {
   const sql = `
     SELECT 
       p.*,
+      mcats.main_categories,
       COALESCE(stats.avg_rating, 0)   AS avg_rating,
       COALESCE(stats.rating_count, 0) AS rating_count,
       COALESCE(disc.discount_amount, 0) AS discount_amount,
       GREATEST(p.product_price - COALESCE(disc.discount_amount, 0), 0) AS discounted_price
     FROM products p
+    LEFT JOIN (
+      SELECT
+        pmc.product_id,
+        GROUP_CONCAT(DISTINCT mc.name ORDER BY mc.name SEPARATOR ',') AS main_categories
+      FROM product_main_categories pmc
+      JOIN main_categories mc ON mc.main_category_id = pmc.main_category_id
+      GROUP BY pmc.product_id
+    ) mcats ON mcats.product_id = p.product_id
     LEFT JOIN (
       SELECT 
         product_id,
@@ -380,7 +530,7 @@ export function getProductById(req, res) {
       originalPrice: basePrice,
       stock: Number(p.product_stock),
       category: p.product_category,
-      mainCategory: p.product_main_category,
+      mainCategory: parseMainCategoryList(p.main_categories || p.product_main_category),
       material: p.product_material,
       color: p.product_color,
       image: p.product_image,

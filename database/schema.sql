@@ -12,6 +12,21 @@ CREATE TABLE categories (
   name VARCHAR(100) NOT NULL UNIQUE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE main_categories (
+  main_category_id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(100) NOT NULL UNIQUE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE product_main_categories (
+  product_id INT NOT NULL,
+  main_category_id INT NOT NULL,
+  PRIMARY KEY (product_id, main_category_id),
+  FOREIGN KEY (product_id) REFERENCES Products(product_id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  FOREIGN KEY (main_category_id) REFERENCES main_categories(main_category_id)
+    ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE users (
   user_id INT PRIMARY KEY AUTO_INCREMENT,
   full_name VARCHAR(150) NOT NULL,
@@ -58,6 +73,7 @@ CREATE TABLE product_requests (
   product_features TEXT,
   product_stock INT NOT NULL DEFAULT 0,
   product_image VARCHAR(255),
+  product_cost DECIMAL(10,2) NULL,
   product_price DECIMAL(10,2) NULL,
   status ENUM('pending','published') NOT NULL DEFAULT 'pending',
   requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
