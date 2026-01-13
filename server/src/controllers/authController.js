@@ -177,7 +177,7 @@ export function login(req, res) {
           user: { ...normalizeUser(user), role: demo.role ?? "customer" },
         });
       }
-      return res.status(401).json({ error: "Şifre hatalı" });
+      return res.status(401).json({ error: "Incorrect password" });
     }
 
     return res.json({ success: true, user: normalizeUser(user) });
