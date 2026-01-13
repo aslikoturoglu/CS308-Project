@@ -12,11 +12,31 @@ const PENDING_KEY = "pending-wishlist";
 
 export function WishlistProvider({ children }) {
   const { user } = useAuth();
+  const normalizeWishlistItem = (product) => {
+    if (!product?.id) return null;
+    return {
+      id: String(product.id),
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      added_at: product.added_at,
+    };
+  };
+
   const [items, setItems] = useState(() => {
     if (typeof window === "undefined") return [];
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(parsed)) return [];
+      const seen = new Set();
+      return parsed
+        .map((item) => normalizeWishlistItem(item))
+        .filter((item) => {
+          if (!item || seen.has(item.id)) return false;
+          seen.add(item.id);
+          return true;
+        });
     } catch (error) {
       console.error("Wishlist storage read failed", error);
       return [];
@@ -36,18 +56,14 @@ export function WishlistProvider({ children }) {
   const canSync = Number.isFinite(numericUserId) || Boolean(userEmail);
 
   const queuePendingWishlist = (product) => {
-    if (!product?.id || typeof window === "undefined") return;
+    const normalized = normalizeWishlistItem(product);
+    if (!normalized || typeof window === "undefined") return;
     try {
       const raw = window.localStorage.getItem(PENDING_KEY);
       const pending = raw ? JSON.parse(raw) : [];
-      const exists = pending.some((item) => String(item.id) === String(product.id));
+      const exists = pending.some((item) => String(item.id) === normalized.id);
       if (exists) return;
-      pending.push({
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        image: product.image,
-      });
+      pending.push(normalized);
       window.localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
     } catch (error) {
       console.error("Pending wishlist storage failed", error);
@@ -60,24 +76,22 @@ export function WishlistProvider({ children }) {
 
     fetchWishlist({ userId: Number.isFinite(numericUserId) ? numericUserId : null, email: userEmail, signal: controller.signal })
       .then((serverItems) => {
-        const normalized = (serverItems || []).map((item) => ({
-          id: item.id ?? item.product_id,
-          name: item.name,
-          price: item.price,
-          image: item.image,
-          added_at: item.added_at,
-        }));
+        const normalized = (serverItems || [])
+          .map((item) => normalizeWishlistItem({ ...item, id: item.id ?? item.product_id }))
+          .filter(Boolean);
         setItems((prev) => {
           if (!prev.length) return normalized;
           const merged = [...normalized];
-          const seen = new Set(normalized.map((item) => String(item.id)));
+          const seen = new Set(normalized.map((item) => item.id));
           prev.forEach((item) => {
-            if (!seen.has(String(item.id))) {
-              merged.push(item);
+            const normalizedItem = normalizeWishlistItem(item);
+            if (!normalizedItem) return;
+            if (!seen.has(normalizedItem.id)) {
+              merged.push(normalizedItem);
               addWishlistItemApi({
                 userId: Number.isFinite(numericUserId) ? numericUserId : null,
                 email: userEmail,
-                productId: item.id,
+                productId: normalizedItem.id,
               }).catch(() => {});
             }
           });
@@ -94,18 +108,20 @@ export function WishlistProvider({ children }) {
 
   const addItem = (product) => {
     setItems((prev) => {
-      if (prev.some((item) => item.id === product.id)) return prev;
+      const normalized = normalizeWishlistItem(product);
+      if (!normalized) return prev;
+      if (prev.some((item) => String(item.id) === normalized.id)) return prev;
       if (canSync) {
         addWishlistItemApi({
           userId: Number.isFinite(numericUserId) ? numericUserId : null,
           email: userEmail,
-          productId: product.id,
+          productId: normalized.id,
         }).catch((error) => {
           console.error("Wishlist add failed", error);
-          setItems((current) => current.filter((item) => item.id !== product.id));
+          setItems((current) => current.filter((item) => String(item.id) !== normalized.id));
         });
       }
-      return [...prev, product];
+      return [...prev, normalized];
     });
   };
 
@@ -130,22 +146,23 @@ export function WishlistProvider({ children }) {
         addWishlistItemApi({
           userId: Number.isFinite(numericUserId) ? numericUserId : null,
           email: userEmail,
-          productId: item.id,
+          productId: String(item.id),
         }).catch(() => {
-          setItems((current) => current.filter((entry) => entry.id !== item.id));
+          setItems((current) => current.filter((entry) => String(entry.id) !== String(item.id)));
         });
       });
-      return [...prev, ...toAdd];
+      return [...prev, ...toAdd.map((item) => normalizeWishlistItem(item)).filter(Boolean)];
     });
   }, [canSync, numericUserId, userEmail]);
 
   const removeItem = (id) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
+    const normalizedId = String(id);
+    setItems((prev) => prev.filter((item) => String(item.id) !== normalizedId));
     if (canSync) {
       removeWishlistItemApi({
         userId: Number.isFinite(numericUserId) ? numericUserId : null,
         email: userEmail,
-        productId: id,
+        productId: normalizedId,
       }).catch((error) => {
         console.error("Wishlist remove failed", error);
       });
@@ -154,35 +171,40 @@ export function WishlistProvider({ children }) {
 
   const toggleItem = (product) => {
     setItems((prev) => {
-      const exists = prev.some((item) => item.id === product.id);
+      const normalized = normalizeWishlistItem(product);
+      if (!normalized) return prev;
+      const exists = prev.some((item) => String(item.id) === normalized.id);
       if (exists) {
         if (canSync) {
           removeWishlistItemApi({
             userId: Number.isFinite(numericUserId) ? numericUserId : null,
             email: userEmail,
-            productId: product.id,
+            productId: normalized.id,
           }).catch((error) => {
             console.error("Wishlist remove failed", error);
-            setItems((current) => [...current, product]);
+            setItems((current) => [...current, normalized]);
           });
         }
-        return prev.filter((item) => item.id !== product.id);
+        return prev.filter((item) => String(item.id) !== normalized.id);
       }
       if (canSync) {
         addWishlistItemApi({
           userId: Number.isFinite(numericUserId) ? numericUserId : null,
           email: userEmail,
-          productId: product.id,
+          productId: normalized.id,
         }).catch((error) => {
           console.error("Wishlist add failed", error);
-          setItems((current) => current.filter((item) => item.id !== product.id));
+          setItems((current) => current.filter((item) => String(item.id) !== normalized.id));
         });
       }
-      return [...prev, product];
+      return [...prev, normalized];
     });
   };
 
-  const inWishlist = (id) => items.some((item) => item.id === id);
+  const inWishlist = (id) => {
+    const normalizedId = String(id);
+    return items.some((item) => String(item.id) === normalizedId);
+  };
 
   const value = useMemo(
     () => ({

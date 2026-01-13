@@ -68,16 +68,23 @@ export function getWishlist(req, res) {
         return res.status(500).json({ error: "Wishlist alnamad" });
       }
 
-      res.json(
-        rows.map((row) => ({
+      const seen = new Set();
+      const unique = [];
+      rows.forEach((row) => {
+        const key = String(row.product_id);
+        if (seen.has(key)) return;
+        seen.add(key);
+        unique.push({
           id: row.product_id,
           product_id: row.product_id,
           name: row.product_name || `Product #${row.product_id}`,
           image: row.product_image || null,
           price: Number(row.product_price) || 0,
           added_at: row.added_at,
-        }))
-      );
+        });
+      });
+
+      res.json(unique);
     });
   });
 }
