@@ -8,6 +8,14 @@ const formatTime = (value) =>
     minute: "2-digit",
   });
 
+const API_BASE = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) || "";
+
+function resolveUploadUrl(url) {
+  if (!url) return url;
+  if (url.startsWith("/uploads")) return `${API_BASE}${url}`;
+  return url;
+}
+
 function ChatBox() {
   const {
     messages,
@@ -88,9 +96,10 @@ function ChatBox() {
                       {msg.attachments.map((att) => (
                         <a
                           key={att.id}
-                          href={att.url}
+                          href={resolveUploadUrl(att.url)}
                           target="_blank"
                           rel="noreferrer"
+                          download={att.file_name}
                           className="attachment-chip"
                         >
                           📎 {att.file_name}

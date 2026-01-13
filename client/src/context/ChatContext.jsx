@@ -80,9 +80,10 @@ export function ChatProvider({ children }) {
   const [chatUnavailable, setChatUnavailable] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const hydrateRef = useRef(null);
+  const identityRef = useRef(null);
 
   const activeUserId = useMemo(
-    () => serverUserId ?? user?.id ?? clientToken,
+    () => user?.id ?? serverUserId ?? clientToken,
     [serverUserId, user, clientToken]
   );
   const identityEmail = useMemo(
@@ -90,6 +91,22 @@ export function ChatProvider({ children }) {
     [user, clientToken]
   );
   const identityName = useMemo(() => user?.name || "Guest", [user]);
+
+  useEffect(() => {
+    const identityKey = user?.id
+      ? `user:${String(user.id)}`
+      : `guest:${String(clientToken)}`;
+    if (identityRef.current && identityRef.current !== identityKey) {
+      setServerUserId(null);
+      setConversationId(null);
+      setMessages(seedMessages);
+      setHasHydrated(false);
+      setSyncError(null);
+      setLastError(null);
+      setChatUnavailable(false);
+    }
+    identityRef.current = identityKey;
+  }, [user?.id, clientToken]);
 
   const normalizeMessages = useCallback(
     (incoming) =>
@@ -131,17 +148,19 @@ export function ChatProvider({ children }) {
       }
       setConversationId(data.conversation_id);
       const nextMessages = normalizeMessages(data.messages);
-      const existingIds = new Set(messages.map((m) => String(m.id)));
-      const incoming = nextMessages.length > 0 ? nextMessages : seedMessages;
-      if (!isOpen) {
-        const newSupportMessages = incoming.filter(
-          (m) => m.from !== "user" && !existingIds.has(String(m.id))
-        ).length;
-        if (newSupportMessages > 0) {
-          setUnreadCount((val) => val + newSupportMessages);
+      setMessages((prev) => {
+        const incoming = nextMessages.length > 0 ? nextMessages : prev.length > 0 ? prev : seedMessages;
+        if (!isOpen) {
+          const existingIds = new Set(prev.map((m) => String(m.id)));
+          const newSupportMessages = incoming.filter(
+            (m) => m.from !== "user" && !existingIds.has(String(m.id))
+          ).length;
+          if (newSupportMessages > 0) {
+            setUnreadCount((val) => val + newSupportMessages);
+          }
         }
-      }
-      setMessages(incoming);
+        return incoming;
+      });
       setSyncError(null);
       setLastError(null);
       setHasHydrated(true);
@@ -155,12 +174,12 @@ export function ChatProvider({ children }) {
       }
       setSyncError(error.message);
       setLastError(error.message);
-      setMessages([]);
+      setMessages((prev) => prev);
       setHasHydrated(true);
     } finally {
       setIsLoading(false);
     }
-  }, [activeUserId, isOpen, normalizeMessages, messages, chatUnavailable]);
+  }, [activeUserId, isOpen, normalizeMessages, chatUnavailable, hasHydrated]);
 
   useEffect(() => {
     hydrateFromServer();

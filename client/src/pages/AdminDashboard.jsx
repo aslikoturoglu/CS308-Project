@@ -173,6 +173,9 @@ function resolveUploadUrl(url) {
 
 function resolveAttachmentUrl(attachment, fallbackOrderId) {
   if (!attachment?.url) return attachment?.url;
+  if (attachment.url.startsWith("/uploads")) {
+    return resolveUploadUrl(attachment.url);
+  }
   const fileName = attachment.file_name || "";
   const match = fileName.match(/invoice_ORD-(\d+)/i);
   const orderId = match ? Number(match[1]) : Number(fallbackOrderId);
@@ -180,6 +183,25 @@ function resolveAttachmentUrl(attachment, fallbackOrderId) {
     return `${API_BASE}/api/orders/${encodeURIComponent(orderId)}/invoice`;
   }
   return resolveUploadUrl(attachment.url);
+}
+
+function resolveCustomerName(chat, currentUser) {
+  const rawName = String(chat?.customer_name || "").trim();
+  const rawEmail = String(chat?.customer_email || "").trim();
+  const userName = String(currentUser?.name || "").trim();
+  const userEmail = String(currentUser?.email || "").trim();
+  const lowerName = rawName.toLowerCase();
+  const isPlaceholder = !rawName || ["guest", "user", "demo user"].includes(lowerName);
+
+  if (rawName && !isPlaceholder) {
+    if (userName && rawName === userName && rawEmail && rawEmail !== userEmail) {
+      return rawEmail;
+    }
+    return rawName;
+  }
+  if (rawEmail) return rawEmail;
+  if (chat?.user_id) return `User #${chat.user_id}`;
+  return "Customer";
 }
 
 function AdminDashboard() {
@@ -214,6 +236,7 @@ function AdminDashboard() {
   const [isInboxStreaming, setIsInboxStreaming] = useState(false);
   const [isThreadStreaming, setIsThreadStreaming] = useState(false);
   const [isSendingReply, setIsSendingReply] = useState(false);
+  const [showCustomerDetails, setShowCustomerDetails] = useState(true);
   const [returnRequests, setReturnRequests] = useState([]);
   const [isLoadingReturns, setIsLoadingReturns] = useState(false);
   const [productRequests, setProductRequests] = useState([]);
@@ -3750,41 +3773,93 @@ function AdminDashboard() {
                 <div style={{ background: "white", borderRadius: 14, padding: 18, boxShadow: "0 14px 30px rgba(0,0,0,0.05)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                     <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Active chat queue</h3>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                        <button
-                          type="button"
-                          onClick={() => setChatFilter("unclaimed")}
-                          style={filterButtonStyle(chatFilter === "unclaimed")}
-                        >
-                          Unclaimed
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setChatFilter("mine")}
-                          style={filterButtonStyle(chatFilter === "mine")}
-                        >
-                          My chats
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setChatFilter("all")}
-                          style={filterButtonStyle(chatFilter === "all")}
-                        >
-                          All
-                        </button>
-                      </div>
-                      {isLoadingChats && <span style={{ color: "#0ea5e9", fontWeight: 700 }}>Syncing...</span>}
-                    </div>
+                    {isLoadingChats && <span style={{ color: "#0ea5e9", fontWeight: 700 }}>Syncing...</span>}
                   </div>
-                  <div style={{ display: "grid", gap: 12 }}>
-                    {filteredChats
-                      .slice((chatPage - 1) * CHAT_PAGE_SIZE, chatPage * CHAT_PAGE_SIZE)
-                      .map((chat) => {
-                      const isActive = chat.id === activeConversationId;
-                      const isMine = String(chat.assigned_agent_id ?? "") === String(user?.id ?? "");
-                      const hasAgent = Boolean(chat.assigned_agent_id);
-                      return (
+                  <div style={{ display: "grid", gap: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        onClick={() => setChatFilter("unclaimed")}
+                        style={filterButtonStyle(chatFilter === "unclaimed")}
+                      >
+                        Unclaimed
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChatFilter("mine")}
+                        style={filterButtonStyle(chatFilter === "mine")}
+                      >
+                        My chats
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChatFilter("others")}
+                        style={filterButtonStyle(chatFilter === "others")}
+                      >
+                        Claimed by others
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChatFilter("all")}
+                        style={filterButtonStyle(chatFilter === "all")}
+                      >
+                        All
+                      </button>
+                    </div>
+                    {[
+                      {
+                        id: "unclaimed",
+                        title: "Unclaimed",
+                        items: chats.filter(
+                          (chat) =>
+                            chat.status === "open" &&
+                            !chat.assigned_agent_id &&
+                            chat.last_message &&
+                            chat.last_message !== "No message yet"
+                        ),
+                      },
+                      {
+                        id: "mine",
+                        title: "My chats",
+                        items: chats.filter(
+                          (chat) =>
+                            String(chat.assigned_agent_id ?? "") === String(user?.id ?? "") &&
+                            chat.last_message &&
+                            chat.last_message !== "No message yet"
+                        ),
+                      },
+                      {
+                        id: "others",
+                        title: "Claimed by others",
+                        items: chats.filter(
+                          (chat) =>
+                            chat.assigned_agent_id &&
+                            String(chat.assigned_agent_id ?? "") !== String(user?.id ?? "") &&
+                            chat.last_message &&
+                            chat.last_message !== "No message yet"
+                        ),
+                      },
+                    ]
+                      .filter((section) => {
+                        if (chatFilter === "all") return true;
+                        return section.id === chatFilter;
+                      })
+                      .map((section) => (
+                      <div key={section.id} style={{ display: "grid", gap: 12 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <h4 style={{ margin: 0, color: "#0f172a" }}>{section.title}</h4>
+                          <span style={{ color: "#64748b", fontWeight: 700 }}>
+                            {section.items.length}
+                          </span>
+                        </div>
+                        {section.items.length === 0 ? (
+                          <p style={{ margin: 0, color: "#6b7280" }}>No chats here yet.</p>
+                        ) : (
+                          section.items.map((chat) => {
+                            const isActive = chat.id === activeConversationId;
+                            const isMine = String(chat.assigned_agent_id ?? "") === String(user?.id ?? "");
+                            const hasAgent = Boolean(chat.assigned_agent_id);
+                            return (
                         <div
                           key={chat.id}
                           role="button"
@@ -3809,7 +3884,7 @@ function AdminDashboard() {
                         >
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <div>
-                              <strong>{chat.customer_name}</strong>
+                              <strong>{resolveCustomerName(chat, user)}</strong>
                               <p style={{ margin: "2px 0 0", color: "#475569" }}>
                                 {chat.order_id ? formatOrderId(chat.order_id) : "No order linked"}
                               </p>
@@ -3856,19 +3931,6 @@ function AdminDashboard() {
                             Last update: {new Date(chat.last_message_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
                           </small>
                           <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
-                            <button
-                              type="button"
-                              onClick={() => handleSelectConversation(chat.id)}
-                              style={{
-                                padding: "6px 10px",
-                                borderRadius: 8,
-                                border: "1px solid #e5e7eb",
-                                background: "white",
-                                cursor: "pointer",
-                              }}
-                            >
-                              Open
-                            </button>
                             {!hasAgent && chat.status === "open" && (
                               <button
                                 type="button"
@@ -3929,55 +3991,10 @@ function AdminDashboard() {
                           </div>
                         </div>
                       );
-                    })}
-                    {filteredChats.length > CHAT_PAGE_SIZE && (
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
-                        <button
-                          type="button"
-                          onClick={() => setChatPage((p) => Math.max(1, p - 1))}
-                          disabled={chatPage === 1}
-                          style={{
-                            padding: "6px 12px",
-                            borderRadius: 10,
-                            border: "1px solid #e5e7eb",
-                            background: chatPage === 1 ? "#f8fafc" : "white",
-                            cursor: chatPage === 1 ? "not-allowed" : "pointer",
-                          }}
-                        >
-                          Prev
-                        </button>
-                        <span style={{ color: "#475569", fontWeight: 600 }}>
-                          Page {chatPage} / {Math.max(1, Math.ceil(filteredChats.length / CHAT_PAGE_SIZE))}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setChatPage((p) => Math.min(Math.ceil(filteredChats.length / CHAT_PAGE_SIZE), p + 1))
-                          }
-                          disabled={chatPage >= Math.ceil(filteredChats.length / CHAT_PAGE_SIZE)}
-                          style={{
-                            padding: "6px 12px",
-                            borderRadius: 10,
-                            border: "1px solid #e5e7eb",
-                            background:
-                              chatPage >= Math.ceil(filteredChats.length / CHAT_PAGE_SIZE) ? "#f8fafc" : "white",
-                            cursor:
-                              chatPage >= Math.ceil(filteredChats.length / CHAT_PAGE_SIZE) ? "not-allowed" : "pointer",
-                          }}
-                        >
-                          Next &gt;
-                        </button>
+                          })
+                        )}
                       </div>
-                    )}
-                    {!filteredChats.length && !isLoadingChats && (
-                      <p style={{ margin: 0, color: "#6b7280" }}>
-                        {chatFilter === "unclaimed"
-                          ? "No unclaimed chats yet."
-                          : chatFilter === "mine"
-                          ? "No chats assigned to you yet."
-                          : "No active chats yet."}
-                      </p>
-                    )}
+                    ))}
                   </div>
                 </div>
 
@@ -3989,15 +4006,32 @@ function AdminDashboard() {
                   borderRadius: 14,
                   padding: 18,
                   boxShadow: "0 14px 30px rgba(0,0,0,0.05)",
-                  display: "grid",
+                  display: "flex",
+                  flexDirection: "column",
                   gap: 12,
-                  gridTemplateRows: "auto auto 1fr auto",
-                  maxHeight: "calc(100vh - 220px)",
-                  minHeight: 0,
+                  height: "calc(100vh - 260px)",
+                  minHeight: 420,
                 }}
               >
-                <h3 style={{ margin: "0 0 8px", color: "#0f172a" }}>Conversation</h3>
-                {activeConversationId && activeChat && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                  <h3 style={{ margin: 0, color: "#0f172a" }}>Conversation</h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomerDetails((prev) => !prev)}
+                    style={{
+                      border: "1px solid #e5e7eb",
+                      background: "white",
+                      borderRadius: 999,
+                      padding: "6px 10px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      color: "#0f172a",
+                    }}
+                  >
+                    {showCustomerDetails ? "Hide details" : "Show details"}
+                  </button>
+                </div>
+                {showCustomerDetails && activeConversationId && activeChat && (
                   <div
                     style={{
                       border: "1px solid #e5e7eb",
@@ -4010,7 +4044,9 @@ function AdminDashboard() {
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
                       <div>
-                        <strong style={{ color: "#0f172a" }}>{activeChat.customer_name}</strong>
+                        <strong style={{ color: "#0f172a" }}>
+                          {resolveCustomerName(activeChat, user)}
+                        </strong>
                         <p style={{ margin: "4px 0 0", color: "#475569" }}>
                           {activeChat.customer_email || `User #${activeChat.user_id}`}
                         </p>
@@ -4192,13 +4228,13 @@ function AdminDashboard() {
                     )}
                   </div>
                 )}
-                {activeConversationId ? (
+                {activeConversationId && !showCustomerDetails ? (
                   <>
                     <div
                       style={{
                         padding: 0,
-                        minHeight: 0,
-                        maxHeight: "calc(100vh - 520px)",
+                        minHeight: 180,
+                        flex: 1,
                         overflow: "auto",
                         display: "grid",
                         gap: 10,
@@ -4333,32 +4369,14 @@ function AdminDashboard() {
                     </div>
                   </>
                 ) : (
-                  <p style={{ margin: 0, color: "#6b7280" }}>Select a chat from the left to start messaging.</p>
+                  !showCustomerDetails && (
+                    <p style={{ margin: 0, color: "#6b7280" }}>Select a chat from the left to start messaging.</p>
+                  )
                 )}
               </div>
             </section>
           )}
 
-          <section
-            style={{
-              background: "linear-gradient(135deg, rgba(0,88,163,0.08), rgba(255,204,0,0.12))",
-              borderRadius: 16,
-              padding: 16,
-              border: "1px solid rgba(0,88,163,0.1)",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <h3 style={{ margin: "0 0 6px", color: "#0f172a" }}>Operational reminders</h3>
-                <p style={{ margin: 0, color: "#374151" }}>
-                  {totals.lowStock} products are low on stock. Prioritize restock before weekend campaigns.
-                </p>
-              </div>
-              <button type="button" style={primaryBtn} onClick={handleViewLowStock}>
-                View details
-              </button>
-            </div>
-          </section>
         </main>
       </div>
     </div>

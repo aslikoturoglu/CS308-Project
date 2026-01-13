@@ -9,9 +9,29 @@ import {
 const WishlistContext = createContext(undefined);
 const STORAGE_KEY = "wishlist";
 const PENDING_KEY = "pending-wishlist";
+const GUEST_SUFFIX = "guest";
+
+function buildStorageKey(user) {
+  if (user?.id) return `${STORAGE_KEY}:${user.id}`;
+  if (user?.email) return `${STORAGE_KEY}:${user.email}`;
+  return `${STORAGE_KEY}:${GUEST_SUFFIX}`;
+}
+
+function buildPendingKey(user) {
+  if (user?.id) return `${PENDING_KEY}:${user.id}`;
+  if (user?.email) return `${PENDING_KEY}:${user.email}`;
+  return `${PENDING_KEY}:${GUEST_SUFFIX}`;
+}
 
 export function WishlistProvider({ children }) {
   const { user } = useAuth();
+  const storageKey = buildStorageKey(user);
+  const guestPendingKey = buildPendingKey(null);
+  const identityKey = user?.id
+    ? `id:${user.id}`
+    : user?.email
+    ? `email:${user.email}`
+    : "guest";
   const normalizeWishlistItem = (product) => {
     if (!product?.id) return null;
     return {
@@ -26,7 +46,7 @@ export function WishlistProvider({ children }) {
   const [items, setItems] = useState(() => {
     if (typeof window === "undefined") return [];
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const raw = window.localStorage.getItem(storageKey);
       const parsed = raw ? JSON.parse(raw) : [];
       if (!Array.isArray(parsed)) return [];
       const seen = new Set();
@@ -45,11 +65,35 @@ export function WishlistProvider({ children }) {
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      window.localStorage.setItem(storageKey, JSON.stringify(items));
     } catch (error) {
       console.error("Wishlist storage write failed", error);
     }
-  }, [items]);
+  }, [items, storageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(parsed)) {
+        setItems([]);
+        return;
+      }
+      const seen = new Set();
+      const normalized = parsed
+        .map((item) => normalizeWishlistItem(item))
+        .filter((item) => {
+          if (!item || seen.has(item.id)) return false;
+          seen.add(item.id);
+          return true;
+        });
+      setItems(normalized);
+    } catch (error) {
+      console.error("Wishlist storage read failed", error);
+      setItems([]);
+    }
+  }, [storageKey]);
 
   const numericUserId = Number(user?.id);
   const userEmail = user?.email ? String(user.email).trim() : "";
@@ -59,12 +103,12 @@ export function WishlistProvider({ children }) {
     const normalized = normalizeWishlistItem(product);
     if (!normalized || typeof window === "undefined") return;
     try {
-      const raw = window.localStorage.getItem(PENDING_KEY);
+      const raw = window.localStorage.getItem(guestPendingKey);
       const pending = raw ? JSON.parse(raw) : [];
       const exists = pending.some((item) => String(item.id) === normalized.id);
       if (exists) return;
       pending.push(normalized);
-      window.localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+      window.localStorage.setItem(guestPendingKey, JSON.stringify(pending));
     } catch (error) {
       console.error("Pending wishlist storage failed", error);
     }
@@ -73,30 +117,15 @@ export function WishlistProvider({ children }) {
   useEffect(() => {
     if (!canSync) return undefined;
     const controller = new AbortController();
+    const currentIdentity = identityKey;
 
     fetchWishlist({ userId: Number.isFinite(numericUserId) ? numericUserId : null, email: userEmail, signal: controller.signal })
       .then((serverItems) => {
+        if (currentIdentity !== identityKey) return;
         const normalized = (serverItems || [])
           .map((item) => normalizeWishlistItem({ ...item, id: item.id ?? item.product_id }))
           .filter(Boolean);
-        setItems((prev) => {
-          if (!prev.length) return normalized;
-          const merged = [...normalized];
-          const seen = new Set(normalized.map((item) => item.id));
-          prev.forEach((item) => {
-            const normalizedItem = normalizeWishlistItem(item);
-            if (!normalizedItem) return;
-            if (!seen.has(normalizedItem.id)) {
-              merged.push(normalizedItem);
-              addWishlistItemApi({
-                userId: Number.isFinite(numericUserId) ? numericUserId : null,
-                email: userEmail,
-                productId: normalizedItem.id,
-              }).catch(() => {});
-            }
-          });
-          return merged;
-        });
+        setItems(normalized);
       })
       .catch((error) => {
         if (error?.name === "AbortError") return;
@@ -104,7 +133,7 @@ export function WishlistProvider({ children }) {
       });
 
     return () => controller.abort();
-  }, [canSync, numericUserId]);
+  }, [canSync, numericUserId, userEmail, identityKey]);
 
   const addItem = (product) => {
     setItems((prev) => {
@@ -130,13 +159,13 @@ export function WishlistProvider({ children }) {
     if (typeof window === "undefined") return;
     let pending = [];
     try {
-      const raw = window.localStorage.getItem(PENDING_KEY);
+      const raw = window.localStorage.getItem(guestPendingKey);
       pending = raw ? JSON.parse(raw) : [];
     } catch (error) {
       console.error("Pending wishlist read failed", error);
     }
     if (!Array.isArray(pending) || pending.length === 0) return;
-    window.localStorage.removeItem(PENDING_KEY);
+    window.localStorage.removeItem(guestPendingKey);
 
     setItems((prev) => {
       const existing = new Set(prev.map((item) => String(item.id)));

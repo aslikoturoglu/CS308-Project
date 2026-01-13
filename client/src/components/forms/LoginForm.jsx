@@ -15,7 +15,7 @@ function LoginForm({ onSuccess }) {
   const hasPendingWishlist = () => {
     if (typeof window === "undefined") return false;
     try {
-      const raw = window.localStorage.getItem("pending-wishlist");
+      const raw = window.localStorage.getItem("pending-wishlist:guest");
       const pending = raw ? JSON.parse(raw) : [];
       return Array.isArray(pending) && pending.length > 0;
     } catch (error) {

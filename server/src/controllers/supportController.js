@@ -92,7 +92,10 @@ function maybeUpdateUserName(userId, currentName, nextName, callback) {
   const trimmed = nextName && String(nextName).trim();
   if (!trimmed) return callback();
   const normalizedCurrent = (currentName || "").trim();
-  if (normalizedCurrent && normalizedCurrent.toLowerCase() !== "guest") {
+  const lowerCurrent = normalizedCurrent.toLowerCase();
+  const isPlaceholder =
+    !normalizedCurrent || ["guest", "user", "demo user"].includes(lowerCurrent);
+  if (!isPlaceholder || normalizedCurrent === trimmed) {
     return callback();
   }
   const updateSql = "UPDATE users SET full_name = ? WHERE user_id = ?";
