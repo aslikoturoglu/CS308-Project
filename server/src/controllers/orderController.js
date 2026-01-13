@@ -678,7 +678,21 @@ export function refundOrder(req, res) {
 
     db.query("UPDATE orders SET status = 'refund_waiting' WHERE order_id = ?", [orderId], () => {
       db.query("UPDATE deliveries SET delivery_status = 'refund_waiting' WHERE order_id = ?", [orderId], () => {
-        res.json({ success: true, order_id: orderId, status: "refund_waiting" });
+        const insertReturnSql = `
+          INSERT INTO return_requests (order_item_id, user_id, reason, status)
+          SELECT oi.order_item_id, o.user_id, 'Order refund requested', 'requested'
+          FROM order_items oi
+          JOIN orders o ON o.order_id = oi.order_id
+          LEFT JOIN return_requests rr
+            ON rr.order_item_id = oi.order_item_id AND rr.status <> 'rejected'
+          WHERE oi.order_id = ? AND rr.return_id IS NULL
+        `;
+        db.query(insertReturnSql, [orderId], (insertErr) => {
+          if (insertErr) {
+            console.error("Return request insert failed:", insertErr);
+          }
+          res.json({ success: true, order_id: orderId, status: "refund_waiting" });
+        });
       });
     });
   });

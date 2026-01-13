@@ -952,7 +952,7 @@ function AdminDashboard() {
           return;
         }
 
-        const res = await fetch("/api/product-requests", {
+        const res = await fetch(`${API_BASE}/api/product-requests`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...basePayload, cost: costValue }),
@@ -1384,7 +1384,7 @@ function AdminDashboard() {
     }
     try {
       setPublishingRequestId(requestId);
-      const res = await fetch(`/api/product-requests/${requestId}/publish`, {
+      const res = await fetch(`${API_BASE}/api/product-requests/${requestId}/publish`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ price }),
