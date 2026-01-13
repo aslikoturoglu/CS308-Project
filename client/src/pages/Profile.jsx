@@ -156,7 +156,7 @@ const formatReturnStatus = (value) => {
 };
 
 const handleCancelOrder = async (orderId) => {
-  if (!window.confirm("Cancel this order?")) return;
+  if (!window.confirm("Are you sure you want to cancel this order?")) return;
 
   try {
     await cancelOrder(orderId);
