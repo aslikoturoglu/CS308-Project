@@ -1378,7 +1378,7 @@ function AdminDashboard() {
       return;
     }
     const price = Number(priceValue);
-    if (!Number.isFinite(price) || price < 0) {
+    if (!Number.isFinite(price) || price <= 0) {
       addToast("Enter a valid price", "error");
       return;
     }
@@ -3314,6 +3314,8 @@ function AdminDashboard() {
                           onChange={(e) =>
                             setPublishPrices((prev) => ({ ...prev, [req.request_id]: e.target.value }))
                           }
+                          min={1}
+                          step="1"
                           style={inputStyle}
                         />
                         <button
